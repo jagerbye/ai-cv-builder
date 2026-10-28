@@ -1,0 +1,40 @@
+{
+  "name": "ambiguous-role",
+  "description": "The source gives two possible titles. The employer and period are grounded, so the entry is kept; its role is not in any cited fact, so the verifier keeps it and asks a vague question on the role path.",
+  "source": "Platform team at Nimbus, 2020-2022. Title was Engineer II or Lead, depending on the quarter. Ran the Kubernetes migration.",
+  "facts": [
+    {"id": "f1", "kind": "employment", "text": "Worked on the platform team at Nimbus, 2020-2022", "sourceQuote": "Platform team at Nimbus, 2020-2022.", "source": "document"},
+    {"id": "f2", "kind": "other", "text": "Title was Engineer II or Lead, depending on the quarter", "sourceQuote": "Title was Engineer II or Lead, depending on the quarter.", "source": "document"},
+    {"id": "f3", "kind": "achievement", "text": "Ran the Kubernetes migration", "sourceQuote": "Ran the Kubernetes migration.", "source": "document"}
+  ],
+  "draft": {
+    "targetRole": "Platform engineer",
+    "experience": [
+      {"employer": "Nimbus", "role": "Lead Engineer", "period": "2020-2022", "relevance": 0.7,
+       "bullets": [
+         {"text": "Ran the Kubernetes migration", "factIds": ["f3"]},
+         {"text": "Worked on the platform team", "factIds": ["f1"]}
+       ]}
+    ],
+    "education": [],
+    "skills": []
+  },
+  "expect": {
+    "accepted": {
+      "targetRole": "Platform engineer",
+      "experience": [
+        {"employer": "Nimbus", "role": "Lead Engineer", "period": "2020-2022", "relevance": 0.7,
+         "bullets": [
+           {"text": "Ran the Kubernetes migration", "factIds": ["f3"]},
+           {"text": "Worked on the platform team", "factIds": ["f1"]}
+         ]}
+      ],
+      "education": [],
+      "skills": []
+    },
+    "droppedPaths": [],
+    "questions": [
+      {"path": "experience[0].role", "reason": "vague"}
+    ]
+  }
+}

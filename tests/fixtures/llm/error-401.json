@@ -1,0 +1,7 @@
+{
+  "status": 401,
+  "body": {
+    "type": "error",
+    "error": { "type": "authentication_error", "message": "PROVIDER-SECRET-MSG invalid x-api-key" }
+  }
+}

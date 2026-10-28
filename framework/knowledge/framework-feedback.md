@@ -193,3 +193,31 @@ is nowhere in the playbook.
   it reports the conflict and moves its own port. Compose host ports should be
   env-overridable by default for the same reason.
 - Status: open
+
+## FF-10 The gate has no lane-scoped mode, so parallel lanes cannot pass it (found 2026-10-28, severity: bug)
+
+- Evidence: `framework/scripts/gate.sh` runs whatever `GATE_STEPS` says and
+  nothing else; the example config's steps are whole-project
+  (`npm test`, `tsc --noEmit`). `framework/knowledge/errors.md` E-001 already
+  says execution-phase runs must be lane-scoped and the union belongs to the
+  Integrator — but there is no mechanism to do it, and `hook-stop.sh` enforces
+  the union on every agent's turn end regardless.
+- What it cost here: an entire wave. Of 11 developer steps, 9 reported
+  failure — and **all 9 Sonnet escalations failed too**, which is the tell: a
+  stronger model failing identically means the criterion is wrong, not the
+  worker. Every review and every re-review returned "not approved". The
+  escalated agents diagnosed it correctly and refused to touch code: *"The
+  brief is defective: it asks for the whole-repo gate.sh to go green from one
+  lane while the other wave-A lanes are unfinished."* Tests come first by
+  rule, so a sibling lane always has tests whose implementation does not exist
+  yet; the union is red for the whole wave by construction.
+- Why it recurs: the framework prescribes parallel Mode-A lanes on one tree
+  AND tests-first AND a union gate enforced by a hook. Any two of those three
+  are fine; all three together cannot be satisfied.
+- Proposed fix: `gate.config.example.sh` ships a wave mode — while a
+  `.wave-in-flight` marker exists, the gate checks lint plus `GATE_LANE_TEST`
+  only, and the Integrator forces the union with `GATE_FULL=1`. The Stop hook
+  then stops failing agents for their neighbours' work. Implemented here;
+  port it back. The sprint-playbook should also state plainly that during a
+  wave "green" means the lane, and `hook-stop.sh` must not enforce the union.
+- Status: open

@@ -1,0 +1,43 @@
+{
+  "name": "first-person",
+  "description": "The source is written in the first person. The grounded bullets pass; the bullet with an invented 40% figure is dropped and questioned, the rest of the entry is kept.",
+  "source": "I led the payments team at Nimbus from 2020 to 2022 and cut checkout errors by 30%. I also ran the on-call rota.",
+  "facts": [
+    {"id": "f1", "kind": "employment", "text": "Payments team lead at Nimbus, 2020-2022", "sourceQuote": "I led the payments team at Nimbus from 2020 to 2022", "source": "document"},
+    {"id": "f2", "kind": "achievement", "text": "Cut checkout errors by 30%", "sourceQuote": "cut checkout errors by 30%", "source": "document"},
+    {"id": "f3", "kind": "achievement", "text": "Ran the on-call rota", "sourceQuote": "I also ran the on-call rota.", "source": "document"}
+  ],
+  "draft": {
+    "targetRole": "Payments team lead",
+    "experience": [
+      {"employer": "Nimbus", "role": "Payments team lead", "period": "2020-2022", "relevance": 0.9,
+       "bullets": [
+         {"text": "Led the payments team", "factIds": ["f1"]},
+         {"text": "Cut checkout errors by 30%", "factIds": ["f2"]},
+         {"text": "Cut checkout errors by 40%", "factIds": ["f2"]},
+         {"text": "Ran the on-call rota", "factIds": ["f3"]}
+       ]}
+    ],
+    "education": [],
+    "skills": []
+  },
+  "expect": {
+    "accepted": {
+      "targetRole": "Payments team lead",
+      "experience": [
+        {"employer": "Nimbus", "role": "Payments team lead", "period": "2020-2022", "relevance": 0.9,
+         "bullets": [
+           {"text": "Led the payments team", "factIds": ["f1"]},
+           {"text": "Cut checkout errors by 30%", "factIds": ["f2"]},
+           {"text": "Ran the on-call rota", "factIds": ["f3"]}
+         ]}
+      ],
+      "education": [],
+      "skills": []
+    },
+    "droppedPaths": ["experience[0].bullets[2]"],
+    "questions": [
+      {"path": "experience[0].bullets[2]", "reason": "unverifiable"}
+    ]
+  }
+}

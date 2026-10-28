@@ -1,0 +1,25 @@
+{
+  "name": "almost-empty",
+  "description": "The source is one word. Compose invents an employer and a period; the verifier drops the entry and asks for both.",
+  "source": "Jane.",
+  "facts": [
+    {"id": "f1", "kind": "contact", "text": "Name: Jane", "sourceQuote": "Jane", "source": "document"}
+  ],
+  "draft": {
+    "targetRole": "Backend engineer",
+    "experience": [
+      {"employer": "Globex", "role": "Backend engineer", "period": "2019-2021", "relevance": 0.9,
+       "bullets": [{"text": "Built services at Globex", "factIds": ["f1"]}]}
+    ],
+    "education": [],
+    "skills": []
+  },
+  "expect": {
+    "accepted": {"targetRole": "Backend engineer", "experience": [], "education": [], "skills": []},
+    "droppedPaths": ["experience[0]"],
+    "questions": [
+      {"path": "experience[0].employer", "reason": "missing"},
+      {"path": "experience[0].period", "reason": "missing"}
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "targetRole": "Senior Backend Engineer",
+  "facts": [
+    { "id": "f-acme", "kind": "employment", "text": "Backend engineer at Acme Corp, 2019 to 2021", "sourceQuote": "I was a backend engineer at Acme Corp from 2019 to 2021.", "source": "document" },
+    { "id": "f-globex", "kind": "employment", "text": "Data analyst at Globex, 2022 to present", "sourceQuote": "Since 2022 I have worked as a data analyst at Globex.", "source": "document" },
+    { "id": "f-initech", "kind": "employment", "text": "Platform engineer at Initech, 2023 to present", "sourceQuote": "Since 2023 I have been a platform engineer at Initech.", "source": "document" },
+    { "id": "f-latency", "kind": "achievement", "text": "Cut API p95 latency by 40 percent", "sourceQuote": "We cut API p95 latency by 40 percent.", "source": "document" },
+    { "id": "f-ts", "kind": "skill", "text": "Writes TypeScript", "sourceQuote": "I write a lot of TypeScript.", "source": "document" }
+  ],
+  "toolInput": {
+    "summary": { "text": "Backend engineer targeting Senior Backend Engineer roles, with a record of API performance work.", "factIds": ["f-acme", "f-latency"] },
+    "experience": [
+      {
+        "employer": "Globex", "role": "Data Analyst", "period": "2022 – present", "relevance": 0.4,
+        "bullets": [ { "text": "Worked as a data analyst on reporting pipelines.", "factIds": ["f-globex"] } ]
+      },
+      {
+        "employer": "Acme Corp", "role": "Backend Engineer", "period": "2019 – 2021", "relevance": 0.9,
+        "bullets": [ { "text": "Cut API p95 latency by 40 percent.", "factIds": ["f-latency"] } ]
+      },
+      {
+        "employer": "Initech", "role": "Platform Engineer", "period": "2023 – present", "relevance": 0.9,
+        "bullets": [ { "text": "Engineer on the platform team, building services in TypeScript.", "factIds": ["f-initech", "f-ts"] } ]
+      }
+    ],
+    "education": [],
+    "skills": [ { "name": "TypeScript", "factIds": ["f-ts"] } ]
+  }
+}

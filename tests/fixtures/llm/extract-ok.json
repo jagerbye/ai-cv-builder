@@ -1,0 +1,11 @@
+{
+  "source": "Jane Doe\nSenior backend engineer at Acme Ltd, 2019-2023.\nLed a team of 4 engineers.  Built billing services in Go.",
+  "toolInput": {
+    "facts": [
+      { "kind": "contact", "text": "Full name is Jane Doe", "sourceQuote": "Jane Doe" },
+      { "kind": "employment", "text": "Senior backend engineer at Acme Ltd from 2019 to 2023", "sourceQuote": "Senior backend engineer at Acme Ltd,\n2019-2023" },
+      { "kind": "achievement", "text": "Led a team of 4 engineers", "sourceQuote": "Led a team of 4 engineers." },
+      { "kind": "skill", "text": "Built billing services in Go", "sourceQuote": "Built billing services in Go" }
+    ]
+  }
+}

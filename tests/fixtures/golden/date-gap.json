@@ -1,0 +1,36 @@
+{
+  "name": "date-gap",
+  "description": "Two jobs with a gap from 2017 to 2019. Compose bridges the gap with an invented period on the second job; the verifier drops that entry and asks about its period. The en dash in the first period checks normalisation.",
+  "source": "Acme Ltd, Backend Developer, 2015-2017.\nBeta Corp, Backend Developer, 2019-2023. Built internal billing tools.",
+  "facts": [
+    {"id": "f1", "kind": "employment", "text": "Backend Developer at Acme Ltd, 2015-2017", "sourceQuote": "Acme Ltd, Backend Developer, 2015-2017", "source": "document"},
+    {"id": "f2", "kind": "employment", "text": "Backend Developer at Beta Corp, 2019-2023", "sourceQuote": "Beta Corp, Backend Developer, 2019-2023", "source": "document"},
+    {"id": "f3", "kind": "achievement", "text": "Built internal billing tools at Beta Corp", "sourceQuote": "Built internal billing tools.", "source": "document"}
+  ],
+  "draft": {
+    "targetRole": "Backend Developer",
+    "experience": [
+      {"employer": "Acme Ltd", "role": "Backend Developer", "period": "2015–2017", "relevance": 0.6,
+       "bullets": [{"text": "Worked as Backend Developer at Acme Ltd", "factIds": ["f1"]}]},
+      {"employer": "Beta Corp", "role": "Backend Developer", "period": "2017-2019", "relevance": 0.5,
+       "bullets": [{"text": "Built internal billing tools at Beta Corp", "factIds": ["f3"]}]}
+    ],
+    "education": [],
+    "skills": []
+  },
+  "expect": {
+    "accepted": {
+      "targetRole": "Backend Developer",
+      "experience": [
+        {"employer": "Acme Ltd", "role": "Backend Developer", "period": "2015–2017", "relevance": 0.6,
+         "bullets": [{"text": "Worked as Backend Developer at Acme Ltd", "factIds": ["f1"]}]}
+      ],
+      "education": [],
+      "skills": []
+    },
+    "droppedPaths": ["experience[1]"],
+    "questions": [
+      {"path": "experience[1].period", "reason": "missing"}
+    ]
+  }
+}

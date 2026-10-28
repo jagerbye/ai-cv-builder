@@ -1,0 +1,44 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-page);
+  color: var(--color-text-primary);
+  font-family: var(--font-ui);
+  /* The root unit, design.json typography.base_rem (16px). Components size text with tokens. */
+  font-size: 1rem;
+  line-height: var(--text-body-line-height);
+  font-weight: var(--text-body-weight);
+  overflow-wrap: anywhere;
+}
+
+img,
+svg,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 44px is the WCAG floor for touch targets (design.json a11y.tap_target_min). */
+button,
+input,
+select,
+textarea,
+[role="button"] {
+  min-height: 44px;
+  font: inherit;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  border-radius: var(--radius-xs);
+}

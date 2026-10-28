@@ -34,6 +34,7 @@ const PREAMBLE = [
   'Jira is virtual: your task maps to a CVB issue on framework/sprints/board.md (ADR-009). Do not look for an MCP integration; there is none.',
   'Report: append your block to the lane file below, in the template already in it. Under 30 lines.',
   'Allowlist note for check-lane: besides the files your task names, you may always touch your own lane log and plan.md — the playbook requires both. Write the check against what your task must CREATE as well as what it edits.',
+  'GREEN MEANS YOUR LANE, NOT THE REPO. Seven lanes share this tree and tests come first, so a sibling lane always has tests whose implementation is not written yet: the union of typecheck/test/build is red BY DESIGN for the whole wave (knowledge/errors.md E-001). Run the gate as: GATE_LANE_TEST=\'<your lane test command>\' bash framework/scripts/gate.sh — it then checks lint plus YOUR tests. Never judge your task by the bare union, never try to fix a failure in another lane\'s files, and never report red because of one. The Integrator runs the union after each merge.',
   'Also flip your task row in framework/sprints/SPRINT-001-skeleton-auth/plan.md (Status board).',
   'Never commit. The Orchestrator commits finished tasks (ADR-009).',
 ].join('\n')
@@ -282,7 +283,7 @@ async function runTask(id) {
   let dev = await agent(
     'You are the developer (.claude/agents/developer.md).\n\n' + head +
     'Tests exist and are RED. The test-engineer reported:\n' + (red ? red.report : '(no report)') +
-    '\n\nYour step: make them green. Run the lane test command, then framework/scripts/gate.sh. Update any doc the docs-sync rule names for what you touched. If a criterion needs a decision that is not yours to make, implement the rest and say so plainly — do not improvise a dependency or a tool.',
+    '\n\nYour step: make them green. Run your lane test command, then the lane-scoped gate (GATE_LANE_TEST=... bash framework/scripts/gate.sh) as the preamble describes. Update any doc the docs-sync rule names for what you touched. If a criterion needs a decision that is not yours to make, implement the rest and say so plainly — do not improvise a dependency or a tool.',
     { label: 'dev:' + id, phase: 'Code', model: 'haiku', schema: RESULT })
 
   if (!dev || !dev.ok) {
@@ -290,14 +291,14 @@ async function runTask(id) {
     dev = await agent(
       'You are the developer (.claude/agents/developer.md).\n\n' + head +
       'A cheaper model attempted this and failed. Its report:\n' + (dev ? dev.report : '(no report at all)') +
-      '\n\nYour step: diagnose what it actually got wrong, fix the cause rather than the symptom, and get framework/scripts/gate.sh green. If the brief itself is defective, say so instead of improvising around it.',
+      '\n\nYour step: diagnose what it actually got wrong, fix the cause rather than the symptom, and get the LANE-SCOPED gate green. A failure in another lane\'s files is not yours and is not a reason to report red. If the brief itself is defective, say so instead of improvising around it.',
       { label: 'dev-retry:' + id, phase: 'Code', model: 'sonnet', schema: RESULT })
   }
 
   const reviewPrompt =
     'You are the code-reviewer (.claude/agents/code-reviewer.md).\n\n' + head +
     'The developer reported:\n' + (dev ? dev.report : '(no report)') +
-    '\n\nYour step: review the diff against the acceptance criteria above. Run framework/scripts/gate.sh yourself — do not take the developer\'s word for it. Run framework/scripts/check-lane.sh ' + BASE + ' against this task\'s "Files you may touch" list and fail the task if tracked files outside it changed. Apply the stub-test lens from .claude/rules/testing.md: would an implementation returning a hard-coded happy value pass this suite? Set ok=false if anything is blocking, and put the fix-list in the report. Append your verdict to the lane file.'
+    '\n\nYour step: review the diff against the acceptance criteria above. Run the LANE-SCOPED gate yourself (GATE_LANE_TEST=... bash framework/scripts/gate.sh) — do not take the developer\'s word for it, and do not fail the task for a red caused by another lane\'s files; that is expected mid-wave and is the Integrator\'s problem. Run framework/scripts/check-lane.sh ' + BASE + ' against this task\'s "Files you may touch" list and fail the task if tracked files outside it changed. Apply the stub-test lens from .claude/rules/testing.md: would an implementation returning a hard-coded happy value pass this suite? Set ok=false if anything is blocking, and put the fix-list in the report. Append your verdict to the lane file.'
 
   let review = await agent(reviewPrompt, { label: 'review:' + id, phase: 'Review', model: 'haiku', schema: RESULT })
 
@@ -307,7 +308,7 @@ async function runTask(id) {
     const fix = await agent(
       'You are the developer (.claude/agents/developer.md).\n\n' + head +
       'The code review did NOT approve this task. Its fix-list:\n' + review.report +
-      '\n\nYour step: clear every blocking item, then re-run framework/scripts/gate.sh. Do not argue with the reviewer in code comments; if an item is wrong, say so in your report with the reason.',
+      '\n\nYour step: clear every blocking item, then re-run the lane-scoped gate. Ignore any item that is really a cross-lane failure. Do not argue with the reviewer in code comments; if an item is wrong, say so in your report with the reason.',
       { label: 'fix:' + id, phase: 'Fix', model: 'sonnet', schema: RESULT })
     review = await agent(
       reviewPrompt + '\n\nThis is a RE-REVIEW after a fix pass. The developer reported:\n' + (fix ? fix.report : '(no report)') +

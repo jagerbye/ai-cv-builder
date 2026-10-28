@@ -1,0 +1,42 @@
+{
+  "name": "grounded-control",
+  "description": "Negative control: every claim is backed by a cited fact. The verifier must not over-reject; accepted equals the draft and no question is raised.",
+  "source": "Acme Ltd, Backend Developer, 2015-2017. Built payments in Go and PostgreSQL, cut latency by 40%.",
+  "facts": [
+    {"id": "f1", "kind": "employment", "text": "Backend Developer at Acme Ltd, 2015-2017", "sourceQuote": "Acme Ltd, Backend Developer, 2015-2017", "source": "document"},
+    {"id": "f2", "kind": "achievement", "text": "Built payments in Go and PostgreSQL, cut latency by 40%", "sourceQuote": "Built payments in Go and PostgreSQL, cut latency by 40%.", "source": "document"},
+    {"id": "f3", "kind": "skill", "text": "PostgreSQL", "sourceQuote": "PostgreSQL", "source": "document"}
+  ],
+  "draft": {
+    "targetRole": "Backend Developer",
+    "summary": {"text": "Backend Developer who cut latency by 40%", "factIds": ["f2"]},
+    "experience": [
+      {"employer": "Acme Ltd", "role": "Backend Developer", "period": "2015-2017", "relevance": 0.8,
+       "bullets": [
+         {"text": "Worked as Backend Developer at Acme Ltd", "factIds": ["f1"]},
+         {"text": "Built payments in Go and PostgreSQL", "factIds": ["f2"]},
+         {"text": "Cut latency by 40%", "factIds": ["f2"]}
+       ]}
+    ],
+    "education": [],
+    "skills": [{"name": "PostgreSQL", "group": "Databases", "factIds": ["f3"]}]
+  },
+  "expect": {
+    "accepted": {
+      "targetRole": "Backend Developer",
+      "summary": {"text": "Backend Developer who cut latency by 40%", "factIds": ["f2"]},
+      "experience": [
+        {"employer": "Acme Ltd", "role": "Backend Developer", "period": "2015-2017", "relevance": 0.8,
+         "bullets": [
+           {"text": "Worked as Backend Developer at Acme Ltd", "factIds": ["f1"]},
+           {"text": "Built payments in Go and PostgreSQL", "factIds": ["f2"]},
+           {"text": "Cut latency by 40%", "factIds": ["f2"]}
+         ]}
+      ],
+      "education": [],
+      "skills": [{"name": "PostgreSQL", "group": "Databases", "factIds": ["f3"]}]
+    },
+    "droppedPaths": [],
+    "questions": []
+  }
+}

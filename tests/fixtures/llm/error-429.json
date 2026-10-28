@@ -1,0 +1,7 @@
+{
+  "status": 429,
+  "body": {
+    "type": "error",
+    "error": { "type": "rate_limit_error", "message": "PROVIDER-SECRET-MSG rate limit reached for this organization" }
+  }
+}

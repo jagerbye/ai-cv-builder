@@ -1,0 +1,65 @@
+/* Shell layout. Written mobile-first: base rules are the single column, and
+   min-width queries widen it. Values come from tokens.css only. */
+
+.shell {
+  min-height: 100vh;
+  min-width: 0;
+}
+
+.shell-header {
+  display: flex;
+  align-items: center;
+  min-height: var(--layout-mobile-header-height);
+  padding: 0 var(--space-gutter-mobile);
+  background: var(--color-surface);
+  border-bottom: var(--border-hairline) solid var(--color-border-subtle);
+}
+
+.shell-brand {
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-line-height);
+  font-weight: var(--text-label-weight);
+  color: var(--color-text-primary);
+}
+
+.shell-main {
+  min-width: 0;
+  padding: var(--space-6) var(--space-gutter-mobile);
+}
+
+.screen-message h1 {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line-height);
+  font-weight: var(--text-h2-weight);
+  letter-spacing: var(--text-h2-letter-spacing);
+}
+
+.screen-message p {
+  margin: 0;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+  color: var(--color-text-secondary);
+}
+
+/* Two columns (document and questions) from 900px. Later screens use this
+   class directly; the shell itself does not need it yet. */
+.split {
+  display: grid;
+  gap: var(--space-8);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 900px) {
+  .shell-header {
+    padding: 0 var(--space-gutter-desktop);
+  }
+
+  .shell-main {
+    padding: var(--space-8) var(--space-gutter-desktop);
+  }
+
+  .split {
+    grid-template-columns: minmax(0, var(--space-document-max)) var(--space-questions-column);
+  }
+}

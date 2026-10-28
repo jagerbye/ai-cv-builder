@@ -1,0 +1,140 @@
+/* Design tokens. Mirrors framework/docs/design/design.json (version 1.0.0, updated 2026-10-28).
+   Names map mechanically from the JSON path (see the design-tokens test). Update this file
+   in the same change as design.json. Components use var(--...) only. */
+:root {
+  color-scheme: light;
+  /* colour (colors.*) */
+  --color-page: #F6F4EF;
+  --color-surface: #FFFFFF;
+  --color-surface-sunken: #EEEBE4;
+  --color-surface-overlay: rgba(28, 27, 24, 0.44);
+  --color-text-primary: #1C1B18;
+  --color-text-secondary: #5B5852;
+  --color-text-muted: #6E6A62;
+  --color-text-placeholder: #7A766D;
+  --color-text-on-accent: #FFFFFF;
+  --color-text-link: #215E6B;
+  --color-border-subtle: #D9D5CC;
+  --color-border-default: #B8B3A8;
+  --color-border-input: #857F74;
+  --color-border-strong: #1C1B18;
+  --color-accent-default: #215E6B;
+  --color-accent-hover: #1A4D58;
+  --color-accent-active: #143E47;
+  --color-accent-soft: #E3EEF0;
+  --color-accent-soft-border: #B9D3D8;
+  --color-question-bg: #FFF4D6;
+  --color-question-rule: #8A5F00;
+  --color-question-border: #C99A2E;
+  --color-question-text: #6B4E00;
+  --color-question-icon: #8A5F00;
+  --color-question-bg-hover: #FFEEBF;
+  --color-success-bg: #E4F3EA;
+  --color-success-text: #1F6B4A;
+  --color-success-border: #9FD1B4;
+  --color-danger-bg: #FBE9E7;
+  --color-danger-text: #B3261E;
+  --color-danger-border: #B3261E;
+  --color-info-bg: #E3EEF0;
+  --color-info-text: #215E6B;
+  --color-focus-ring: #215E6B;
+  --color-selection-bg: #D6E6EA;
+  --color-skeleton: #E6E2D9;
+
+  /* spacing (spacing.*) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-gutter-mobile: 16px;
+  --space-gutter-desktop: 32px;
+  --space-content-max: 1200px;
+  --space-document-max: 720px;
+  --space-questions-column: 360px;
+  --space-form-max: 440px;
+
+  /* radius (radius.*) */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  /* border (border.*) */
+  --border-hairline: 1px;
+  --border-emphasis: 2px;
+  --border-rule: 3px;
+
+  /* shadow (shadows.*) */
+  --shadow-none: none;
+  --shadow-sheet: 0 1px 2px rgba(28,27,24,0.06), 0 8px 24px rgba(28,27,24,0.06);
+  --shadow-raised: 0 2px 6px rgba(28,27,24,0.10), 0 12px 32px rgba(28,27,24,0.10);
+  --shadow-focus: 0 0 0 2px #FFFFFF, 0 0 0 4px #215E6B;
+  --shadow-focus-on-page: 0 0 0 2px #F6F4EF, 0 0 0 4px #215E6B;
+
+  /* typography: families and weights (typography.font.*, typography.weight.*) */
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --font-document: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --measure-max: 72ch;
+
+  /* typography: type scale (typography.scale.*) */
+  --text-caption-size: 14px;
+  --text-caption-line-height: 20px;
+  --text-caption-weight: 400;
+  --text-caption-letter-spacing: 0;
+  --text-label-size: 14px;
+  --text-label-line-height: 20px;
+  --text-label-weight: 500;
+  --text-label-letter-spacing: 0;
+  --text-body-size: 16px;
+  --text-body-line-height: 24px;
+  --text-body-weight: 400;
+  --text-body-letter-spacing: 0;
+  --text-body-strong-size: 16px;
+  --text-body-strong-line-height: 24px;
+  --text-body-strong-weight: 600;
+  --text-lead-size: 18px;
+  --text-lead-line-height: 28px;
+  --text-lead-weight: 400;
+  --text-h3-size: 18px;
+  --text-h3-line-height: 24px;
+  --text-h3-weight: 600;
+  --text-h2-size: 22px;
+  --text-h2-line-height: 28px;
+  --text-h2-weight: 600;
+  --text-h2-letter-spacing: -0.01em;
+  --text-h1-size: 28px;
+  --text-h1-line-height: 34px;
+  --text-h1-weight: 600;
+  --text-h1-letter-spacing: -0.015em;
+  --text-h1-desktop-size: 32px;
+  --text-h1-desktop-line-height: 38px;
+  --text-h1-desktop-weight: 600;
+  --text-h1-desktop-letter-spacing: -0.015em;
+  --text-document-name-size: 24px;
+  --text-document-name-line-height: 30px;
+  --text-document-name-weight: 600;
+  --text-document-name-letter-spacing: -0.01em;
+  --text-section-eyebrow-size: 14px;
+  --text-section-eyebrow-line-height: 20px;
+  --text-section-eyebrow-weight: 600;
+  --text-section-eyebrow-letter-spacing: 0.06em;
+  --text-section-eyebrow-transform: uppercase;
+  --text-section-eyebrow-color: var(--color-text-secondary);
+
+  /* motion (motion.*) */
+  --motion-duration-fast: 120ms;
+  --motion-duration-base: 200ms;
+  --motion-duration-slow: 320ms;
+  --motion-easing: cubic-bezier(0.2, 0, 0, 1);
+
+  /* layout (layout.mobile.*) */
+  --layout-mobile-header-height: 56px;
+}

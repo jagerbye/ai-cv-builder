@@ -1,0 +1,7 @@
+{
+  "status": 500,
+  "body": {
+    "type": "error",
+    "error": { "type": "api_error", "message": "PROVIDER-SECRET-MSG internal failure" }
+  }
+}

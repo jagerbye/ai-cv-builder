@@ -1,0 +1,14 @@
+{
+  "status": 200,
+  "body": {
+    "id": "msg_fixture_schema",
+    "type": "message",
+    "role": "assistant",
+    "model": "fixture-model",
+    "stop_reason": "tool_use",
+    "content": [
+      { "type": "tool_use", "id": "toolu_fixture_2", "name": "record_facts", "input": { "items": "Led a team of 4" } }
+    ],
+    "usage": { "input_tokens": 120, "output_tokens": 30 }
+  }
+}

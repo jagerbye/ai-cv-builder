@@ -83,3 +83,14 @@ Lane-scoped commands, for use in lane briefs while other lanes are in flight
 | generation only | `npm -w api run test -- --run src/core/generation` |
 | web | `npm -w web run test -- --run <path glob>` |
 | e2e | `npm run test:e2e` (Integrator and CI only) |
+
+`DATABASE_URL` must be set for the api suites: `gate.config.sh` exports it, so
+`gate.sh` always works, but running `npx vitest run` by hand from `api/`
+without it fails three contract suites at import time in `env.ts` — a
+configuration error, not a test failure. Use the gate, or export the compose
+default first.
+
+Any test that commits a **non-terminal** `generation_jobs` row goes through
+the job-queue helper, which takes the suite lock for you (ADR-014, E-002).
+The queue is global by design, so a committed queued row is visible to every
+other file's worker.

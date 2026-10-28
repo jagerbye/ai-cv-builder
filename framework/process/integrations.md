@@ -18,9 +18,18 @@
 ## Config block (fill per project — agents verify against THIS)
 
 ```
-jira:  { site: "<org>.atlassian.net", projectKey: "<KEY>" }
-figma: { designatedProjectId: "<id>", designatedProjectName: "<name>" }
+jira:  { site: "(none — virtual, see ADR-009)", projectKey: "CVB",
+         board: "framework/sprints/board.md" }
+figma: { designatedProjectId: "(none)", designatedProjectName: "(none)" }
+worklog conventions: one line per role from the lane report's `time:` line;
+         assignee is always the owner; no daily cap (no real worklog API).
 ```
+
+**This project has no external integrations.** Jira is virtual: the board is
+`framework/sprints/board.md` and the Orchestrator updates it (ADR-009). There
+is no Figma project, so the Figma rules below mean *no Figma calls at all* —
+design tokens live in `framework/docs/design/design.json`. An agent that
+believes it needs an MCP integration here has misread its brief.
 
 ## Jira
 

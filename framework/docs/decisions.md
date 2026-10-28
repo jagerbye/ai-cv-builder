@@ -19,6 +19,31 @@ Format — newest on top, one block per decision:
 
 ---
 
+## ADR-009: Jira is virtual, and the Orchestrator commits (2026-10-28, accepted)
+
+- **Context:** the owner has no Atlassian instance for this task and asked for
+  the tracker to be imagined. Separately,
+  `framework/process/task-lifecycle.md` makes pushing the owner's act and
+  forbids agents from committing — a rule written for a team working against a
+  shared remote, which does not fit a single-person test task where the
+  deliverable is explicitly "a repository with a readable commit history".
+- **Decision:** (1) the tracker is `framework/sprints/board.md`, key `CVB`,
+  maintained by the Orchestrator with the same honesty rule as a real mirror —
+  a status may never be ahead of local reality; (2) the Orchestrator commits,
+  one commit per completed task, after the gate is green and the review is
+  approved. Sub-agents still never commit: they write code and lane reports,
+  the Orchestrator turns a finished task into a commit. Nothing is pushed
+  anywhere until the owner says so.
+- **Alternatives rejected:** letting each lane agent commit (an unreadable
+  history of half-tasks, and merge order stops being the Integrator's
+  decision); one commit per sprint (hides the TDD loop that the history is
+  supposed to show); a real Jira (nothing to connect to).
+- **Consequences:** the staging half of `task-lifecycle.md` does not apply —
+  there is no deployment, so `Ready for test` means "merged and green" and QA
+  runs locally against `docker compose up`. The `jira:` line in lane reports
+  refers to a `CVB-N` row in `board.md`. Commit messages carry the issue key
+  and say what changed; no hashes are quoted in reports.
+
 ## ADR-008: Framework ceremony is trimmed to three sprints, QA once per UI sprint (2026-10-28, accepted)
 
 - **Context:** the framework is built for long-lived products; this is a test

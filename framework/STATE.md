@@ -6,13 +6,14 @@
 
 ## Now
 
-- **Phase:** sprint 01 — planned, not started (no code exists yet)
-- **Current focus:** docs are complete through ADR-008; next action is to run
-  SPRINT-001's three lanes.
+- **Phase:** sprint 01 — executing (runner `wf_bf1f7f9a-d14`, started 2026-10-28)
+- **Current focus:** lane 01 prologue (T-01 workspace, T-02 compose + schema);
+  lanes 02 and 03 start automatically once the tree builds.
 
 ## In flight
 
-- nothing running
+- T-01, T-02 (lane 01, blocking prologue) — test-engineer → developer → reviewer
+- lanes 02 (auth) and 03 (web) queued behind the prologue, then parallel
 
 ## Waiting on
 
@@ -22,12 +23,12 @@
 
 ## Next 3 actions
 
-1. Run SPRINT-001 lanes 01–03 via `.claude/workflows/sprint.js` (fill `LANES`
-   from `framework/sprints/SPRINT-001-skeleton-auth/plan.md` §Tasks, run by
-   **scriptPath**, not by name).
-2. Integrator merges the three lanes, union of tests after each merge.
-3. Teamlead plans SPRINT-002 (B-007…B-014) — the generation pipeline; freeze
-   C-003…C-006, C-012 before it starts.
+1. Read the runner's result; anything in `needsAttention` goes back to its lane
+   with a corrected brief before integration.
+2. Integrator merges the lanes, union of tests after each merge; then sprint
+   report + HISTORY line.
+3. Teamlead plans SPRINT-002 (B-007…B-014) — the generation pipeline;
+   C-003…C-006 and C-012 are already frozen for it.
 
 ## Recent decisions (this week only)
 
@@ -35,4 +36,5 @@
 - ADR-004 — Postgres `SKIP LOCKED` is the queue; no Redis, no broker
 - ADR-005 — PDF via `@react-pdf/renderer`, no headless Chrome
 - ADR-008 — trimmed ceremony: 3 sprints, QA after sprints 2 and 3, one retro
-- Discovery skipped on purpose; product docs other than assumptions.md stay stubs
+- ADR-009 — Jira is virtual (`framework/sprints/board.md`, key CVB); the
+  Orchestrator commits one commit per finished task, nothing is pushed

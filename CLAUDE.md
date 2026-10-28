@@ -45,6 +45,7 @@ overwrite STATE.md, so any session can be compacted or restarted losslessly.
 | Touch data shapes / DB | `framework/docs/domain-model.md`, `framework/docs/database-schema.md` |
 | Write or fix tests | `framework/docs/testing-strategy.md`, `.claude/rules/testing.md` |
 | Plan or run a sprint | `framework/process/sprint-playbook.md`, `framework/sprints/backlog.md` |
+| Task status / the virtual Jira board | `framework/sprints/board.md` (ADR-009) |
 | Split work across teams | `framework/process/merge-policy.md` |
 | Work spanning several repos | `framework/process/multi-repo.md` |
 | Pick a model for a sub-agent | `framework/process/model-routing.md` |

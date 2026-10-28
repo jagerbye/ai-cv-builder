@@ -8,6 +8,12 @@
 > **Who writes it:** anyone who hits one — at the moment they hit it, not from
 > memory at the retro. **Who reads it:** the session that does B-024.
 >
+> **When these get applied: at project end, in one pass** (owner's decision,
+> 2026-10-28). Not per sprint and not in pieces — every wave adds entries, and
+> a finding seen three times is described better than one patched after the
+> first. There is no urgency: each proven fix already runs in this repo's own
+> copy of the framework, so the port benefits the *next* project.
+>
 > Every entry carries **evidence** (a path and line in the template, or a lane
 > report quote), because a fix applied to a symptom nobody can reproduce makes
 > the framework worse, not better.

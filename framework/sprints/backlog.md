@@ -79,18 +79,26 @@ M ≈ 1–2 h, L ≈ 2–3 h. A task in a sprint plan is never larger than M
 
 ### Framework work (not product — runs after the product is done)
 
-- [ ] B-024 Harvest this project into the framework template — size M,
-      value: this build is the template's first real use, and it surfaced
-      three template bugs, one gap and one doc/reality drift in the first
-      sprint alone. Fixing them here is cheap; rediscovering them in the next
-      project is not.
-      Source of truth: `framework/knowledge/framework-feedback.md` (FF-NN
-      entries, each with evidence) plus whatever `/retro` adds at sprint close.
+- [ ] B-024 Harvest this build into the framework template — size M,
+      value: this is the template's first real use, and the first sprint alone
+      surfaced nine findings — four tool/template bugs, four gaps and one
+      doc-versus-reality drift. Fixing them once, with evidence, is cheap;
+      rediscovering them in the next project is not.
+      **Runs at project end**, as a single pass — owner's decision, 2026-10-28:
+      not at sprint close, not in pieces. Every wave and the QA pass will add
+      entries, and a finding described after three recurrences is described
+      better than one patched after the first. Nothing here is urgent, because
+      every proven fix is already live in THIS repo's copy (`check-lane.sh`,
+      `gate.config.sh` FAST_CHECK, `sprint.js` fix cycle, `design.json`) — the
+      port helps the next project, not this one.
+      Source of truth: `framework/knowledge/framework-feedback.md` (FF-NN,
+      each with a template path:line or a lane report as evidence), plus
+      whatever the final retro adds.
       Target repo: `/Users/mike/Desktop/www/ai-dev-framework`.
       Done when: every FF entry is either applied to the template or closed
-      with a reason, the template's own `decisions.md` records the changes,
-      and `framework-feedback.md` has no `open` rows left.
-      blocked by: sprint close (the retro adds entries this file does not have yet)
+      with a stated reason; the template's own `decisions.md` records what
+      changed and why; `framework-feedback.md` has no `open` rows left.
+      blocked by: project end — all waves merged, QA passed, final retro done
 
 ### Parked (explicitly cut unless time appears)
 

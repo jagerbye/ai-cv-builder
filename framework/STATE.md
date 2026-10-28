@@ -26,8 +26,8 @@
 1. Read the runner's result; `needsAttention` goes back to its lane with a
    corrected brief before integration.
 2. Integrator merges six lanes, union of tests after each; commit per task.
-3. Wave B (T-20…T-23), QA at both viewports, report, retro — the retro feeds
-   B-024/CVB-26: harvest `knowledge/framework-feedback.md` into the template.
+3. Wave B (T-20…T-23), QA, report, retro. LAST: B-024 — port
+   `knowledge/framework-feedback.md` to the template in one pass.
 
 ## Recent decisions (this week only)
 

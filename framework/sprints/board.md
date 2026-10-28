@@ -76,15 +76,17 @@ CVB-12 (the groundedness guarantee).
 
 | Issue | Backlog | Summary | Status | Est |
 |---|---|---|---|---|
-| CVB-26 | B-024 | Harvest this build into the ai-dev-framework template | To Do | 2h |
+| CVB-26 | B-024 | Harvest this build into the ai-dev-framework template | To Do — runs at project end, single pass | 2h |
 
-Six findings are already logged with evidence in
+Nine findings are already logged with evidence in
 `framework/knowledge/framework-feedback.md` (FF-01…FF-06): the runner ignoring
 a reviewer's fix-list, FAST_CHECK blocking the first agent of any new project,
 design.json shipping as another product's tokens, the dependency list not
 covering the toolchain, worktree Mode B not being implementable as written, and
-the bootstrap-task pattern that is missing from the playbook. Entries are added
-when hit, not reconstructed at the retro.
+the bootstrap-task pattern missing from the playbook, check-lane being blind to
+untracked files, lane allowlists that fail their own task, and "free the port"
+as a remedy on a shared machine. Entries are added when hit, not reconstructed
+later; they are APPLIED once, at project end (owner's decision 2026-10-28).
 
 ## Parked
 

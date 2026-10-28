@@ -6,14 +6,16 @@
 
 ## Now
 
-- **Phase:** sprint 01 — executing (runner `wf_bf1f7f9a-d14`, started 2026-10-28)
-- **Current focus:** lane 01 prologue (T-01 workspace, T-02 compose + schema);
-  lanes 02 and 03 start automatically once the tree builds.
+- **Phase:** sprint 01 — re-planned into two waves (ADR-011), executing
+  (runner `wf_b5169f19-7bc`). The first runner was stopped: T-01's review
+  returned a blocking fix-list the runner ignored, and three of its six open
+  questions traced to gaps in architecture.md §1 and database-schema.md.
+- **Current focus:** wave 0 foundation — T-01 fixes, T-02 schema, T-07 registry.
 
 ## In flight
 
-- T-01, T-02 (lane 01, blocking prologue) — test-engineer → developer → reviewer
-- lanes 02 (auth) and 03 (web) queued behind the prologue, then parallel
+- wave 0 (lane 01): T-01 → T-02 → T-07, blocking
+- wave A (lanes 02–06, 15 tasks) starts automatically when the tree is green
 
 ## Waiting on
 
@@ -36,5 +38,6 @@
 - ADR-004 — Postgres `SKIP LOCKED` is the queue; no Redis, no broker
 - ADR-005 — PDF via `@react-pdf/renderer`, no headless Chrome
 - ADR-008 — trimmed ceremony: 3 sprints, QA after sprints 2 and 3, one retro
-- ADR-009 — Jira is virtual (`framework/sprints/board.md`, key CVB); the
-  Orchestrator commits one commit per finished task, nothing is pushed
+- ADR-009 — Jira is virtual (`framework/sprints/board.md`, key CVB)
+- ADR-010/011 — toolchain belongs in the dependency list; six parallel lanes,
+  worktrees unavailable at lane granularity

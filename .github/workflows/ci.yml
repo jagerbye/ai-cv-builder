@@ -10,9 +10,29 @@ on:
 jobs:
   gate:
     runs-on: ubuntu-latest
+    # Live-DB tests (api health) run against a real Postgres, never a mock.
+    services:
+      db:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ai_cv_builder
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: 'true'
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_cv_builder
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - run: npm ci
+      - run: npx prisma generate --schema api/prisma/schema.prisma
       - run: bash framework/scripts/gate.sh

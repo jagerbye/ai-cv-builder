@@ -1,0 +1,156 @@
+// Prisma schema for ai-cv-builder. Source of truth for the typed client only.
+// The DDL that actually runs is the checked-in SQL under prisma/migrations/,
+// which has two things Prisma cannot express and that are therefore raw SQL:
+// the CHECK constraints and the two partial indexes on generation_jobs.
+// framework/docs/database-schema.md is the human map of both.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [citext]
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique @db.Citext
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  sessions Session[]
+  cvs      Cv[]
+  jobs     GenerationJob[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Cv {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  title       String?
+  targetRole  String   @map("target_role")
+  sourceKind  String   @map("source_kind")
+  sourceText  String   @map("source_text")
+  state       String
+  version     Int      @default(1)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  facts Fact[]
+  items CvItem[]
+  questions Question[]
+  jobs  GenerationJob[]
+
+  @@index([userId, updatedAt(sort: Desc)])
+  @@map("cvs")
+}
+
+model Fact {
+  id          String   @id @default(uuid()) @db.Uuid
+  cvId        String   @map("cv_id") @db.Uuid
+  kind        String
+  text        String
+  sourceQuote String   @default("") @map("source_quote")
+  source      String
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  cv Cv @relation(fields: [cvId], references: [id], onDelete: Cascade)
+
+  @@index([cvId])
+  @@map("facts")
+}
+
+model CvItem {
+  id          String       @id @default(uuid()) @db.Uuid
+  cvId        String       @map("cv_id") @db.Uuid
+  kind        String
+  parentId    String?      @map("parent_id") @db.Uuid
+  path        String
+  orderIndex  Int          @map("order_index")
+  data        Json         @db.JsonB
+  factIds     String[]     @default([]) @map("fact_ids") @db.Uuid
+  relevance   Decimal?     @db.Decimal(4, 3)
+  userEdited  Boolean      @default(false) @map("user_edited")
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  cv       Cv        @relation(fields: [cvId], references: [id], onDelete: Cascade)
+  parent   CvItem?   @relation("CvItemTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children CvItem[]  @relation("CvItemTree")
+
+  @@unique([cvId, path])
+  @@index([cvId, kind, orderIndex])
+  @@index([parentId])
+  @@map("cv_items")
+}
+
+model Question {
+  id            String    @id @default(uuid()) @db.Uuid
+  cvId          String    @map("cv_id") @db.Uuid
+  path          String
+  text          String
+  reason        String
+  status        String
+  answer        String?
+  answeredAt    DateTime? @map("answered_at") @db.Timestamptz(6)
+  followUpOfId  String?   @map("follow_up_of_id") @db.Uuid
+  priority      Int       @default(100)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  cv         Cv         @relation(fields: [cvId], references: [id], onDelete: Cascade)
+  followUpOf Question?  @relation("FollowUp", fields: [followUpOfId], references: [id])
+  followUps  Question[] @relation("FollowUp")
+
+  @@index([cvId, status, priority])
+  @@index([followUpOfId])
+  @@map("questions")
+}
+
+model GenerationJob {
+  id            String    @id @default(uuid()) @db.Uuid
+  cvId          String    @map("cv_id") @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  status        String
+  stage         String?
+  attempt       Int       @default(0)
+  leasedUntil   DateTime? @map("leased_until") @db.Timestamptz(6)
+  startedAt     DateTime? @map("started_at") @db.Timestamptz(6)
+  finishedAt    DateTime? @map("finished_at") @db.Timestamptz(6)
+  errorCode     String?   @map("error_code")
+  errorMessage  String?   @map("error_message")
+  inputTokens   Int?      @map("input_tokens")
+  outputTokens  Int?      @map("output_tokens")
+  scope         String    @default("full")
+  scopePath     String?   @map("scope_path")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  cv   Cv   @relation(fields: [cvId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // The partial indexes (lease query; one job in flight per CV) are NOT here:
+  // Prisma cannot express WHERE. They live in migrations/*/migration.sql.
+  @@index([cvId])
+  @@index([userId])
+  @@map("generation_jobs")
+}

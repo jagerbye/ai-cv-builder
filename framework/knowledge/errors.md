@@ -37,3 +37,10 @@ entry.
   gate after lanes land.
 - **Prevention:** sprint-playbook §2 brief template names the exact
   lane-scoped test command; §3 wording says "lane test run", union only in §4.
+
+## prisma / docker / migration (T-02)
+- Never redirect `prisma ... > migration.sql` with 2>&1: the "Update available" banner lands in the SQL. Set PRISMA_HIDE_UPDATE_MESSAGE=1 and check the file head.
+- node:*-slim images lack OpenSSL; install openssl in the Dockerfile before `prisma generate`/`migrate deploy`.
+- Compiled api is ESM without extensions: relative imports in api/src need `.js` specifiers (or NodeNext) or `node dist/main.js` fails.
+- A test helper that mutates process.env must restore it; a "DB down" case leaks into later "DB up" cases and looks like a missing database.
+- "Needs Docker" is not a diagnosis: start the daemon (`open -a Docker`) and run the smoke before reporting red.

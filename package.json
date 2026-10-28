@@ -1,0 +1,33 @@
+{
+  "name": "ai-cv-builder",
+  "private": true,
+  "description": "AI CV builder: grounded CV generation from a source CV (see framework/docs/spec.md)",
+  "workspaces": [
+    "api",
+    "web"
+  ],
+  "engines": {
+    "node": "^22.0.0"
+  },
+  "scripts": {
+    "typecheck": "npm run -s typecheck --workspaces --if-present",
+    "lint": "npm run -s lint --workspaces --if-present",
+    "test": "npm run -s test --workspaces --if-present",
+    "build": "npm run -s build --workspaces --if-present"
+  },
+  "devDependencies": {
+    "eslint": "9.39.5",
+    "typescript": "5.6.3",
+    "typescript-eslint": "8.72.1"
+  },
+  "allowScripts": {
+    "@prisma/client@5.22.0": true,
+    "@prisma/engines@5.22.0": true,
+    "esbuild@0.28.2": true,
+    "esbuild@0.21.5": true,
+    "prisma@5.22.0": true
+  },
+  "overrides": {
+    "@types/node": "22.20.5"
+  }
+}

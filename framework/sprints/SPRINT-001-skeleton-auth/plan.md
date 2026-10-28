@@ -75,9 +75,9 @@ Statuses: `todo → red → green → done`, or `blocked(<reason>)`.
 
 | Task | Lane | Wave | Depends on | Issue | Status |
 |---|---|---|---|---|---|
-| T-01 | 01 | 0 | — | CVB-1 | fix-list done, lane-scoped green; review pending (gate red only on T-02 files) |
-| T-02 | 01 | 0 | T-01 | CVB-2 | red (tests written, code pending) |
-| T-07 | 01 | 0 | T-02 | CVB-24 | todo |
+| T-01 | 01 | 0 | — | CVB-1 | round 5 review: fix-list (not approved). Lint, build, web tests green; gate red only on T-02 files; check-lane allowlist gap; Teamlead scoping pending |
+| T-02 | 01 | 0 | T-01 | CVB-2 | green: round 3 fix-list cleared (CI postgres service, gate starts db, DATABASE_URL validation test); gate all green from stopped docker (api 69 + web 14). Awaiting re-review; allowlist needs main.ts, database-schema.md, errors.md |
+| T-07 | 01 | 0 | T-02 | CVB-24 | green: lane 17/17, core type tests 13/13, gate ✓ all green; review fix applied (register-call asserts); awaiting re-review |
 | T-03 | 02 | A | T-07 | CVB-3 | todo |
 | T-04 | 02 | A | T-03 | CVB-4 | todo |
 | T-05 | 03 | A | T-07 | CVB-5 | todo |

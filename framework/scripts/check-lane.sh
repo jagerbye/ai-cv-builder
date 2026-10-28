@@ -6,6 +6,11 @@
 # Usage: scripts/check-lane.sh <base-ref> <allowlist-file>
 # Allowlist: one shell glob per line ('*' matches '/' too, so `src/slug/*`
 # covers the whole subtree); blank lines and #comments ignored.
+#
+# Scope: changed TRACKED files since <base-ref> PLUS untracked files. The
+# untracked half matters: in a greenfield project most of a lane's work is new
+# files, and a check that only reads `git diff` silently validates nothing
+# while reporting success.
 set -u
 base="${1:?usage: check-lane.sh <base-ref> <allowlist-file>}"
 list="${2:?usage: check-lane.sh <base-ref> <allowlist-file>}"
@@ -25,7 +30,7 @@ while IFS= read -r f; do
     echo "lane ✗ violation: $f (not in $list)" >&2
     status=1
   fi
-done < <(git diff --name-only "$base")
+done < <({ git diff --name-only "$base"; git ls-files --others --exclude-standard; } | sort -u)
 
 [ $status -eq 0 ] && echo "lane ✓ diff stays inside the allowlist"
 exit $status

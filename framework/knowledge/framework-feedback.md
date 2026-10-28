@@ -136,3 +136,54 @@ is nowhere in the playbook.
   more lanes would otherwise touch (registries, routers, frozen interfaces,
   migration), and ships it empty. Add the pattern to `patterns.md`.
 - Status: open
+
+## FF-07 check-lane.sh is blind to untracked files (found 2026-10-28, severity: bug)
+
+- Evidence: `framework/scripts/check-lane.sh` fed its file list from
+  `git diff --name-only "$base"` alone.
+- What it cost here: in a greenfield project most of a lane's output is **new
+  files**, and `git diff` never lists untracked paths. T-07 created eight files
+  and the check saw none of them — it would have reported "lane ✓ diff stays
+  inside the allowlist" while validating nothing. The reviewer caught it by
+  noticing that every violation listed belonged to *other* lanes.
+- Why it recurs: the check is most needed exactly when a project is young and
+  files are being created, which is precisely when it was inert.
+- Proposed fix: union the tracked diff with
+  `git ls-files --others --exclude-standard`. Done in this project's copy and
+  proved with an untracked probe file; port it back.
+- Status: open
+
+## FF-08 The lane-brief template produces allowlists that fail their own task (found 2026-10-28, severity: gap)
+
+- Evidence: `framework/process/sprint-playbook.md` §2 — the brief template's
+  "Files you may touch" line, and the same §'s "Report to: …/lanes/lane-NN.md"
+  line, which names a file the allowlist never includes.
+- What it cost here: three re-review rounds across T-01, T-02 and T-07, none
+  of them about code. Every lane must write its own lane log and flip its row
+  in `plan.md` — the playbook *instructs* this — yet both files are violations
+  under the allowlist the same playbook tells you to write. T-01's allowlist
+  additionally omitted files the task obviously had to create (`.nvmrc`,
+  entry points, `index.html`), because the Teamlead wrote the list from the
+  criteria rather than from the deliverable.
+- Why it recurs: the template invites a list of files to *edit*, while the
+  check measures files that *changed*, and process files change on every task.
+- Proposed fix: the template gains a standing allowance — the lane's own log,
+  `plan.md`, and anything the task is required to create — and the playbook
+  says the allowlist is written from the deliverable, not from the criteria.
+- Status: open
+
+## FF-09 "Free the port" is the wrong remedy on a developer machine (found 2026-10-28, severity: gap)
+
+- Evidence: T-02's review fix-list — "Host port 5173 is still held by node
+  PIDs 3057 and 43048. Free the port".
+- What it cost here: nothing, because the Orchestrator checked what held the
+  port first: two long-running vite dev servers belonging to the owner's other
+  projects, up 27 and 7 days. Following the instruction would have killed
+  them.
+- Why it recurs: an agent sees a port conflict as an environment fault to
+  clear, with no notion that the machine is shared with work it cannot see.
+- Proposed fix: a line in `rules/security.md` or the local-development
+  runbook — an agent never kills a process or frees a port it did not start;
+  it reports the conflict and moves its own port. Compose host ports should be
+  env-overridable by default for the same reason.
+- Status: open

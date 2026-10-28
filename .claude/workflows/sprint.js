@@ -1,7 +1,7 @@
 // sprint.js — deterministic runner for SPRINT-001 (re-planned into waves, ADR-011).
 //
-// Wave 0: lane 01, blocking — scaffold, schema, route registry. Nothing else
-// can start until the tree builds and the shared files exist.
+// Wave 0 (scaffold, schema, route registry) is MERGED — see ee63f25.
+// This script runs wave A only.
 // Wave A: seven lanes, strictly disjoint file areas, all coding against the
 // frozen contracts C-000..C-013 rather than against each other. The verifier
 // (T-12) is pure code over frozen types, so it runs beside the LLM chain, not
@@ -14,8 +14,8 @@
 // fix-list and moved on, which is how T-01 shipped with missing dependencies).
 
 export const meta = {
-  name: 'sprint-001-waves',
-  description: 'SPRINT-001: three-task foundation, then seven parallel lanes with a web fan-out — tests first, Sonnet escalation, reviewer fix cycle',
+  name: 'sprint-001-wave-a',
+  description: 'SPRINT-001 wave A: seven parallel lanes with a web fan-out — tests first, Sonnet escalation, reviewer fix cycle',
   phases: [
     { title: 'Tests', detail: 'test-engineer writes failing tests from the acceptance criteria' },
     { title: 'Code', detail: 'developer makes them green; Sonnet retry on failure' },
@@ -24,7 +24,7 @@ export const meta = {
   ],
 }
 
-const BASE = '9add869'
+const BASE = 'ee63f25'  // foundation merged; lanes diff against it, not against the sprint's first commit
 
 const PREAMBLE = [
   'Project root: /Users/mike/Desktop/www/ai-cv-builder. Sprint folder: framework/sprints/SPRINT-001-skeleton-auth/.',
@@ -33,6 +33,7 @@ const PREAMBLE = [
   'Grep framework/knowledge/errors.md for your task keywords before coding.',
   'Jira is virtual: your task maps to a CVB issue on framework/sprints/board.md (ADR-009). Do not look for an MCP integration; there is none.',
   'Report: append your block to the lane file below, in the template already in it. Under 30 lines.',
+  'Allowlist note for check-lane: besides the files your task names, you may always touch your own lane log and plan.md — the playbook requires both. Write the check against what your task must CREATE as well as what it edits.',
   'Also flip your task row in framework/sprints/SPRINT-001-skeleton-auth/plan.md (Status board).',
   'Never commit. The Orchestrator commits finished tasks (ADR-009).',
 ].join('\n')
@@ -40,68 +41,6 @@ const PREAMBLE = [
 function lf(n) { return 'framework/sprints/SPRINT-001-skeleton-auth/lanes/lane-' + n + '.md' }
 
 const T = {
-  'T-01': { lane: '01', issue: 'CVB-1', brief:
-`Task T-01 (REOPENED by code review): finish the TypeScript workspace properly.
-
-The scaffold exists and the gate is green, but the reviewer returned a blocking fix-list and the Architect has since corrected the dependency list. Clear all of it:
-- api/package.json declares NO runtime dependencies. Install with exact pins, in the api workspace, and regenerate the lockfile: fastify, @prisma/client, @anthropic-ai/sdk, pdf-parse, @react-pdf/renderer, react.
-- Install the four toolchain entries added to framework/docs/architecture.md §1 on 2026-10-28 (ADR-010): ESLint + typescript-eslint, happy-dom, @vitejs/plugin-react, and @types/node pinned to an exact 22.x. Node 22 is the target runtime; a transitive 26.x types package is wrong.
-- "lint" in framework/scripts/gate.config.sh must now run a REAL linter, not tsc with extra flags. Configure ESLint for both workspaces, max-warnings 0.
-- "build" for web must produce a bundle via vite with @vitejs/plugin-react, not a bare tsc.
-- web vitest environment becomes happy-dom so Testing Library works.
-- Resolve the stray untracked root tsconfig.json: either justify it in the lane report or delete it. FAST_CHECK only needs node_modules/.bin/tsc to exist.
-
-Acceptance: framework/scripts/gate.sh exits 0 with all four steps meaningful; npm -w api run test and npm -w web run test both pass; a deliberately unused variable in api/src fails lint; a deliberately broken JSX import fails the web build.
-
-Files you may touch: package.json, package-lock.json, tsconfig*.json, api/package.json, web/package.json, eslint config files, api/vitest.config.ts, web/vitest.config.ts, web/vite.config.ts, framework/scripts/gate.config.sh.
-
-Read first: framework/docs/architecture.md §1, framework/docs/decisions.md ADR-010, framework/sprints/SPRINT-001-skeleton-auth/lanes/lane-01.md (the T-01 review block — it is your fix-list).
-
-Do NOT: write feature code; add a dependency not in architecture.md §1; touch api/prisma or docker-compose.yml (that is T-02).
-
-Lane test command: npm run -s test` },
-
-  'T-02': { lane: '01', issue: 'CVB-2', brief:
-`Task T-02: the compose stack and the full database schema. Its tests are already written and RED — read them first, they are the specification of this task.
-
-Acceptance criteria (B-002, C-013):
-- docker compose up from a clean clone starts db (postgres:16), api and web. The api container runs prisma migrate deploy BEFORE it listens.
-- GET /api/health returns 200 {ok:true,db:true}; when the database is unreachable it returns 503 {ok:false,db:false} and leaks no driver message, connection string or credentials (contract C-013).
-- api/prisma/schema.prisma and the initial migration define SEVEN tables exactly as framework/docs/database-schema.md specifies: users, sessions, cvs, facts, cv_items, questions, generation_jobs. Six entities plus sessions — the doc says so explicitly; an earlier brief said six and was wrong.
-- Every index listed in that doc, including the foreign-key indexes added on 2026-10-28 and the TWO PARTIAL indexes on generation_jobs. Partial indexes cannot be expressed in Prisma schema language: write them as raw SQL inside the generated migration. Do not invent a Prisma feature; if it fights you twice, report it.
-- api/src/server.ts exports buildServer() (Fastify instance, does not listen); api/src/env.ts parses the environment once at boot and ALLOWS ANTHROPIC_API_KEY to be absent (spec.md F-010) while failing loudly on a malformed DATABASE_URL.
-- .env.example lists ANTHROPIC_API_KEY and DATABASE_URL and nothing secret.
-
-Files you may touch: docker-compose.yml, api/Dockerfile, web/Dockerfile, .dockerignore, .env.example, api/prisma/**, api/src/db/**, api/src/env.ts, api/src/server.ts, api/src/routes/health.ts, and the existing tests for these.
-
-Read first: framework/docs/database-schema.md (whole), framework/docs/api-contracts.md C-013, framework/docs/architecture.md §5, api/src/db/*.test.ts and api/src/routes/health.test.ts.
-
-Do NOT: implement auth, CVs, jobs or generation; touch package.json (T-01 owns it).
-
-Lane test command: npm -w api run test -- --run src/db src/routes/health
-
-Grep framework/knowledge/errors.md for: prisma, docker, migration.` },
-
-  'T-07': { lane: '01', issue: 'CVB-24', brief:
-`Task T-07: create the route registry and the cross-lane interfaces, so that six parallel lanes never edit the same file.
-
-This task exists purely to buy lane isolation (ADR-011). It ships no behaviour.
-
-Acceptance criteria:
-- api/src/server.ts registers FIVE route plugins under /api: auth.ts, cvs-create.ts, jobs.ts, cvs.ts, export.ts. Each file exists as an empty but valid, registered, typechecking Fastify plugin. Each will later be owned by exactly one lane, and server.ts will not be touched again this sprint.
-- api/src/core/generation/types.ts declares the C-012 interfaces — AnthropicGateway, GenerationPipeline with extract/compose/verify, Fact, CvDraft, VerificationResult, QuestionDraft — as types only, no implementation. compose's signature must make it impossible to pass the raw source text: it takes facts and a target role, nothing else. That type is the structural half of ADR-002.
-- api/src/core/cv/types.ts declares the C-006 response DTO and the patch shape from C-008, types only.
-- A test asserts each of the five routes is registered and currently returns 404 or an empty handler response, so a lane that forgets to register its own handler fails visibly.
-- The gate is green.
-
-Files you may touch: api/src/server.ts, api/src/routes/auth.ts, api/src/routes/cvs-create.ts, api/src/routes/jobs.ts, api/src/routes/cvs.ts, api/src/routes/export.ts, api/src/core/generation/types.ts, api/src/core/cv/types.ts and their tests.
-
-Read first: framework/docs/api-contracts.md C-006, C-008, C-012, framework/docs/decisions.md ADR-002 and ADR-011.
-
-Do NOT: implement any handler body, any service, or any Anthropic call. Empty plugins and type declarations only — writing logic here would hand one lane's work to another.
-
-Lane test command: npm -w api run test -- --run src/server src/routes` },
-
   'T-03': { lane: '02', issue: 'CVB-3', brief:
 `Task T-03: registration, and the error envelope every other lane depends on.
 
@@ -387,14 +326,9 @@ async function runLane(lane, ids) {
 
 // --- Wave 0: foundation. Blocking: six lanes would otherwise build on a tree
 // that does not compile and on files that do not exist yet.
-log('wave 0 — foundation: scaffold fixes, schema and compose stack, route registry')
-const foundation = await runLane('01', ['T-01', 'T-02', 'T-07'])
-
-if (foundation.tasks.some(t => !t.dev)) {
-  log('foundation is not green — wave A cannot start on it')
-  return { lanes: [foundation], needsAttention: foundation.tasks.filter(t => !t.dev || !t.review), stopped: 'foundation' }
-}
-
+// Wave 0 is merged at ee63f25: gate green, stack healthy, GET /api/health
+// returning {ok:true,db:true} against real Postgres. Its three tasks are not
+// re-run here.
 // --- Wave A: six disjoint lanes. Lane 04 is the critical chain.
 // Lane 03 is a shell followed by a fan-out: the three screens depend on T-05's
 // client and router, but not on each other, and each owns its own module.

@@ -1,133 +1,495 @@
 {
   "meta": {
-    "type": "Dashboard / SaaS admin panel",
+    "product": "AI CV Builder",
+    "type": "Document editor / form-first web app",
     "theme": "light",
-    "style": "modern, rounded, bento-grid",
-    "canvas": { "background": "#A9B4A6", "device_frame": "rounded-3xl, light gray surface" }
-  },
-  "colors": {
-    "background": "#F3F5F1",
-    "surface": "#FFFFFF",
-    "surface_muted": "#E6EAE3",
-    "primary_dark": "#1E1E1E",
-    "accent_lime": "#E4FF7A",
-    "text_primary": "#1A1A1A",
-    "text_secondary": "#8A8F88",
-    "border_dashed": "#C9CEC7"
-  },
-  "typography": {
-    "font_family": "Geometric sans-serif (Inter / Manrope-like)",
-    "h1": { "size": "56px", "weight": 500, "line_height": 1.1 },
-    "metric_value": { "size": "64px", "weight": 500 },
-    "card_title": { "size": "20px", "weight": 500 },
-    "body": { "size": "16px", "weight": 400 },
-    "caption": { "size": "14px", "color": "text_secondary" }
-  },
-  "shape": {
-    "radius_card": "32px",
-    "radius_pill": "999px",
-    "radius_button": "24px",
-    "spacing_grid": "24px"
-  },
-  "layout": {
-    "type": "sidebar + main + right column",
-    "grid": "12 columns, bento",
-    "sidebar": { "width": "96px", "background": "primary_dark" },
-    "main": { "width": "~62%" },
-    "right_column": { "width": "~20%" }
-  },
-  "components": {
-    "sidebar": {
-      "logo": { "icon": "sparkle/star", "shape": "rounded square, inverted" },
-      "nav_items": ["home", "share", "puzzle (active)", "link", "globe", "more"],
-      "active_state": { "background": "rgba(255,255,255,0.12)", "radius": "24px" },
-      "bottom_items": ["book", "rocket", "help", "avatar"]
-    },
-    "header": {
-      "title": "Managing Your Team and Workflows",
-      "inline_badges": [
-        { "icon": "user-settings", "style": "white pill" },
-        { "icon": "sparkles", "style": "lime pill" }
-      ],
-      "actions": [
-        { "type": "icon_button", "icon": "settings", "style": "white circle" },
-        { "type": "button", "label": "+ Create a New Scenario", "style": "dark pill" }
-      ]
-    },
-    "tabs": {
-      "style": "pill",
-      "items": ["Organization", "Teams", "Users", "Subscription", "Payment", "Installed Apps", "Variables", "Scenario Properties"],
-      "active": "Organization",
-      "active_style": { "background": "primary_dark", "color": "#FFFFFF" },
-      "inactive_style": { "background": "surface", "color": "text_primary" }
-    },
-    "metric_cards": [
-      {
-        "title": "Operations",
-        "icon": "settings",
-        "background": "surface_muted",
-        "value": "780",
-        "total": "/ 1 000",
-        "badge": { "text": "82%", "style": "lime pill with progress ring" },
-        "progress": { "type": "segmented pills", "segments": 8, "filled": 5, "empty_style": "dashed outline" },
-        "menu": "kebab"
-      },
-      {
-        "title": "Data Transfer",
-        "icon": "arrows-swap",
-        "background": "accent_lime",
-        "value": "163",
-        "total": "/ 512.0 MB",
-        "badge": { "text": "68%", "style": "white pill with progress ring" },
-        "progress": { "type": "segmented pills", "segments": 8, "filled": 4 },
-        "menu": "kebab"
-      }
-    ],
-    "promo_card": {
-      "background": "dark image (futuristic portrait)",
-      "title": "Take Your Automation to the Next Level",
-      "title_icon": "trend-arrow lime",
-      "cta": { "label": "Upgrade", "icon": "play", "style": "white pill, full width" }
-    },
-    "statistics_chart": {
-      "title": "Statistics",
-      "icon": "bar-chart",
-      "legend": [
-        { "label": "Operations", "color": "primary_dark" },
-        { "label": "Data transfer", "color": "accent_lime" }
-      ],
-      "filter": { "type": "dropdown", "value": "2025" },
-      "chart": {
-        "type": "stacked rounded bar",
-        "y_axis": { "min": 0.1, "max": 1.0, "step": 0.1 },
-        "x_axis": ["27 Jun", "28 Jun", "29 Jun", "30 Jun", "1 Jul", "2 Jul", "3 Jul", "4 Jul"],
-        "bar_style": "pill-shaped, dark top segment + lime bottom segment, white/black dot markers",
-        "empty_days": { "dates": ["30 Jun", "2 Jul"], "style": "dashed outline, gray dot" },
-        "tooltips": [
-          { "date": "1 Jul", "label": "87%", "style": "dark pill" },
-          { "date": "1 Jul", "label": "32%", "style": "lime pill" }
-        ]
-      }
-    },
-    "right_column": {
-      "quick_links": [
-        { "title": "Community", "icon": "chat-bubbles", "layout": "square card, centered" },
-        { "title": "Academy", "icon": "graduation-cap", "layout": "square card, centered" }
-      ],
-      "resource_cards": [
-        { "title": "Help Center", "icon": "question", "description": "Explore our detailed documentation...", "action": "arrow-up-right" },
-        { "title": "Partner Directory", "icon": "users", "description": "Find the perfect partner to support...", "action": "arrow-up-right" },
-        { "title": "Blog", "icon": "list", "description": "Access popular guides & stories ab...", "action": "arrow-up-right" },
-        { "title": "Use Cases", "icon": "bar-chart", "description": "Get inspired by all the ways you ca...", "action": "arrow-up-right" }
-      ],
-      "card_style": { "background": "surface_muted", "icon_container": "white rounded square 56px" }
+    "style": "quiet editorial: the CV reads as a sheet of paper on a warm desk; chrome recedes, one accent for actions, amber for open questions",
+    "version": "1.0.0",
+    "updated": "2026-10-28",
+    "source_of_truth": "this file + README.md (no Figma on this project)",
+    "implementation": "plain CSS custom properties on :root; hand-written components; no component library, no CSS framework (architecture.md §1)",
+    "token_naming": "kebab-case CSS variables, one-to-one with the JSON path, e.g. colors.text.secondary -> --color-text-secondary",
+    "units": "px in this file; implement as rem where the README says so (type and spacing), px for borders, radii and shadows",
+    "a11y": {
+      "body_text_contrast_min": "4.5:1 — every text/background pair below was measured; see README §2.1",
+      "non_text_contrast_min": "3:1 for input borders and focus rings",
+      "tap_target_min": "44px",
+      "font_size_min": "14px",
+      "reduced_motion": "every animation token has a prefers-reduced-motion fallback named next to it"
     }
   },
+
+  "colors": {
+    "page": "#F6F4EF",
+    "surface": "#FFFFFF",
+    "surface_sunken": "#EEEBE4",
+    "surface_overlay": "rgba(28, 27, 24, 0.44)",
+
+    "text": {
+      "primary": "#1C1B18",
+      "secondary": "#5B5852",
+      "muted": "#6E6A62",
+      "placeholder": "#7A766D",
+      "on_accent": "#FFFFFF",
+      "link": "#215E6B"
+    },
+
+    "border": {
+      "subtle": "#D9D5CC",
+      "default": "#B8B3A8",
+      "input": "#857F74",
+      "strong": "#1C1B18"
+    },
+
+    "accent": {
+      "default": "#215E6B",
+      "hover": "#1A4D58",
+      "active": "#143E47",
+      "soft": "#E3EEF0",
+      "soft_border": "#B9D3D8"
+    },
+
+    "question": {
+      "bg": "#FFF4D6",
+      "rule": "#8A5F00",
+      "border": "#C99A2E",
+      "text": "#6B4E00",
+      "icon": "#8A5F00",
+      "bg_hover": "#FFEEBF"
+    },
+
+    "success": {
+      "bg": "#E4F3EA",
+      "text": "#1F6B4A",
+      "border": "#9FD1B4"
+    },
+
+    "danger": {
+      "bg": "#FBE9E7",
+      "text": "#B3261E",
+      "border": "#B3261E"
+    },
+
+    "info": {
+      "bg": "#E3EEF0",
+      "text": "#215E6B"
+    },
+
+    "focus_ring": "#215E6B",
+    "selection_bg": "#D6E6EA",
+    "skeleton": "#E6E2D9"
+  },
+
+  "typography": {
+    "font": {
+      "ui": "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif",
+      "document": "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif",
+      "mono": "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+      "note": "No webfont. The A4 PDF embeds its own Unicode font server-side and the editor is not a print preview; if the export font is ever loaded on the web, change typography.font.document only."
+    },
+    "weight": { "regular": 400, "medium": 500, "semibold": 600 },
+    "scale": {
+      "caption":   { "size": "14px", "line_height": "20px", "weight": 400, "letter_spacing": "0" },
+      "label":     { "size": "14px", "line_height": "20px", "weight": 500, "letter_spacing": "0" },
+      "body":      { "size": "16px", "line_height": "24px", "weight": 400, "letter_spacing": "0" },
+      "body_strong": { "size": "16px", "line_height": "24px", "weight": 600 },
+      "lead":      { "size": "18px", "line_height": "28px", "weight": 400 },
+      "h3":        { "size": "18px", "line_height": "24px", "weight": 600 },
+      "h2":        { "size": "22px", "line_height": "28px", "weight": 600, "letter_spacing": "-0.01em" },
+      "h1":        { "size": "28px", "line_height": "34px", "weight": 600, "letter_spacing": "-0.015em" },
+      "h1_desktop": { "size": "32px", "line_height": "38px", "weight": 600, "letter_spacing": "-0.015em" },
+      "document_name": { "size": "24px", "line_height": "30px", "weight": 600, "letter_spacing": "-0.01em" },
+      "section_eyebrow": { "size": "14px", "line_height": "20px", "weight": 600, "letter_spacing": "0.06em", "transform": "uppercase", "color": "text.secondary" }
+    },
+    "measure_max": "72ch",
+    "base_rem": "16px"
+  },
+
+  "spacing": {
+    "1": "4px", "2": "8px", "3": "12px", "4": "16px", "5": "20px",
+    "6": "24px", "8": "32px", "10": "40px", "12": "48px", "16": "64px",
+    "gutter_mobile": "16px",
+    "gutter_desktop": "32px",
+    "content_max": "1200px",
+    "document_max": "720px",
+    "questions_column": "360px",
+    "form_max": "440px"
+  },
+
+  "radius": {
+    "xs": "4px",
+    "sm": "6px",
+    "md": "10px",
+    "lg": "14px",
+    "pill": "999px"
+  },
+
+  "border": {
+    "hairline": "1px",
+    "emphasis": "2px",
+    "rule": "3px"
+  },
+
+  "shadows": {
+    "none": "none",
+    "sheet": "0 1px 2px rgba(28,27,24,0.06), 0 8px 24px rgba(28,27,24,0.06)",
+    "raised": "0 2px 6px rgba(28,27,24,0.10), 0 12px 32px rgba(28,27,24,0.10)",
+    "focus": "0 0 0 2px #FFFFFF, 0 0 0 4px #215E6B",
+    "focus_on_page": "0 0 0 2px #F6F4EF, 0 0 0 4px #215E6B"
+  },
+
+  "motion": {
+    "duration_fast": "120ms",
+    "duration_base": "200ms",
+    "duration_slow": "320ms",
+    "easing": "cubic-bezier(0.2, 0, 0, 1)",
+    "stage_pulse": { "duration": "1600ms", "easing": "ease-in-out", "iteration": "infinite", "reduced_motion": "no animation; current stage shows a static 2px accent ring" },
+    "save_fade": { "duration": "320ms", "delay_before_hide": "1800ms", "reduced_motion": "instant swap, no fade" }
+  },
+
+  "breakpoints": {
+    "base": "375px",
+    "sm": "600px",
+    "two_column": "900px",
+    "wide": "1200px",
+    "note": "mobile-first: styles are written for base and widened with min-width queries only"
+  },
+
+  "layout": {
+    "mobile": {
+      "columns": 1,
+      "gutter": "spacing.gutter_mobile",
+      "header_height": "56px",
+      "sticky_action_bar_height": "64px",
+      "keyboard_safe_bottom_padding": "calc(64px + env(safe-area-inset-bottom))"
+    },
+    "two_column": {
+      "min_width": "900px",
+      "grid": "minmax(0, 720px) 360px",
+      "gap": "spacing.8",
+      "header_height": "64px",
+      "questions_column_sticky_top": "80px"
+    },
+    "auth_and_intake": {
+      "card_max": "spacing.form_max",
+      "intake_card_max": "640px",
+      "vertical_rhythm": "spacing.6"
+    }
+  },
+
+  "components": {
+    "text_input": {
+      "height": "44px",
+      "padding_x": "12px",
+      "font": "typography.scale.body",
+      "color": "colors.text.primary",
+      "placeholder_color": "colors.text.placeholder",
+      "bg": "colors.surface",
+      "border": "1px solid colors.border.input",
+      "radius": "radius.sm",
+      "label": { "font": "typography.scale.label", "color": "colors.text.primary", "gap_below": "6px" },
+      "hint": { "font": "typography.scale.caption", "color": "colors.text.secondary", "gap_above": "6px" },
+      "states": {
+        "hover": { "border_color": "colors.border.strong" },
+        "focus": { "border_color": "colors.accent.default", "box_shadow": "shadows.focus", "outline": "none" },
+        "error": { "border_color": "colors.danger.border", "border_width": "2px", "message": { "font": "typography.scale.caption", "color": "colors.danger.text", "gap_above": "6px", "icon": "16px" } },
+        "disabled": { "bg": "colors.surface_sunken", "color": "colors.text.muted", "border_color": "colors.border.subtle", "cursor": "not-allowed" },
+        "readonly": { "bg": "colors.page", "border_color": "colors.border.subtle" }
+      },
+      "mobile_font_size_floor": "16px (prevents iOS zoom on focus)"
+    },
+
+    "textarea": {
+      "extends": "text_input",
+      "min_height": "120px",
+      "padding_y": "10px",
+      "resize": "vertical",
+      "autogrow": true,
+      "max_height_mobile": "40vh",
+      "counter": { "font": "typography.scale.caption", "color": "colors.text.secondary", "position": "below right", "warn_color": "colors.danger.text" }
+    },
+
+    "inline_field": {
+      "description": "an editable CV value that looks like document text until touched",
+      "font": "inherits document role (body / h3 / document_name)",
+      "padding": "4px 6px",
+      "margin": "-4px -6px",
+      "min_height": "44px",
+      "radius": "radius.xs",
+      "border_bottom_rest": "1px solid transparent",
+      "states": {
+        "hover": { "bg": "colors.surface_sunken", "border_bottom": "1px dashed colors.border.default" },
+        "focus": { "bg": "colors.surface", "box_shadow": "shadows.focus" },
+        "saving": { "indicator": "caption 'Saving…' in colors.text.secondary, right-aligned above the section" },
+        "saved": { "indicator": "caption 'Saved' in colors.success.text for motion.save_fade.delay_before_hide, then fades" },
+        "save_error": { "border_bottom": "2px solid colors.danger.border", "message": "caption in colors.danger.text with a 'Retry' quiet button" },
+        "conflict_409": { "callout": "components.callout.danger with 'Reload latest' secondary button" },
+        "has_question": { "left_rule": "3px solid colors.question.rule", "padding_left": "12px", "bg": "transparent" },
+        "has_question_hover_or_linked": { "bg": "colors.question.bg" },
+        "user_edited": { "badge": "components.badge.neutral text 'edited by you'" },
+        "empty": { "placeholder": "colors.text.placeholder, italic off, text 'Add …'" }
+      }
+    },
+
+    "button": {
+      "height": "44px",
+      "height_compact": "36px (desktop ≥900px only, never on touch-first viewports)",
+      "padding_x": "16px",
+      "min_width": "44px",
+      "font": "typography.scale.body_strong",
+      "radius": "radius.sm",
+      "gap_icon": "8px",
+      "icon_size": "18px",
+      "primary": {
+        "bg": "colors.accent.default", "color": "colors.text.on_accent", "border": "1px solid transparent",
+        "hover": { "bg": "colors.accent.hover" },
+        "active": { "bg": "colors.accent.active" },
+        "focus": { "box_shadow": "shadows.focus" },
+        "disabled": { "bg": "colors.border.subtle", "color": "colors.text.muted" },
+        "loading": { "spinner": "18px, colors.text.on_accent; label stays visible; width locked" }
+      },
+      "secondary": {
+        "bg": "colors.surface", "color": "colors.text.primary", "border": "1px solid colors.border.input",
+        "hover": { "bg": "colors.surface_sunken", "border_color": "colors.border.strong" },
+        "active": { "bg": "colors.border.subtle" },
+        "focus": { "box_shadow": "shadows.focus" },
+        "disabled": { "color": "colors.text.muted", "border_color": "colors.border.subtle" }
+      },
+      "quiet": {
+        "bg": "transparent", "color": "colors.accent.default", "border": "1px solid transparent", "padding_x": "8px",
+        "hover": { "bg": "colors.accent.soft" },
+        "active": { "bg": "colors.accent.soft_border" },
+        "focus": { "box_shadow": "shadows.focus" },
+        "disabled": { "color": "colors.text.muted" }
+      },
+      "danger_quiet": {
+        "extends": "quiet", "color": "colors.danger.text",
+        "hover": { "bg": "colors.danger.bg" }
+      },
+      "full_width_mobile": true
+    },
+
+    "tab": {
+      "style": "underline",
+      "height": "44px",
+      "padding_x": "12px",
+      "gap": "16px",
+      "font": "typography.scale.body_strong",
+      "color": "colors.text.secondary",
+      "underline": "2px solid transparent",
+      "track_border": "1px solid colors.border.subtle (below the whole tab row)",
+      "states": {
+        "hover": { "color": "colors.text.primary" },
+        "active": { "color": "colors.text.primary", "underline_color": "colors.accent.default" },
+        "focus": { "box_shadow": "shadows.focus_on_page", "radius": "radius.xs" }
+      },
+      "mobile": { "layout": "equal-width, full row", "default_tab_intake": "Paste text" },
+      "two_column_and_up": { "layout": "left-aligned", "default_tab_intake": "Upload PDF" },
+      "aria": "role=tablist / role=tab / aria-selected; arrow keys move focus"
+    },
+
+    "card": {
+      "bg": "colors.surface",
+      "border": "1px solid colors.border.subtle",
+      "radius": "radius.md",
+      "padding_mobile": "16px",
+      "padding_desktop": "24px",
+      "shadow": "shadows.none",
+      "variants": {
+        "sheet": { "description": "the CV document itself", "shadow_desktop": "shadows.sheet", "radius_mobile": "0", "border_mobile": "none (full-bleed, page shows above/below only)", "padding_mobile": "20px 16px", "padding_desktop": "48px 56px", "max_width": "spacing.document_max" },
+        "form": { "max_width": "spacing.form_max", "padding_mobile": "20px 16px", "padding_desktop": "32px" },
+        "list_row": { "padding": "16px", "min_height": "72px", "hover_bg": "colors.page", "radius": "radius.md" }
+      },
+      "section": {
+        "description": "a CV section inside the sheet (Summary, Experience …)",
+        "eyebrow": "typography.scale.section_eyebrow",
+        "divider_above": "1px solid colors.border.subtle",
+        "padding_y": "24px",
+        "entry_gap": "20px",
+        "bullet_gap": "8px",
+        "bullet_marker": "— (em dash) in colors.text.secondary, hanging indent 20px"
+      }
+    },
+
+    "question": {
+      "description": "an open clarifying question bound to one CV path. Mobile: rendered directly under its field inside the sheet. ≥900px: rendered in the right column, top-aligned with its field.",
+      "bg": "colors.question.bg",
+      "left_rule": "3px solid colors.question.rule",
+      "border": "1px solid colors.question.border",
+      "radius": "radius.sm",
+      "padding": "12px 12px 12px 14px",
+      "gap_from_field_mobile": "8px",
+      "icon": { "glyph": "question-circle", "size": "18px", "color": "colors.question.icon" },
+      "eyebrow": { "text": "Question about <field label>", "font": "typography.scale.label", "color": "colors.question.text" },
+      "text": { "font": "typography.scale.body", "color": "colors.text.primary" },
+      "vague_fact": { "label": "What we found:", "font": "typography.scale.caption", "color": "colors.text.secondary", "quote_style": "components.source_quote" },
+      "answer_input": { "extends": "textarea", "min_height": "72px", "bg": "colors.surface", "placeholder": "Your answer…", "margin_top": "10px" },
+      "actions": { "primary": "button.primary 'Save answer' height 44px", "secondary": "button.quiet 'Skip for now'", "gap": "8px", "layout_mobile": "stacked full width", "layout_desktop": "row, primary first" },
+      "states": {
+        "default": {},
+        "linked": { "description": "hovering/focusing the field or the question highlights both", "bg": "colors.question.bg_hover", "field_bg": "colors.question.bg" },
+        "answering": { "border_color": "colors.accent.default", "box_shadow": "shadows.focus" },
+        "saving": { "primary_button": "loading" },
+        "answered": { "bg": "colors.success.bg", "left_rule": "3px solid colors.success.text", "icon": "check-circle colors.success.text", "collapses_after": "motion.save_fade.delay_before_hide, then removed from list; field shows badge 'answered'" },
+        "follow_up": { "eyebrow_text": "One more thing about <field label>", "badge": "components.badge.question text 'follow-up'" },
+        "skipped": { "description": "removed from column; field keeps left rule in colors.border.default and badge 'left blank'" },
+        "error": { "message": "caption colors.danger.text under the textarea, 'Retry' quiet button" }
+      },
+      "ordering": "server order (most load-bearing first); never re-sorted on the client",
+      "count_cap": 12
+    },
+
+    "callout": {
+      "description": "non-field messages: form errors, 409 conflict, failed generation, scan-PDF rejection",
+      "radius": "radius.sm",
+      "padding": "12px 14px",
+      "left_rule": "3px solid",
+      "font": "typography.scale.body",
+      "icon_size": "18px",
+      "variants": {
+        "danger": { "bg": "colors.danger.bg", "rule": "colors.danger.border", "text": "colors.text.primary", "title_color": "colors.danger.text" },
+        "info": { "bg": "colors.info.bg", "rule": "colors.accent.default", "text": "colors.text.primary" },
+        "success": { "bg": "colors.success.bg", "rule": "colors.success.text", "text": "colors.text.primary" }
+      },
+      "aria": "role=alert for danger, role=status otherwise"
+    },
+
+    "source_quote": {
+      "description": "the verbatim source text behind a CV line, shown on demand",
+      "trigger": "button.quiet, caption size, text 'Show source' / 'Hide source', icon 'quote' 16px",
+      "bg": "colors.surface_sunken",
+      "border_left": "3px solid colors.border.default",
+      "radius": "radius.xs",
+      "padding": "10px 12px",
+      "font": { "size": "14px", "line_height": "20px", "color": "colors.text.secondary" },
+      "highlight": { "bg": "colors.selection_bg", "description": "the exact span that supports the line, if the API provides offsets" },
+      "attribution": { "font": "typography.scale.caption", "text": "From your uploaded CV · page N  |  From your answer on <date>" },
+      "user_sourced": { "border_left": "3px solid colors.accent.default" }
+    },
+
+    "badge": {
+      "height": "22px",
+      "padding_x": "8px",
+      "font": { "size": "14px", "line_height": "22px", "weight": 500 },
+      "radius": "radius.pill",
+      "variants": {
+        "neutral": { "bg": "colors.surface_sunken", "color": "colors.text.secondary" },
+        "question": { "bg": "colors.question.bg", "color": "colors.question.text" },
+        "success": { "bg": "colors.success.bg", "color": "colors.success.text" },
+        "danger": { "bg": "colors.danger.bg", "color": "colors.danger.text" },
+        "accent": { "bg": "colors.accent.soft", "color": "colors.accent.default" }
+      },
+      "cv_state_map": { "generating": "accent + pulse dot", "ready": "success", "needs_answers": "question", "failed": "danger" }
+    },
+
+    "progress_stage": {
+      "description": "three named stages, no percentage. Orientation: vertical list at base, horizontal row from 600px.",
+      "stages": ["extracting", "composing", "verifying"],
+      "labels": { "extracting": "Reading your CV", "composing": "Writing the draft", "verifying": "Checking every line against the source" },
+      "marker": { "size": "24px", "ring": "2px" },
+      "connector": { "thickness": "2px", "length_vertical": "32px", "color_done": "colors.accent.default", "color_pending": "colors.border.subtle" },
+      "label_font": "typography.scale.body_strong",
+      "sublabel_font": "typography.scale.caption",
+      "gap_marker_label": "12px",
+      "states": {
+        "done": { "marker_bg": "colors.accent.default", "glyph": "check 14px colors.text.on_accent", "label_color": "colors.text.secondary" },
+        "current": { "marker_bg": "colors.surface", "marker_ring": "2px solid colors.accent.default", "inner_dot": "8px colors.accent.default", "animation": "motion.stage_pulse (ring opacity 1→0.35→1)", "label_color": "colors.text.primary", "aria": "aria-current=step" },
+        "pending": { "marker_bg": "colors.surface", "marker_ring": "2px solid colors.border.default", "label_color": "colors.text.muted" },
+        "failed": { "marker_bg": "colors.danger.bg", "marker_ring": "2px solid colors.danger.border", "glyph": "x 14px colors.danger.text", "label_color": "colors.danger.text" }
+      },
+      "elapsed": { "font": "typography.scale.caption", "color": "colors.text.secondary", "format": "Running for m:ss", "tabular_nums": true },
+      "reassurance": { "after_seconds": 45, "text": "This usually takes under two minutes and never more than three. You can close this tab — the draft will be here when you come back.", "font": "typography.scale.caption", "color": "colors.text.secondary" },
+      "live_region": "aria-live=polite, announces stage label on change only"
+    },
+
+    "empty_state": {
+      "align": "left on mobile, centered from 600px",
+      "max_width": "440px",
+      "padding_y": "48px",
+      "illustration": "none — a single 32px outline icon in colors.text.muted",
+      "title": { "font": "typography.scale.h2", "color": "colors.text.primary" },
+      "body": { "font": "typography.scale.body", "color": "colors.text.secondary", "margin_top": "8px" },
+      "action": { "component": "button.primary", "margin_top": "24px", "full_width_mobile": true },
+      "variants": {
+        "cv_list": { "title": "No CVs yet", "body": "Upload an old CV or paste what you have done. You will get a draft to review — nothing invented, and a question wherever something is missing.", "action": "Start a CV" },
+        "no_questions": { "title": "Nothing to ask", "body": "Every line in this draft is backed by your source. Review it, fix anything you like, then download.", "action": null },
+        "all_answered": { "title": "All questions answered", "body": "The draft is up to date. Download when you are ready.", "action": "Download PDF (secondary)" }
+      }
+    },
+
+    "header": {
+      "height_mobile": "56px",
+      "height_desktop": "64px",
+      "bg": "colors.page",
+      "border_bottom": "1px solid colors.border.subtle",
+      "wordmark": { "font": "typography.scale.body_strong", "color": "colors.text.primary" },
+      "nav_item": "button.quiet with color colors.text.primary",
+      "sticky": true
+    },
+
+    "sticky_action_bar": {
+      "description": "mobile-only bottom bar on the editor: Download PDF + question count jump",
+      "height": "64px",
+      "bg": "colors.surface",
+      "border_top": "1px solid colors.border.subtle",
+      "padding": "10px 16px calc(10px + env(safe-area-inset-bottom))",
+      "hidden_when": "an input inside the sheet has focus (keeps the keyboard area clear)",
+      "hidden_from": "900px"
+    },
+
+    "dropzone": {
+      "border": "2px dashed colors.border.default",
+      "radius": "radius.md",
+      "bg": "colors.surface",
+      "padding": "32px 16px",
+      "min_height": "160px",
+      "icon": "upload 28px colors.text.muted",
+      "title_font": "typography.scale.body_strong",
+      "hint_font": "typography.scale.caption",
+      "hint_text": "PDF, up to 10 MB and 20 pages, with a text layer",
+      "states": {
+        "hover_or_dragover": { "border_color": "colors.accent.default", "bg": "colors.accent.soft" },
+        "focus": { "box_shadow": "shadows.focus" },
+        "has_file": { "border": "1px solid colors.border.subtle", "shows": "file name, size, 'Remove' quiet button" },
+        "error": { "border_color": "colors.danger.border", "message": "components.callout.danger below" }
+      },
+      "mobile": "the whole zone is the OS picker trigger; title reads 'Choose a PDF'"
+    },
+
+    "skeleton": {
+      "bg": "colors.skeleton",
+      "radius": "radius.xs",
+      "line_height": "16px",
+      "shimmer": "none (static blocks; respects reduced motion by default)"
+    },
+
+    "toast": {
+      "use": "only for 'Saved' confirmations that have no inline anchor and for PDF download started",
+      "bg": "colors.text.primary",
+      "color": "colors.surface",
+      "radius": "radius.sm",
+      "padding": "12px 16px",
+      "font": "typography.scale.body",
+      "position_mobile": "bottom 80px, full width minus gutters",
+      "position_desktop": "bottom-left 24px, max 360px",
+      "duration": "3200ms",
+      "aria": "role=status"
+    }
+  },
+
+  "icons": {
+    "set": "inline SVG, hand-written or copied per icon into web/src/icons; no icon package (architecture.md §1)",
+    "stroke": "1.75px",
+    "sizes": { "sm": "16px", "md": "18px", "lg": "24px", "xl": "32px" },
+    "needed": ["question-circle", "check", "check-circle", "x", "x-circle", "upload", "file-text", "quote", "download", "plus", "trash", "arrow-up", "arrow-down", "chevron-down", "eye", "eye-off", "alert-triangle", "refresh"]
+  },
+
   "design_principles": [
-    "Bento-grid composition with large rounded cards",
-    "Two-tone accent system: dark + lime for emphasis",
-    "Pill-shaped elements everywhere (tabs, badges, bars, progress)",
-    "Dashed outlines for empty/placeholder states",
-    "Generous whitespace, minimal borders, soft tonal layering"
+    "The CV is paper; the UI is the desk. The sheet is the only pure-white surface; everything else sits on the warm page colour.",
+    "One accent, used only for things the user can do. Amber is reserved for open questions and never used for errors.",
+    "Questions live beside their field, never in a pile. The amber left rule on a field and the amber card are the same object seen twice.",
+    "Nothing pretends: no percentage bars, no 'almost done', no invented facts. Progress names the stage and the elapsed time.",
+    "Calm over clever: no gradients, no large radii, no decorative illustration, motion only to confirm (save) or to show liveness (current stage).",
+    "Mobile first, literally: every component is specified at 375px and widened; 44px targets and 14px minimum text are tokens, not reminders."
   ]
 }

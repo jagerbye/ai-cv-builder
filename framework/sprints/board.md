@@ -44,11 +44,18 @@
 | CVB-16 | T-18 | 06 | PATCH, optimistic concurrency, userEdited | To Do | 2h |
 | CVB-18 | T-19 | 06 | PDF export, A4, real text layer | To Do | 3h |
 
-| CVB-25 | T-24 | — | Design tokens and spec for this product | In Progress | 1h |
+| CVB-25 | T-24 | — | Design tokens and spec for this product | Done | 1h / 0:05 |
 
 **Lane 04 is the critical chain** — CVB-9 → 10 → 11. CVB-12 was moved out to
 lane 07: the verifier is a pure function over frozen types and never needed the
-LLM stages. CVB-25 runs outside the lanes entirely (designer, Fable).
+LLM stages. CVB-25 ran outside the lanes entirely (designer, Fable) and is done.
+
+**Unscheduled scope found by CVB-25:** the design needs ~18 hand-written
+inline SVG icons, question-column alignment via offsetTop + ResizeObserver,
+and a `prefers-reduced-motion` block. None of it is in any wave-A task's
+acceptance criteria, so it will either inflate the web tasks or be cut. The
+Orchestrator decides at integration; it is recorded here so it cannot be
+absorbed silently.
 
 ## Sprint 001 — wave B (after wave A is integrated)
 

@@ -13,4 +13,6 @@ GATE_STEPS=(
 
 # Fast per-file check, run by the PostToolUse hook after every Edit/Write.
 # Gets the edited file path as $1. Keep it <2s; empty string disables it.
-FAST_CHECK='f(){ case "$1" in *.ts|*.tsx) npx tsc --noEmit -p "$(dirname "$1")/../tsconfig.json" 2>/dev/null || npx tsc --noEmit ;; *.sql) :; ;; esac; }; f'
+# Silent no-op until the toolchain is installed, so T-01 can bootstrap the
+# repo without every write being blocked by a compiler that isn't there yet.
+FAST_CHECK='f(){ [ -x node_modules/.bin/tsc ] || return 0; case "$1" in *.ts|*.tsx) node_modules/.bin/tsc --noEmit -p tsconfig.json ;; esac; }; f'

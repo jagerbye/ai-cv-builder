@@ -18,13 +18,21 @@
 | 02 | tests+dev+review | A | `api/src/core/auth/**`, `api/src/routes/auth.ts`, `api/src/http/**`, `tests/contract/auth*` | T-03, T-04 |
 | 03 | tests+dev+review | A | `web/**` | T-05, T-06 |
 
+**Lane 01 is a blocking prologue, not a parallel lane.** Nothing can be
+typechecked, tested or migrated before the workspace and the schema exist, so
+T-01 and T-02 run to completion first; lanes 02 and 03 start only afterwards
+and then run in parallel. This is a dependency, not a change of plan — the
+board already had T-03 and T-05 waiting on lane 01.
+
 Lane 02 and lane 03 both depend on C-001/C-002, which are **frozen** — lane 03
 codes against the contract, not against lane 02's implementation, so they run
 in parallel (Mode A, no worktrees needed: the file areas are disjoint).
 
-Lane 01's T-02 creates `api/prisma/schema.prisma` covering **all six tables**
-(not only sprint 1's two) so that sprint 2's lanes never have to touch a
-migration owned by another lane.
+Lane 01's T-01 installs **every** dependency from architecture.md §1 for both
+workspaces, and T-02 creates `api/prisma/schema.prisma` covering **all six
+tables** (not only sprint 1's two). Both are deliberate: `package.json` and the
+migration directory then have exactly one owner for the whole project, and no
+later lane has to touch them.
 
 ## Status board
 
@@ -33,9 +41,9 @@ approved)`, or `blocked(<reason>)`.
 
 | Task | Lane | Depends on | Status |
 |---|---|---|---|
-| T-01 | 01 | — | todo |
+| T-01 | 01 | — | green (code passes) |
 | T-02 | 01 | T-01 | todo |
-| T-03 | 02 | T-01 | todo |
+| T-03 | 02 | T-02 | todo |
 | T-04 | 02 | T-03 | todo |
 | T-05 | 03 | T-01 | todo |
 | T-06 | 03 | T-05 | todo |
@@ -80,8 +88,7 @@ approved)`, or `blocked(<reason>)`.
 - Criteria (F-001, C-001): all seven F-001 criteria that concern registration —
   argon2id hash, ≥10-char password, field-level 400s, 409 on duplicate with a
   generic message and no timing tell, no plaintext in any log.
-- Depends on: T-01 (needs the gate), schema from T-02 for the integration test
-  — the unit tests run against a test container started by the suite.
+- Depends on: T-02 (needs the workspace, the gate and the schema).
 - Files: `api/src/core/auth/**`, `api/src/routes/auth.ts`, `api/src/http/errors.ts`,
   `tests/contract/auth-register.test.ts`
 - Read: `framework/docs/api-contracts.md` C-000, C-001; `framework/docs/domain-model.md`

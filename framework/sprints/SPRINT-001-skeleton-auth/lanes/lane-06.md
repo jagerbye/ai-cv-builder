@@ -306,3 +306,21 @@ Per task, appended by the agents in order:
 - Top edge is measured with ink height 0.8 x em box (pdfjs reports the em box); documented in the test.
 - Gate: GATE_LANE_TEST='npm -w api run test -- --run src/core/export tests/contract/export' bash framework/scripts/gate.sh -> all green, 15/15.
 - Non-blocking: .wave-in-flight not touched by me; Orchestrator to remove it if it did not pre-exist.
+
+## T-18 final review (code-reviewer, CVB-16, 2026-10-28)
+- review (code-reviewer): approved. Code and tests were approved in the earlier rounds; the only blocker was check-lane, and it is now clear.
+- check-lane `49f5af7` with allowlist `api/src/core/cv/**`, `api/src/routes/cvs.ts`, `tests/contract/cvs-patch*` plus the lane log and plan.md: exit 1, but the only flag is `.claude/workflows/finish-wave-a.js` (untracked, Orchestrator's workflow script, not lane work). No lane-06 path is flagged. `git diff --name-only 49f5af7` is empty, so the lane files are already at base.
+- gate (`GATE_LANE_TEST='npm -w api run test -- --run src/core/cv tests/contract/cvs-patch' bash framework/scripts/gate.sh`): exit 0, "gate ✓ all green". 4 files, 27/27 (types 7, merge 6, order 5, cvs-patch 9). Log: scratchpad review3-gate-lane06.log.
+- Carried, not blocking (already recorded, owned by other tasks): regenerate path does not call `mergeRegenerated` (lane 05 / T-20); answer-question path (T-20); no 401 test for an unauthenticated PATCH.
+- escalations: none
+- docs touched: none
+- jira: CVB-16 — review approved; sync pending
+
+## T-19 re-review after fix pass 3 (code-reviewer, CVB-18, 2026-10-28)
+- gate (lane-scoped, `GATE_LANE_TEST='npm -w api run test -- --run src/core/export tests/contract/export' bash framework/scripts/gate.sh`): exit 0, "gate ✓ all green", 3 files, 15/15 (filename 3, render 7, contract 5). Run by the reviewer.
+- blocking item 1 (margins): cleared. `render.test.ts` "keeps every text run at least 15 mm (42.5 pt) from each page edge, on every page" reads run positions via pdfjs-dist getTextContent on a 60-bullet, 2+ page CV and checks all four edges. It is not a stub: a constant or unwrapped renderer fails it. The top edge uses a 0.8 ascender factor, documented in the test; the other three edges are exact.
+- check-lane, base 49f5af7 with the T-19 allowlist (`api/src/core/export/**`, `api/src/routes/export.ts`, `api/assets/fonts/**`, `tests/contract/export*`, lane log, plan.md): no lane-06 path flagged. Caveat: the T-19 files are already committed inside 49f5af7 (Orchestrator's Wave A commit), so against that base the lane's own diff is empty and the check is vacuous for lane files. Only `.claude/workflows/finish-wave-a.js` (untracked, not lane work) appears.
+- check-lane, base 49f5af7^ (11444a8) with the same allowlist, which shows what the Wave A commit brought in: lane-06 files are clean. The out-of-allowlist lane-06 file is `api/package.json` (+1 line, `"pdfjs-dist": "5.4.296"`). It is needed by the margin test, the only positional source available, so the lane legitimately had to touch it. Other flags in that commit belong to lanes 02 to 05, web/, framework/docs and .claude/workflows, not this lane.
+- plan.md T-19 row still reads `blocked(allowlist: api/package.json and package-lock.json need approval ...)`. Approval of the pdfjs-dist dependency is not recorded in any log. The Teamlead must record it before the Integrator merges.
+- stray artifact, not lane work: `framework/scripts/.wave-in-flight` (0 bytes) exists. The Orchestrator owns it; remove it if it pre-dates the wave.
+- verdict: approved. Code, tests and gate meet the T-19 acceptance criteria. The only out-of-allowlist file is `api/package.json`, a legitimately needed one-line dependency whose approval is still pending.

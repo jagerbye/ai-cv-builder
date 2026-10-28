@@ -7,7 +7,7 @@
     "web"
   ],
   "engines": {
-    "node": "^22.0.0"
+    "node": "^24.0.0"
   },
   "scripts": {
     "typecheck": "npm run -s typecheck --workspaces --if-present",
@@ -28,6 +28,6 @@
     "prisma@5.22.0": true
   },
   "overrides": {
-    "@types/node": "22.20.5"
+    "@types/node": "24.19.2"
   }
 }

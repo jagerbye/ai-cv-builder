@@ -10,9 +10,9 @@
     "targetRole": "Senior ML engineer",
     "summary": {"text": "Senior ML engineer with a decade at Google", "factIds": ["f1"]},
     "experience": [
-      {"employer": "Google", "role": "Senior ML engineer", "period": "2010-2020", "relevance": 0.95,
+      {"employer": "Google", "role": "Senior ML engineer", "period": "2010-2020", "relevance": 0.95, "factIds": ["f1"],
        "bullets": [{"text": "Reached 99% accuracy on ML models", "factIds": ["f1"]}]},
-      {"employer": "Costa Cafe", "role": "Barista", "period": "2018-2020", "relevance": 0.3,
+      {"employer": "Costa Cafe", "role": "Barista", "period": "2018-2020", "relevance": 0.3, "factIds": ["f1"],
        "bullets": [{"text": "Served about 200 customers a day", "factIds": ["f2"]}]}
     ],
     "education": [],
@@ -22,7 +22,7 @@
     "accepted": {
       "targetRole": "Senior ML engineer",
       "experience": [
-        {"employer": "Costa Cafe", "role": "Barista", "period": "2018-2020", "relevance": 0.3,
+        {"employer": "Costa Cafe", "role": "Barista", "period": "2018-2020", "relevance": 0.3, "factIds": ["f1"],
          "bullets": [{"text": "Served about 200 customers a day", "factIds": ["f2"]}]}
       ],
       "education": [],

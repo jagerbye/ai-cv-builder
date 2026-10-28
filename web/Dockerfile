@@ -1,6 +1,6 @@
 # web image: builds the SPA with vite and serves web/dist with vite preview.
 # Build context is the repo root (npm workspaces), as for api/Dockerfile.
-FROM node:22-bookworm-slim
+FROM node:24-bookworm-slim
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY api/package.json api/

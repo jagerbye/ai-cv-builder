@@ -34,9 +34,10 @@ export interface CvDraft {
     period: string;
     location?: string;
     relevance: number;
+    factIds: string[];
     bullets: { text: string; factIds: string[] }[];
   }[];
-  education: { institution: string; degree?: string; period: string }[];
+  education: { institution: string; degree?: string; period: string; factIds: string[] }[];
   skills: { name: string; group?: string; factIds: string[] }[];
 }
 

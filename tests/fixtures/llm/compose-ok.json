@@ -5,25 +5,31 @@
     { "id": "f-globex", "kind": "employment", "text": "Data analyst at Globex, 2022 to present", "sourceQuote": "Since 2022 I have worked as a data analyst at Globex.", "source": "document" },
     { "id": "f-initech", "kind": "employment", "text": "Platform engineer at Initech, 2023 to present", "sourceQuote": "Since 2023 I have been a platform engineer at Initech.", "source": "document" },
     { "id": "f-latency", "kind": "achievement", "text": "Cut API p95 latency by 40 percent", "sourceQuote": "We cut API p95 latency by 40 percent.", "source": "document" },
-    { "id": "f-ts", "kind": "skill", "text": "Writes TypeScript", "sourceQuote": "I write a lot of TypeScript.", "source": "document" }
+    { "id": "f-ts", "kind": "skill", "text": "Writes TypeScript", "sourceQuote": "I write a lot of TypeScript.", "source": "document" },
+    { "id": "f-edu", "kind": "education", "text": "MSc Computer Science at University of Lisbon, 2015 to 2017", "sourceQuote": "I completed an MSc in Computer Science at the University of Lisbon from 2015 to 2017.", "source": "document" }
   ],
   "toolInput": {
     "summary": { "text": "Backend engineer targeting Senior Backend Engineer roles, with a record of API performance work.", "factIds": ["f-acme", "f-latency"] },
     "experience": [
       {
         "employer": "Globex", "role": "Data Analyst", "period": "2022 – present", "relevance": 0.4,
+        "factIds": ["f-globex"],
         "bullets": [ { "text": "Worked as a data analyst on reporting pipelines.", "factIds": ["f-globex"] } ]
       },
       {
         "employer": "Acme Corp", "role": "Backend Engineer", "period": "2019 – 2021", "relevance": 0.9,
+        "factIds": ["f-acme"],
         "bullets": [ { "text": "Cut API p95 latency by 40 percent.", "factIds": ["f-latency"] } ]
       },
       {
         "employer": "Initech", "role": "Platform Engineer", "period": "2023 – present", "relevance": 0.9,
+        "factIds": ["f-initech"],
         "bullets": [ { "text": "Engineer on the platform team, building services in TypeScript.", "factIds": ["f-initech", "f-ts"] } ]
       }
     ],
-    "education": [],
+    "education": [
+      { "institution": "University of Lisbon", "degree": "MSc Computer Science", "period": "2015 – 2017", "factIds": ["f-edu"] }
+    ],
     "skills": [ { "name": "TypeScript", "factIds": ["f-ts"] } ]
   }
 }

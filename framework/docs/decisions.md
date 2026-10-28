@@ -200,6 +200,26 @@ Format — newest on top, one block per decision:
   entry's facts from its bullets' citations (an entry with no bullets has
   none, and bullets do not cite the employer — that is the bug that started
   this).
+- **Amended 2026-10-28, same day, before any of it shipped:** per-field
+  checking over a *set* of cited facts does not close the hole it was written
+  to close. T-12's developer demonstrated it: cite f1 and f2 on one entry and
+  employer, role and period each occur in *a* cited fact, so
+  `{Acme Ltd, Backend engineer, 2019}` is accepted again. Recombination is
+  defeated by **co-occurrence**, not by citation — which is the whole reason
+  facts are atomic in the first place:
+  - **Experience entry:** at least one cited fact must contain **both** the
+    employer and the period. No such fact → drop the entry, priority-1
+    question. This is the binding claim; everything else about a job hangs
+    off "this employer, during this time".
+  - **Role:** must occur in a cited fact that also names the employer; if it
+    occurs only in a fact that does not, the entry is **kept** and a vague
+    question is raised. A source often names the employer and the title in
+    separate sentences ("Globex, 2019–2022" / "I was a backend engineer
+    there"), and dropping a real job over that costs more than asking.
+  - **Education entry:** at least one cited fact must contain both the
+    institution and the period, same failure direction.
+  The developer stopped and asked rather than inventing this rule, which is
+  the behaviour FF-11's `blockedOn` field was added to make cheap.
 - **Consequences:** C-012 is unfrozen for this one change and refrozen; T-11
   (compose) and T-12 (verify) reopen, and T-11 runs first because T-12 reads
   what it emits. The prompt-injection golden fixture must cite its entry's

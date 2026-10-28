@@ -10,7 +10,7 @@
   "draft": {
     "targetRole": "Platform engineer",
     "experience": [
-      {"employer": "Nimbus", "role": "Lead Engineer", "period": "2020-2022", "relevance": 0.7,
+      {"employer": "Nimbus", "role": "Lead Engineer", "period": "2020-2022", "relevance": 0.7, "factIds": ["f1"],
        "bullets": [
          {"text": "Ran the Kubernetes migration", "factIds": ["f3"]},
          {"text": "Worked on the platform team", "factIds": ["f1"]}
@@ -23,7 +23,7 @@
     "accepted": {
       "targetRole": "Platform engineer",
       "experience": [
-        {"employer": "Nimbus", "role": "Lead Engineer", "period": "2020-2022", "relevance": 0.7,
+        {"employer": "Nimbus", "role": "Lead Engineer", "period": "2020-2022", "relevance": 0.7, "factIds": ["f1"],
          "bullets": [
            {"text": "Ran the Kubernetes migration", "factIds": ["f3"]},
            {"text": "Worked on the platform team", "factIds": ["f1"]}

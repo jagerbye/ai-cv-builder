@@ -325,3 +325,44 @@ Per task, appended by the agents in order:
 - plan.md T-04 row flipped to "blocked (review)".
 - docs touched: none. Nothing committed.
 - jira: CVB-4 — sync pending
+
+## T-03 reopened: Node 24 (test-engineer, RED step, ADR-012)
+- tests (test-engineer): `tests/contract/auth-register-runtime.test.ts` added (12 tests, declared-pin and installed-version checks; no production code). RED confirmed: 11/12 fail on assertions (`.nvmrc` is `22`; engines `^22.0.0` in root, api, web; both Dockerfiles `FROM node:22-bookworm-slim`; ci.yml `node-version: 22`; `@types/node` `22.20.5` in root override, api and web devDependencies and the lockfile; installed api `@types/node` 22.20.5). The 12th (runtime has node:crypto.argon2, Node 24.7+) passes on this host (v24.18.0), as designed.
+- criteria→test mapping: .nvmrc, both engines (root, api, web), both Dockerfiles, CI, @types/node exact 24.x (override, api, web, lockfile, installed) → declared-pin block; F-001/C-001 unchanged → existing `auth-register.test.ts` (20/20 green on host, 2 files green in the lane command).
+- not covered by a test, on purpose: the container proof. `auth-register.test.ts` passes on the host's Node 24.18, so it cannot detect the Node 22 container. The proof is a command, not a unit assertion: `docker compose build && docker compose up -d --wait`, then `curl -si -X POST localhost:<api-port>/api/auth/register -H 'content-type: application/json' -d '{"email":"...","password":"..."}'` expecting 201 and a `Set-Cookie: sid=` header. Developer runs it after GREEN.
+- conflict for Orchestrator: `api/src/toolchain.test.ts` (T-01) asserts `@types/node` is 22.x in both declaration and install (two tests). That is the ADR-010 pin, superseded by ADR-012. It is outside this lane's file list, so I did not touch it. It will go red when the bump lands and needs an Orchestrator or architect decision to update it (not a weakening).
+- gate: `GATE_LANE_TEST='npm -w api run test -- --run src/core/auth tests/contract/auth-register' bash framework/scripts/gate.sh` → exit 1, lane-test FAILED, 11 red (expected, RED step). Log: /private/tmp/claude-501/-Users-mike/57b5388a-556b-4c60-b3fd-9f6d6b43757c/scratchpad/gate-t03.log
+- docs touched: none. nothing committed.
+- jira: sync pending
+
+## T-03 reopened: Node 24 GREEN (developer, ADR-012)
+- code: pinned Node 24 in `.nvmrc`, `api/Dockerfile` and `web/Dockerfile` (`node:24-bookworm-slim`), `engines.node` `^24.0.0` in root, api and web, `.github/workflows/ci.yml` `node-version: 24`. `@types/node` pinned exact `24.19.2` in the root override, api and web devDependencies; lockfile refreshed (`npm install --save-exact`), and `node_modules` rebuilt with `npm ci` because the in-place install kept 22.20.5.
+- `api/Dockerfile`: `prisma generate` now runs before `npm -w api run build`. The old order failed the image build (Prisma types missing), so the container could not be built at all. This was a prerequisite for the container proof.
+- `framework/docs/architecture.md` §1 table: `@types/node` row changed to 24.x exact (the ADR-012 consequence line).
+- tests: `tests/contract/auth-register-runtime.test.ts` 12/12 green; F-001/C-001 `auth-register.test.ts` 20/20 green. No test edited.
+- container proof: `docker compose build` exit 0; `docker compose up -d --wait` exit 0 (all services healthy). `docker compose exec -T api node -v` → v24.22.1. `curl -si -X POST localhost:3000/api/auth/register -H 'content-type: application/json' -d '{"email":"t03-proof-<ts>@example.com","password":"correct-horse-battery-1"}'` → `HTTP/1.1 201 Created`, `set-cookie: sid=...; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`, body `{"user":{...}}`.
+- gate: `GATE_LANE_TEST='npm -w api run test -- --run src/core/auth tests/contract/auth-register' bash framework/scripts/gate.sh` exit 0, lint plus lane tests 41/41. Log: /private/tmp/claude-501/-Users-mike/57b5388a-556b-4c60-b3fd-9f6d6b43757c/scratchpad/gate-t03-green.log
+- not in this lane, for the Integrator: `api/src/toolchain.test.ts` (T-01, ADR-010) still asserts @types/node 22.x and is expected to fail (outside the file list; needs an explicit decision). `npm -w api run typecheck` reports 21 errors, all in `src/core/generation/verify.test.ts` (another lane's file, `factIds` missing). Web typecheck reports one error in `src/app/routes.test.tsx` (not lane-02).
+- docs touched: framework/docs/architecture.md (§1 @types/node row).
+- nothing committed
+
+## T-03 reopened: Node 24 review (code-reviewer, ADR-012)
+- review (code-reviewer): **approved**. Acceptance criteria verified: .nvmrc, both Dockerfiles, both engines, root engines, CI and @types/node exact 24.19.2 (root override, api, web, lockfile) all name Node 24. The container proof was re-run and holds: `docker compose exec -T api node -v` → v24.22.1; `curl -si -X POST localhost:3000/api/auth/register` with a fresh email → `HTTP/1.1 201 Created`, `set-cookie: sid=...; HttpOnly; SameSite=Lax; Max-Age=2592000`, body `{"user":{id,email}}`. Same email in a case variant → 409 CONFLICT with the generic message. Malformed body → 400 VALIDATION with `details`.
+- gate (lane-scoped): `GATE_LANE_TEST='npm -w api run test -- --run src/core/auth tests/contract/auth-register' bash framework/scripts/gate.sh` → exit 0, lint plus lane tests 41/41.
+- check-lane 49f5af7 with the lane-02 allowlist (T-03 files, always-allowed lane log, plan.md, architecture.md): no lane-02 path flagged. Flagged paths belong to other lanes: `api/src/core/generation/*`, `tests/fixtures/llm/compose-ok.json`, `lanes/lane-04.md`, `lanes/lane-06.md`, `.claude/workflows/finish-wave-a.js`.
+- stub-test lens: the runtime suite reads the real manifests, Dockerfiles, CI file and lockfile, so hard-coded values would fail. The argon2 assertion checks the host runtime only; the container is covered by the command proof above, which is the stronger evidence.
+- outside lane-02, unchanged, for the Integrator: `api/src/toolchain.test.ts` lines 46–51 still assert `@types/node` 22.x and will fail. It needs an explicit decision (ADR-012 supersedes ADR-010), not a weakening.
+
+## T-04 reopened (test-engineer, CVB-4, Node 24)
+- tests (test-engineer): `tests/contract/auth-session-flow.test.ts` added (7 tests, host, live Postgres): register → me 200 with the same identity; register writes a Session row with sha256(cookie) and no raw-token row; register cookie attributes match login (HttpOnly, SameSite=Lax, Path=/, Max-Age=2592000); register session and login session are independent; logout ends the register session; sid is found among other cookies and not confused with `xsid`. `tests/contract/auth-session-container.test.ts` added (5 tests, black-box over HTTP, `describe.skipIf(!CONTAINER_API_URL)`): register 201, me 200, logout 204 then me 401, login then me 200, wrong password and unknown email share one 401 body. No production code. `api/vitest.config.ts` left as is (the include already reaches `tests/contract`).
+- RED confirmed: none. The new host tests pass against the current developer code (7/7), so there is no red assertion to report for the flow. The container tests are skipped in the lane gate by design (no evidence claimed without the container).
+- container proof (run by test-engineer, not in the gate): `docker compose ps` shows `api` healthy on 127.0.0.1:3000, `docker compose exec -T api node -v` → v24.22.1. `CONTAINER_API_URL=http://127.0.0.1:3000 npm -w api run test -- --run tests/contract/auth-session-container` → 5/5 green.
+- lane command: `npm -w api run test -- --run src/core/auth tests/contract/auth-session` → 3 files passed, 1 skipped, 43 passed, 5 skipped.
+- gate: `GATE_LANE_TEST='npm -w api run test -- --run src/core/auth tests/contract/auth-session' bash framework/scripts/gate.sh` → gate ✓ all green.
+- criteria→test mapping: F-001 register issues a working session (flow tests 1–2); cookie attributes (flow 3); session lifecycle across logins (flow 4–5); cookie parsing with other cookies (flow 6–7); the same flow in the container (container 1–5). Existing auth-session.test.ts (27) covers C-002 login/me/logout, requireUser and ownership, unchanged.
+- not covered, on purpose: 429 (T-21), Secure flag (Teamlead decision 1), login timing parity.
+- errors worth remembering: none new.
+- escalations: none
+- docs touched: none
+- nothing committed
+- jira: CVB-4 — sync pending

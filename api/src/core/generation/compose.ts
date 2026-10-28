@@ -28,13 +28,14 @@ const COMPOSE_SCHEMA: Record<string, unknown> = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['employer', 'role', 'period', 'relevance', 'bullets'],
+        required: ['employer', 'role', 'period', 'relevance', 'factIds', 'bullets'],
         properties: {
           employer: { type: 'string' },
           role: { type: 'string' },
           period: { type: 'string' },
           location: { type: 'string' },
           relevance: { type: 'number', minimum: 0, maximum: 1 },
+          factIds: cited,
           bullets: {
             type: 'array',
             items: {
@@ -52,10 +53,11 @@ const COMPOSE_SCHEMA: Record<string, unknown> = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['institution', 'period'],
+        required: ['institution', 'period', 'factIds'],
         properties: {
           institution: { type: 'string' },
           degree: { type: 'string' },
+          factIds: cited,
           period: { type: 'string' },
         },
       },
@@ -77,6 +79,17 @@ type RawDraft = Omit<CvDraft, 'targetRole'>;
 const normalise = (s: string): string => s.replace(/\s+/g, ' ').trim();
 
 const isStr = (v: unknown): v is string => typeof v === 'string';
+
+// ADR-013: an entry's employer or institution must appear in one of the facts it cites.
+// Case-insensitive, whitespace-normalised substring over each cited fact's text and sourceQuote.
+function establishedBy(name: string, factIds: string[], byId: Map<string, Fact>): boolean {
+  const needle = normalise(name).toLowerCase();
+  if (needle.length === 0) return false;
+  return factIds.some((id) => {
+    const f = byId.get(id);
+    return !!f && [f.text, f.sourceQuote].some((s) => normalise(s).toLowerCase().includes(needle));
+  });
+}
 
 function checkCitations(factIds: unknown, where: string): string[] {
   if (!Array.isArray(factIds) || factIds.length === 0 || !factIds.every((id) => isStr(id) && id.length > 0)) {
@@ -108,6 +121,7 @@ export function createComposeStage(gateway: AnthropicGateway): ComposeStage {
       if (facts.length === 0) return { targetRole, experience: [], education: [], skills: [] };
 
       const quotes = facts.map((f) => normalise(f.sourceQuote)).filter((q) => q.length > 0);
+      const factById = new Map(facts.map((f) => [f.id, f] as const));
       const isSourceCopy = (text: string): boolean => {
         const t = normalise(text);
         // A short quote (a skill name, a number) may legitimately recur inside a bullet;
@@ -136,6 +150,10 @@ export function createComposeStage(gateway: AnthropicGateway): ComposeStage {
           if (typeof e.relevance !== 'number' || !Number.isFinite(e.relevance) || e.relevance < 0 || e.relevance > 1) {
             throw new Error(`compose experience ${i} relevance must be a number in 0..1`);
           }
+          const entryFactIds = checkCitations(e.factIds, `experience ${i}`);
+          if (!establishedBy(e.employer, entryFactIds, factById)) {
+            throw new Error(`compose experience ${i} employer is not established by its cited facts`);
+          }
           if (!Array.isArray(e.bullets)) throw new Error(`compose experience ${i} bullets must be an array`);
           const bullets = e.bullets.map((b, j) => {
             if (!b || !isStr(b.text) || b.text.trim().length === 0) {
@@ -154,6 +172,7 @@ export function createComposeStage(gateway: AnthropicGateway): ComposeStage {
             period: e.period,
             ...(isStr(e.location) ? { location: e.location } : {}),
             relevance: e.relevance,
+            factIds: entryFactIds,
             bullets,
           };
         });
@@ -163,9 +182,14 @@ export function createComposeStage(gateway: AnthropicGateway): ComposeStage {
           if (!d || !isStr(d.institution) || !isStr(d.period)) {
             throw new Error(`compose education ${i} is missing institution or period`);
           }
+          const entryFactIds = checkCitations(d.factIds, `education ${i}`);
+          if (!establishedBy(d.institution, entryFactIds, factById)) {
+            throw new Error(`compose education ${i} institution is not established by its cited facts`);
+          }
           return {
             institution: d.institution,
             period: d.period,
+            factIds: entryFactIds,
             ...(isStr(d.degree) ? { degree: d.degree } : {}),
           };
         });

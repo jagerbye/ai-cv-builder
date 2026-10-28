@@ -10,7 +10,7 @@
   "draft": {
     "targetRole": "Payments team lead",
     "experience": [
-      {"employer": "Nimbus", "role": "Payments team lead", "period": "2020-2022", "relevance": 0.9,
+      {"employer": "Nimbus", "role": "Payments team lead", "period": "2020-2022", "relevance": 0.9, "factIds": ["f1"],
        "bullets": [
          {"text": "Led the payments team", "factIds": ["f1"]},
          {"text": "Cut checkout errors by 30%", "factIds": ["f2"]},
@@ -25,7 +25,7 @@
     "accepted": {
       "targetRole": "Payments team lead",
       "experience": [
-        {"employer": "Nimbus", "role": "Payments team lead", "period": "2020-2022", "relevance": 0.9,
+        {"employer": "Nimbus", "role": "Payments team lead", "period": "2020-2022", "relevance": 0.9, "factIds": ["f1"],
          "bullets": [
            {"text": "Led the payments team", "factIds": ["f1"]},
            {"text": "Cut checkout errors by 30%", "factIds": ["f2"]},

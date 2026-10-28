@@ -133,6 +133,13 @@ This is the feature the product is judged on; its mechanism is
   - [ ] The verifier rejects any CV content item whose `factIds` are empty or
         unknown, and any item containing an organisation name, a date, a
         number, or a named technology that appears in none of its cited facts.
+  - [ ] **No recombination.** An experience entry needs one cited fact
+        containing both its employer and its period; an education entry, one
+        containing both its institution and its period. Two true facts about
+        two different jobs must not be assembled into a third job that never
+        existed — every token real and the pairing invented is still
+        invention. A role named only in a fact that does not mention the
+        employer keeps the entry and raises a vague question.
   - [ ] **Composite items are checked against their own facts plus their
         parent's.** An experience entry's employer and period must be covered
         by the entry's own `factIds`; a bullet inside it is checked against

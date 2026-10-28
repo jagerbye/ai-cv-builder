@@ -36,7 +36,13 @@ function fakeGateway(raw: unknown): { calls: ToolCallRequest<unknown>[]; gateway
 
 interface RawDraft {
   summary: { text: string; factIds: string[] };
-  experience: { relevance: number; bullets: { text: string; factIds: string[] }[] }[];
+  experience: {
+    employer: string;
+    relevance: number;
+    factIds: string[];
+    bullets: { text: string; factIds: string[] }[];
+  }[];
+  education: { institution: string; factIds: string[] }[];
 }
 const clone = (): RawDraft => structuredClone(fixture.toolInput) as unknown as RawDraft;
 
@@ -112,14 +118,14 @@ describe('compose stage (T-11)', () => {
     const raw = clone();
     const short = { ...FACTS[4], sourceQuote: 'TypeScript' };
     raw.experience[1].bullets[0].text = 'Built services in TypeScript and cut latency.';
-    const draft = await createComposeStage(fakeGateway(raw).gateway).compose([...FACTS.slice(0, 4), short], ROLE);
+    const draft = await createComposeStage(fakeGateway(raw).gateway).compose([...FACTS.slice(0, 4), short, FACTS.find((f) => f.id === 'f-edu')!], ROLE);
     expect(draft.experience.length).toBeGreaterThan(0);
   });
 
   it('rejects a bullet containing a whole 40+ char source quote plus extra words', async () => {
     const quote = 'Led the billing migration '.padEnd(40, 'x');
     expect(quote.length).toBe(40);
-    const facts = [...FACTS.slice(0, 4), { ...FACTS[4], sourceQuote: quote }];
+    const facts = [...FACTS.slice(0, 4), { ...FACTS[4], sourceQuote: quote }, FACTS.find((f) => f.id === 'f-edu')!];
     const raw = clone();
     raw.experience[1].bullets[0].text = `Proudly ${quote} to a new platform.`;
     await expect(createComposeStage(fakeGateway(raw).gateway).compose(facts, ROLE)).rejects.toThrow();
@@ -128,7 +134,7 @@ describe('compose stage (T-11)', () => {
   it('accepts a bullet containing a 39 char source quote plus extra words', async () => {
     const quote = 'Led the billing migration '.padEnd(39, 'x');
     expect(quote.length).toBe(39);
-    const facts = [...FACTS.slice(0, 4), { ...FACTS[4], sourceQuote: quote }];
+    const facts = [...FACTS.slice(0, 4), { ...FACTS[4], sourceQuote: quote }, FACTS.find((f) => f.id === 'f-edu')!];
     const raw = clone();
     raw.experience[1].bullets[0].text = `Proudly ${quote} to a new platform.`;
     const draft = await createComposeStage(fakeGateway(raw).gateway).compose(facts, ROLE);
@@ -164,5 +170,76 @@ describe('compose stage (T-11)', () => {
     const draft = await createComposeStage(gateway).compose([], ROLE);
     expect(calls).toHaveLength(0);
     expect(draft).toEqual({ targetRole: ROLE, experience: [], education: [], skills: [] });
+  });
+});
+
+// T-11 rework (ADR-013). Experience and education entries carry factIds; an entry's facts must
+// establish its employer or institution. Fixture facts: f-acme, f-globex, f-initech, f-edu.
+describe('compose stage: entry-level factIds (T-11, ADR-013)', () => {
+  interface ComposeSchemaShape {
+    properties: {
+      experience: { items: { required: string[]; properties: Record<string, unknown> } };
+      education: { items: { required: string[]; properties: Record<string, unknown> } };
+    };
+  }
+
+  it('the request schema requires factIds on every experience entry and every education entry', async () => {
+    const { calls, gateway } = fakeGateway(fixture.toolInput);
+    await createComposeStage(gateway).compose(FACTS, ROLE);
+
+    const schema = calls[0].inputSchema as unknown as ComposeSchemaShape;
+    expect(schema.properties.experience.items.required).toContain('factIds');
+    expect(schema.properties.experience.items.properties.factIds).toMatchObject({ type: 'array', minItems: 1 });
+    expect(schema.properties.education.items.required).toContain('factIds');
+    expect(schema.properties.education.items.properties.factIds).toMatchObject({ type: 'array', minItems: 1 });
+  });
+
+  it('returns factIds on every experience entry and education entry, carried from the output', async () => {
+    const { gateway } = fakeGateway(fixture.toolInput);
+    const draft = await createComposeStage(gateway).compose(FACTS, ROLE);
+
+    expect(draft.experience.map((e) => [e.employer, e.factIds])).toEqual([
+      ['Initech', ['f-initech']],
+      ['Acme Corp', ['f-acme']],
+      ['Globex', ['f-globex']],
+    ]);
+    expect(draft.education).toEqual([
+      { institution: 'University of Lisbon', degree: 'MSc Computer Science', period: '2015 – 2017', factIds: ['f-edu'] },
+    ]);
+  });
+
+  it('rejects the whole output when an experience entry cites no facts (gateway retries)', async () => {
+    const raw = clone();
+    raw.experience[1].factIds = [];
+    const { calls, gateway } = fakeGateway(raw);
+    await expect(createComposeStage(gateway).compose(FACTS, ROLE)).rejects.toThrow();
+    expect(calls).toHaveLength(1);
+  });
+
+  it('rejects the whole output when an education entry cites no facts', async () => {
+    const raw = clone();
+    raw.education[0].factIds = [];
+    await expect(createComposeStage(fakeGateway(raw).gateway).compose(FACTS, ROLE)).rejects.toThrow();
+  });
+
+  it('does not produce an experience entry whose employer appears in none of its cited facts', async () => {
+    // Employer "Umbrella Corp" is not in any fact at all; it cites the Globex fact.
+    const raw = clone();
+    raw.experience[0].employer = 'Umbrella Corp';
+    await expect(createComposeStage(fakeGateway(raw).gateway).compose(FACTS, ROLE)).rejects.toThrow();
+  });
+
+  it('does not produce a mis-paired experience entry (ADR-013: employer from one fact, cited fact is another)', async () => {
+    // "Acme Corp" is real (f-acme) but the entry cites only f-initech. Every token is real, the pair is invented.
+    const raw = clone();
+    const initech = raw.experience.find((e) => e.employer === 'Initech')!;
+    initech.employer = 'Acme Corp';
+    await expect(createComposeStage(fakeGateway(raw).gateway).compose(FACTS, ROLE)).rejects.toThrow();
+  });
+
+  it('does not produce an education entry whose institution appears in none of its cited facts', async () => {
+    const raw = clone();
+    raw.education[0].institution = 'University of Porto';
+    await expect(createComposeStage(fakeGateway(raw).gateway).compose(FACTS, ROLE)).rejects.toThrow();
   });
 });

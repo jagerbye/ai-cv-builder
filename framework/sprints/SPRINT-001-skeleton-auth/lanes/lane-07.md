@@ -143,3 +143,29 @@ Non-blocking:
 - stub lens: holds. The golden stub test and the education/employer drop tests still fail a verifier that returns the draft unchanged. Note the ADR amendment deliberately weakens the spec §3.4 entity rule for entries and education, and the pinned test enshrines that weaker behaviour. Acceptable only with the architect's acceptance (blocking 2).
 - plan.md T-12 row: green is set. Not changed in this review.
 - verdict: ok=false until blocking 1 and 2 are cleared. No code change is needed in verify.ts or the fixtures.
+
+## T-12 reopened by ADR-013 (CVB-12): test-engineer pass (RED step)
+- tests (test-engineer): api/src/core/generation/verify.test.ts rewritten for entry factIds; verify.golden.test.ts shape keys now include factIds; tests/fixtures/golden/{almost-empty,ambiguous-role,date-gap,first-person,grounded-control,prompt-injection}.json entries cite their own facts (factIds on every experience entry, date-gap Beta on f2).
+- corrected, not weakened: the test pinning amendment A ("a real value from a different fact passes") is DELETED and replaced by the inverted tests below. Reason recorded here per ADR-013.
+- new assertions: entry with empty factIds dropped; entry with unknown factId dropped; mis-paired {Acme Ltd, Backend engineer, 2019} rejected when citing f1+f2 and when citing f1 only; employer found only in an uncited fact dropped; bullet inherits parent entry facts (accepted) and does not reach a fact neither it nor its parent cites (dropped); education institution checked against its own factIds.
+- RED (assertion-level, lane command 61/68 pass, 7 fail):
+  1. entry factIds [] not dropped (current verify checks entries against all facts).
+  2. entry factIds ['f404'] not dropped.
+  3. mis-paired entry citing f1+f2 accepted (expects rejection).
+  4. mis-paired entry citing f1 only accepted (period 2019 not in f1; expects priority-1 period question).
+  5. employer Globex cited only on f1, present in f2, accepted (expects rejection).
+  6. bullet cites f2, Acme Ltd only in parent f1: dropped (expects inheritance, accepted).
+  7. education institution present only in uncited f1, cites f2: accepted (expects rejection).
+- GREEN already: verify.golden 30/30 (the prompt-injection golden stays unchanged in output apart from factIds on the entries, which the rule accepts today). questions.test 11/11.
+- OPEN for architect, not decided here: red 3 cannot go green under a per-field rule over the entry's cited facts. If compose cites f1 and f2, employer, role and period each occur in some cited fact, so a per-field check accepts the mis-pair. Rejecting it needs a rule that employer and period co-occur in ONE cited fact (or equivalent). ADR-013 does not say which; the developer must not pick it alone.
+- stale text for the developer: verify.ts comments still cite "ADR-002 amendment A" and the all-facts rule (lines ~84-90, 96-97 area); production code not touched here.
+- decisions.md: no "amendment A" all-facts block remains; ADR-013 carries the supersession. ADR-002 still has the parent-to-child amendment, which is consistent with ADR-013.
+- time: tests ~0:30.
+- jira: CVB-12 — sync pending
+
+## T-12 reopened by ADR-013 (CVB-12): developer pass (make-green step): BLOCKED on one architect decision
+- code: verify.ts only. Experience entries are checked against their OWN cited facts (employer, role, period); education against its own cited facts (institution, period). Empty or unknown factIds drop the entry or education item with a priority-2 question. Bullets are checked against their own facts plus the parent entry's facts (one level). The stale ADR-002 amendment A text and the all-facts rule are gone from verify.ts.
+- tests: unchanged by this pass (test-engineer's RED stands). Lane result 67/68. Only red: verify.test "rejects an entry assembled from two unrelated facts ... citing f1 and f2". Kept as written, not weakened.
+- Why red 3 stays red: with a per-field check over the entry's cited facts, citing both f1 and f2 makes employer, role and period each occur in some cited fact, so {Acme Ltd, Backend engineer, 2019} is still accepted. ADR-013 literally specifies the per-field rule, so the ADR and the acceptance example conflict. The fix needs a rule that employer and period co-occur in ONE cited fact (or equivalent). That is an architect choice; not made here.
+- golden: verify.golden 30/30 green. prompt-injection output unchanged.
+- gate: lane-scoped gate RED (lane-test FAILED on red 3 only).

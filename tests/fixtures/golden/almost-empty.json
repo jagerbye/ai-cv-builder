@@ -8,7 +8,7 @@
   "draft": {
     "targetRole": "Backend engineer",
     "experience": [
-      {"employer": "Globex", "role": "Backend engineer", "period": "2019-2021", "relevance": 0.9,
+      {"employer": "Globex", "role": "Backend engineer", "period": "2019-2021", "relevance": 0.9, "factIds": ["f1"],
        "bullets": [{"text": "Built services at Globex", "factIds": ["f1"]}]}
     ],
     "education": [],

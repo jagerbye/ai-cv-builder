@@ -10,9 +10,9 @@
   "draft": {
     "targetRole": "Backend Developer",
     "experience": [
-      {"employer": "Acme Ltd", "role": "Backend Developer", "period": "2015–2017", "relevance": 0.6,
+      {"employer": "Acme Ltd", "role": "Backend Developer", "period": "2015–2017", "relevance": 0.6, "factIds": ["f1"],
        "bullets": [{"text": "Worked as Backend Developer at Acme Ltd", "factIds": ["f1"]}]},
-      {"employer": "Beta Corp", "role": "Backend Developer", "period": "2017-2019", "relevance": 0.5,
+      {"employer": "Beta Corp", "role": "Backend Developer", "period": "2017-2019", "relevance": 0.5, "factIds": ["f2"],
        "bullets": [{"text": "Built internal billing tools at Beta Corp", "factIds": ["f3"]}]}
     ],
     "education": [],
@@ -22,7 +22,7 @@
     "accepted": {
       "targetRole": "Backend Developer",
       "experience": [
-        {"employer": "Acme Ltd", "role": "Backend Developer", "period": "2015–2017", "relevance": 0.6,
+        {"employer": "Acme Ltd", "role": "Backend Developer", "period": "2015–2017", "relevance": 0.6, "factIds": ["f1"],
          "bullets": [{"text": "Worked as Backend Developer at Acme Ltd", "factIds": ["f1"]}]}
       ],
       "education": [],

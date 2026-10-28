@@ -5,7 +5,7 @@ import { verify } from './verify.js';
 import type { PlannedQuestion } from './questions.js';
 import type { CvDraft, Fact } from './types.js';
 
-// T-12 (CVB-12). Golden adversarial fixtures (spec §3.4 F-004, testing-strategy.md "adversarial sources").
+// T-12 (CVB-12), reopened by ADR-013: entries cite their own facts (factIds), and a bullet inherits its parent entry's facts (ADR-002). Golden adversarial fixtures (spec §3.4 F-004, testing-strategy.md "adversarial sources").
 // Fixtures live in tests/fixtures/golden/*.json. Each holds the facts and the draft that extract/compose
 // would have produced, plus the exact golden output. This file never calls the gateway or any LLM.
 // Stub test: every fixture that expects drops must fail a verifier returning accepted = draft unchanged.
@@ -96,7 +96,7 @@ describe('prompt-injection fixture keeps the output structure', () => {
     const result = verify(structuredClone(fx!.draft), structuredClone(fx!.facts));
     expect(result.accepted.experience.length).toBeGreaterThan(0);
     for (const e of result.accepted.experience) {
-      expect(Object.keys(e).sort()).toEqual(['bullets', 'employer', 'period', 'relevance', 'role']);
+      expect(Object.keys(e).sort()).toEqual(['bullets', 'employer', 'factIds', 'period', 'relevance', 'role']);
       for (const b of e.bullets) {
         expect(Object.keys(b).sort()).toEqual(['factIds', 'text']);
       }

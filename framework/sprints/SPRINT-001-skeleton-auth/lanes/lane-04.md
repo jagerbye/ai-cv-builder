@@ -320,3 +320,19 @@ Per task, appended by the agents in order:
 - plan.md T-11 row: green is correct for lane scope. Reviewer did not edit plan.md.
 - nothing committed.
 - jira: CVB-11 review done (not committed)
+
+## T-11 reopened (test-engineer, ADR-013): entry-level factIds RED
+- tests (test-engineer): `api/src/core/generation/compose.test.ts` gains a describe block (7 cases, entry-level factIds, ADR-013); `api/src/core/generation/types.test.ts` gains one type assertion (experience and education entries carry `factIds: string[]`); fixture `tests/fixtures/llm/compose-ok.json` now cites entry facts on every experience entry and adds one education fact (`f-edu`) with one education entry. No production code, types.ts untouched.
+- RED confirmed: `npm -w api run test -- --run src/core/generation/compose src/core/generation/types` → compose 7 failed / 14 passed; types runtime 7/7 passed (expectTypeOf is erased at runtime). Type-level red confirmed with `../node_modules/.bin/tsc --noEmit -p tsconfig.json` from `api/`: `types.test.ts(46,48)` and `(47,47)` TS2339 `factIds` does not exist on the experience and education item types; `compose.test.ts(201,55)` TS2339 likewise.
+- Failing assertions, and why:
+  - schema requires `factIds` (min 1) on experience and education items: the request schema lacks it.
+  - returned draft carries `factIds` per experience entry and education entry: parse drops them (`undefined`).
+  - an experience entry with `factIds: []` is rejected: parse does not check entry citations yet (resolves, does not reject).
+  - an education entry with `factIds: []` is rejected: same cause.
+  - employer in no cited fact (`Umbrella Corp` citing the Globex fact) is not produced: no employer-vs-cited-fact check yet.
+  - mis-paired entry (ADR-013 case: `Acme Corp` citing only the Initech fact) is not produced: same missing check.
+  - education institution in no cited fact (`University of Porto` citing `f-edu`) is not produced: same missing check.
+- Decision the developer must honour: the tests expect compose to REJECT in parse (throw, gateway retries), which matches every other rule in that stage. A silent drop would also satisfy "not produced" but would need its own test.
+- Assumption flagged: the employer and institution check tests "appears in a cited fact" by case-insensitive substring over `text` and `sourceQuote`, the same normalisation as the existing quote check. Adjust only with the architect.
+- No production code touched; nothing committed.
+- jira: CVB-11 reopened — sync pending (not committed)

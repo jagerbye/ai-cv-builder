@@ -18,6 +18,7 @@
 | Prisma | 5 | migrations as checked-in SQL + typed client; raw SQL where the queue needs it |
 | `@anthropic-ai/sdk` | 0.x pinned | the only LLM path allowed by the brief; tool-use gives schema-shaped output |
 | `pdf-parse` (pdf.js) | pinned | text extraction from the uploaded PDF, pure JS, no native build |
+| `pdfjs-dist` | 5 (dev) | test-only: reads text runs and their positions back out of the generated PDF, which is how F-007's "real text layer" and the A4 margins are asserted rather than assumed. Added by T-19 and approved 2026-10-28 |
 | `@fastify/multipart` | 9 | C-004 is a file upload; without a multipart parser the route can only answer 415. Added 2026-10-28 — the third time §1 was found incomplete, and the first two were caught by the same symptom |
 | `@react-pdf/renderer` | 4 | A4 PDF with a real text layer, server-side, no headless browser (ADR-005) |
 | React + Vite | 18 / 5 | smallest credible SPA toolchain |
@@ -26,7 +27,7 @@
 | `@vitejs/plugin-react` | 4 | without it `npm run build` for web is a bare `tsc`, which never produces a bundle |
 | `happy-dom` | 15 | Vitest environment for web tests; lighter than jsdom and enough for Testing Library |
 | ESLint + `typescript-eslint` | 9 / 8 | `lint` in gate.config.sh must be a real linter; `tsc` with extra flags is a stand-in that silently passes style and correctness rules |
-| `@types/node` | **22.x exact** | the runtime is Node 24; an unpinned types package type-checks against APIs the container does not have |
+| `@types/node` | **24.x exact** | the runtime is Node 24; an unpinned types package type-checks against APIs the container does not have |
 | `@types/react`, `@types/react-dom` | 18.x | without them no `.tsx` type-checks, so the web app cannot mount at all |
 | `@testing-library/dom` | 10.x | a peer of `@testing-library/react`; listed because it installs either way and an unlisted dependency is an unreviewed one |
 | Docker Compose | v2 | the brief's only run target: `docker compose up` |

@@ -11,7 +11,7 @@
     "targetRole": "Backend Developer",
     "summary": {"text": "Backend Developer who cut latency by 40%", "factIds": ["f2"]},
     "experience": [
-      {"employer": "Acme Ltd", "role": "Backend Developer", "period": "2015-2017", "relevance": 0.8,
+      {"employer": "Acme Ltd", "role": "Backend Developer", "period": "2015-2017", "relevance": 0.8, "factIds": ["f1"],
        "bullets": [
          {"text": "Worked as Backend Developer at Acme Ltd", "factIds": ["f1"]},
          {"text": "Built payments in Go and PostgreSQL", "factIds": ["f2"]},
@@ -26,7 +26,7 @@
       "targetRole": "Backend Developer",
       "summary": {"text": "Backend Developer who cut latency by 40%", "factIds": ["f2"]},
       "experience": [
-        {"employer": "Acme Ltd", "role": "Backend Developer", "period": "2015-2017", "relevance": 0.8,
+        {"employer": "Acme Ltd", "role": "Backend Developer", "period": "2015-2017", "relevance": 0.8, "factIds": ["f1"],
          "bullets": [
            {"text": "Worked as Backend Developer at Acme Ltd", "factIds": ["f1"]},
            {"text": "Built payments in Go and PostgreSQL", "factIds": ["f2"]},

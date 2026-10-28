@@ -42,6 +42,11 @@ describe('C-012 GenerationPipeline (types only)', () => {
     expectTypeOf<GenerationPipeline['verify']>().returns.toEqualTypeOf<VerificationResult>();
   });
 
+  it('CvDraft experience and education entries each carry factIds (ADR-013)', () => {
+    expectTypeOf<CvDraft['experience'][number]['factIds']>().toEqualTypeOf<string[]>();
+    expectTypeOf<CvDraft['education'][number]['factIds']>().toEqualTypeOf<string[]>();
+  });
+
   it('VerificationResult carries accepted draft, question drafts and dropped items', () => {
     expectTypeOf<VerificationResult['accepted']>().toEqualTypeOf<CvDraft>();
     expectTypeOf<VerificationResult['questions']>().toEqualTypeOf<QuestionDraft[]>();

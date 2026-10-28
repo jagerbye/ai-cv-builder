@@ -72,6 +72,20 @@ LLM stages. CVB-25 ran outside the lanes entirely (designer, Fable) and is done.
 transition): CVB-2 (migrations), CVB-3, CVB-4 (auth and authorization),
 CVB-12 (the groundedness guarantee).
 
+## Framework work
+
+| Issue | Backlog | Summary | Status | Est |
+|---|---|---|---|---|
+| CVB-26 | B-024 | Harvest this build into the ai-dev-framework template | To Do | 2h |
+
+Six findings are already logged with evidence in
+`framework/knowledge/framework-feedback.md` (FF-01…FF-06): the runner ignoring
+a reviewer's fix-list, FAST_CHECK blocking the first agent of any new project,
+design.json shipping as another product's tokens, the dependency list not
+covering the toolchain, worktree Mode B not being implementable as written, and
+the bootstrap-task pattern that is missing from the playbook. Entries are added
+when hit, not reconstructed at the retro.
+
 ## Parked
 
 | Issue | Backlog | Summary | Why parked |

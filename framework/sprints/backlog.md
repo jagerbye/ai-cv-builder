@@ -77,6 +77,21 @@ M ≈ 1–2 h, L ≈ 2–3 h. A task in a sprint plan is never larger than M
       usage) + `docker compose up` verified from a clean clone — deliverable,
       size M, value: the README is graded, not just read
 
+### Framework work (not product — runs after the product is done)
+
+- [ ] B-024 Harvest this project into the framework template — size M,
+      value: this build is the template's first real use, and it surfaced
+      three template bugs, one gap and one doc/reality drift in the first
+      sprint alone. Fixing them here is cheap; rediscovering them in the next
+      project is not.
+      Source of truth: `framework/knowledge/framework-feedback.md` (FF-NN
+      entries, each with evidence) plus whatever `/retro` adds at sprint close.
+      Target repo: `/Users/mike/Desktop/www/ai-dev-framework`.
+      Done when: every FF entry is either applied to the template or closed
+      with a reason, the template's own `decisions.md` records the changes,
+      and `framework-feedback.md` has no `open` rows left.
+      blocked by: sprint close (the retro adds entries this file does not have yet)
+
 ### Parked (explicitly cut unless time appears)
 
 - [ ] B-021 SSE instead of polling for progress — ADR-003 says polling stays

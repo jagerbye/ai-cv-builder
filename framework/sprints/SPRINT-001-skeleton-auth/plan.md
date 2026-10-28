@@ -44,12 +44,19 @@ lane ever edits a file another lane owns.
 | Lane | Mode | Files area | Tasks |
 |---|---|---|---|
 | 02 | A | `api/src/core/auth/**`, `api/src/routes/auth.ts`, `api/src/http/**` | T-03, T-04 |
-| 03 | A | `web/**` | T-05, T-06, T-13, T-14 |
-| 04 | A | `api/src/core/generation/**`, `api/src/llm/**`, `tests/fixtures/llm/**` | T-09, T-10, T-11, T-12 |
+| 03 | A | `web/**` | T-05, then T-06 / T-13 / T-14 fanned out |
+| 04 | A | `api/src/llm/**`, `api/src/core/generation/{gateway,extract,compose}*`, `prompts/**`, `tests/fixtures/llm/**` | T-09, T-10, T-11 |
 | 05 | A | `api/src/core/intake/**`, `api/src/core/jobs/**`, `api/src/routes/cvs-create.ts`, `api/src/routes/jobs.ts` | T-15, T-16 |
 | 06 | A | `api/src/core/cv/**`, `api/src/core/export/**`, `api/src/routes/cvs.ts`, `api/src/routes/export.ts` | T-17, T-18, T-19 |
+| 07 | A | `api/src/core/generation/{verify,questions}*`, `tests/fixtures/golden/**` | T-12 |
 
-Lane 04 is the critical chain and sets the wave's wall-clock. Lane 05's job
+Lane 04 is the critical chain and sets the wave's wall-clock. The verifier
+(T-12) was pulled out of it into lane 07 on the second re-plan: `verify()` is a
+pure function over the types T-07 freezes, so it never needed the gateway,
+extract or compose implementations — it only looked sequential because it is
+conceptually last. Lane 03 fans out the same way: its three screens depend on
+the shell, not on each other, and T-05 pre-creates their route modules so none
+of them touches the router. Lane 05's job
 runner calls lane 04's pipeline **through the C-012 interface from T-07** — it
 never imports lane 04's implementation, which is why the two can run at once.
 
@@ -68,19 +75,19 @@ Statuses: `todo → red → green → done`, or `blocked(<reason>)`.
 
 | Task | Lane | Wave | Depends on | Issue | Status |
 |---|---|---|---|---|---|
-| T-01 | 01 | 0 | — | CVB-1 | green — review returned a fix-list, reopened |
+| T-01 | 01 | 0 | — | CVB-1 | fix-list done, lane-scoped green; review pending (gate red only on T-02 files) |
 | T-02 | 01 | 0 | T-01 | CVB-2 | red (tests written, code pending) |
 | T-07 | 01 | 0 | T-02 | CVB-24 | todo |
 | T-03 | 02 | A | T-07 | CVB-3 | todo |
 | T-04 | 02 | A | T-03 | CVB-4 | todo |
 | T-05 | 03 | A | T-07 | CVB-5 | todo |
 | T-06 | 03 | A | T-05 | CVB-6 | todo |
-| T-13 | 03 | A | T-06 | CVB-13 | todo |
-| T-14 | 03 | A | T-13 | CVB-14 | todo |
+| T-13 | 03 | A | T-05 | CVB-13 | todo |
+| T-14 | 03 | A | T-05 | CVB-14 | todo |
 | T-09 | 04 | A | T-07 | CVB-9 | todo |
 | T-10 | 04 | A | T-09 | CVB-10 | todo |
 | T-11 | 04 | A | T-10 | CVB-11 | todo |
-| T-12 | 04 | A | T-11 | CVB-12 | todo |
+| T-12 | 07 | A | T-07 | CVB-12 | todo |
 | T-15 | 05 | A | T-07 | CVB-7 | todo |
 | T-16 | 05 | A | T-15 | CVB-8 | todo |
 | T-17 | 06 | A | T-07 | CVB-15 | todo |
@@ -152,7 +159,10 @@ with inline questions (F-006); T-23 README (B-020).
 - **E-001 applies**: lanes use their own scoped test command, never root `npm test`.
 - Six lanes against a 9-agent concurrency cap means wave A runs ~6 agents at
   once with headroom; it is not oversubscribed.
-- Lane 04's verifier (T-12) is the likeliest escalation in the project. It is
+- A designer pass is rewriting `framework/docs/design/design.json`, which held
+  the framework template's dashboard example — a confidently wrong token set is
+  worse than an empty one, and lane 03 is briefed to stop if it still sees it.
+- Lane 07's verifier (T-12) is the likeliest escalation in the project. It is
   deterministic code with adversarial fixtures — if Haiku fails it twice, let
   it go to Sonnet rather than re-briefing a third time.
 - Lane 05 must not import from `api/src/core/generation/` except `types.ts`.

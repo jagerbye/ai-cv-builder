@@ -55,3 +55,44 @@ Per task, appended by the agents in order:
 - docs touched: none
 - time: tests ~0:20, code pending, review pending → total ~0:20 so far (est. was ~2h for T-02)
 - jira: not mirrored (no key on this lane)
+
+## T-01 (reopened, round 2) Toolchain: real lint, vite build, happy-dom, pinned deps
+- tests (test-engineer): `api/src/toolchain.test.ts` (17 tests: six B-001 runtime pins as exact `dependencies` entries and as installed versions; @types/node exact 22.x declared and resolved from api; api lint script is eslint with `--max-warnings 0`; ESLint flat config present; a probe `new ESLint().lintText('const unused = 1;')` must report `no-unused-vars`), `web/src/toolchain.test.ts` (14 tests: `document` and `window.happyDOM` exist under the web environment; happy-dom, @vitejs/plugin-react, eslint, typescript-eslint declared and installed at the ADR-010 majors; web build is `vite build` and vite.config.ts registers plugin-react; web lint is eslint with `--max-warnings 0`; ESLint flat config present). No production code touched.
+- RED confirmed, lane-scoped (`npm -w api run test -- --run src/toolchain`: 16 failed, 1 passed; `npm -w web run test`: 13 failed, 1 passed). Breakdown by reason:
+  - assertion failures (the declaration is wrong today): the 6 runtime pins read `undefined` instead of the pin; @types/node has no declared pin; api resolves @types/node to 26.6.6, not 22.x; api lint script is `tsc --noEmit ... --noUnusedLocals`, not eslint; web happy-dom test gets `typeof document` = 'undefined' (environment still node); web build script is `tsc -p tsconfig.build.json`, not `vite build`; `web/vite.config.ts` absent; web lint script is tsc, not eslint.
+  - missing modules / not installed: fastify, @prisma/client, @anthropic-ai/sdk, pdf-parse, @react-pdf/renderer (`... is not installed`); happy-dom, @vitejs/plugin-react, eslint, typescript-eslint (`... is not installed`); the api lint probe `Cannot find package 'eslint'`.
+  - passing already: `installs react at 18.3.1` (hoisted from web). It proves the installed-check works, not the pin.
+- union run (`npm run -s test`, the command in the brief): exit 1, 4 files failed, 61 failed / 2 passed. Most failures come from the T-02 test files in `api/src/db` and `api/src/routes`, which are sibling-lane RED by design (E-001). Do not count them against T-01.
+- not testable as a unit: "a deliberately broken JSX import fails the web build" and "gate.sh exits 0 with four meaningful steps". Both need the developer's manual check or a gate-level run, recorded in the GREEN block.
+- root `tsconfig.json`: no test asserts its presence or absence. The brief allows either delete or justify; the developer decides and records it.
+- decisions for the Teamlead: none. Declared pins for eslint, typescript-eslint, happy-dom and @vitejs/plugin-react are checked by major only, because the spec gives majors (9/8/15/4). Exact patch pins are the developer's choice.
+- errors worth remembering: none
+- docs touched: none
+- plan.md: T-01 row flipped to `red (reopened: tests written, fix-list code pending)`.
+- time: tests ~0:15, code pending, review pending
+- jira: CVB-1, board.md not touched by this step (Orchestrator owns it); sync pending
+- code (developer, round 2): fix-list 1-4 applied.
+  - deps (exact, architecture.md §1): api runtime fastify 5.12.7, @prisma/client 5.22.0, @anthropic-ai/sdk 0.137.0, pdf-parse 2.4.5, @react-pdf/renderer 4.9.0, react 18.3.1; api dev @types/node 22.20.5 (latest 22.x); root dev eslint 9.39.5, typescript-eslint 8.72.1; web dev happy-dom 15.11.7, @vitejs/plugin-react 4.7.0. Lockfile regenerated. Placement: shared lint toolchain at root, happy-dom and plugin-react in web, @types/node in api.
+  - lint: api/eslint.config.mjs and web/eslint.config.mjs (typescript-eslint recommended, no type-aware rules, no @eslint/js import); scripts `eslint . --max-warnings 0` in both workspaces.
+  - build: web `vite build` with web/vite.config.ts (plugin-react); web/index.html and web/src/main.ts (scaffold, renders nothing). web/tsconfig.build.json removed (unused). web/package.json gets "type": "module" to silence vite's CJS-config warning.
+  - web vitest environment: happy-dom.
+  - root tsconfig.json: DELETED (decision: no justification needed, it only existed for FAST_CHECK). FAST_CHECK in gate.config.sh now typechecks the owning workspace (api/tsconfig.json or web/tsconfig.json) and still gates on node_modules/.bin/tsc.
+  - no feature code; no api/prisma, docker-compose.yml touched.
+- verified: `npm -w api run test -- --run src/toolchain` 17/17; `npm -w web run test` 14/14; `npm -w web run lint` and `npm -w api run lint` exit 0; web build exit 0, bundle dist/assets/index-*.js.
+- probes (files removed after): unused variable in api/src fails lint (`@typescript-eslint/no-unused-vars`, exit 1); broken import in a .tsx reached from the entry fails `vite build` (Rollup failed to resolve import, exit 1).
+- gate.sh: typecheck FAILED, test FAILED, lint ok, build ok. Both red steps come only from T-02 files (E-001 sibling lane): api/src/routes/health.test.ts imports ../server and ../env; api/src/db/schema.test.ts and stack-config.test.ts. No T-01 file is red. Gate exits 0 once T-02 lands.
+- escalations (not decided by developer):
+  1. React types: TSX needs @types/react and @types/react-dom, which are not in architecture.md §1. Not installed; web/src/main.ts is therefore plain TS and mounts nothing. Architect to approve or reject; the app shell cannot be written until then.
+  2. @testing-library/dom is still auto-installed as a peer of @testing-library/react (not in §1, same as round 1).
+  3. npm 11 allow-scripts: prisma, @prisma/client and esbuild install scripts are not approved (T-02 needs prisma generate).
+  4. Local Node is v24.18.0; checks ran on it, engines pin ^22. Not re-run on 22.
+- docs touched: none. architecture.md §1 already carries ADR-010 rows; no runbook command changed (testing-strategy.md commands unchanged).
+- jira: CVB-1, board.md not touched by this step (Orchestrator owns it).
+
+### T-01 (reopened, round 2) test-engineer re-check, no new RED
+- tests (test-engineer): no new test files. The round-2 acceptance tests (`api/src/toolchain.test.ts`, `web/src/toolchain.test.ts`) were already in place and are GREEN against the developer's round-2 code. A new RED would have been a fake one.
+- RED signal: none for T-01. `npm -w api run test -- --run src/toolchain`: 17 passed. `npm -w web run test`: 14 passed. Union `npm run -s test`: 3 failed files, all T-02 (`api/src/db/schema.test.ts` 32 failed, `api/src/db/stack-config.test.ts` 9 failed, `api/src/routes/health.test.ts` 4 failed). Failures are missing modules and missing schema/compose content, which are T-02 scope.
+- not covered by any test, by design: "gate.sh exits 0 with four meaningful steps" (gate-level, not unit), and "broken JSX import fails the web build" (needs a `vite build` run inside a test). The developer probed both by hand (see round-2 code block). Gap for the reviewer: a broken-JSX probe is not repeatable from the suite.
+- decisions for the Teamlead: none.
+- plan.md: T-01 row left as is (it already reads lane-scoped green, review pending). Not flipped to red, because no RED exists.
+- time: tests ~0:03 (re-check only).

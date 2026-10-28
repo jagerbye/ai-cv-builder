@@ -37,15 +37,18 @@
 | CVB-9 | T-09 | 04 | Anthropic gateway, schema validation, retries | To Do | 2h |
 | CVB-10 | T-10 | 04 | Extract stage, verbatim quotes | To Do | 2h |
 | CVB-11 | T-11 | 04 | Compose stage, facts only | To Do | 2h |
-| CVB-12 | T-12 | 04 | Verifier, questions, golden fixtures | To Do | 3h |
+| CVB-12 | T-12 | 07 | Verifier, questions, golden fixtures | To Do | 3h |
 | CVB-7 | T-15 | 05 | Intake: PDF and free text, all rejections | To Do | 3h |
 | CVB-8 | T-16 | 05 | Durable jobs, lease, reclaim, timeout | To Do | 3h |
 | CVB-15 | T-17 | 06 | CV read, list, delete | To Do | 2h |
 | CVB-16 | T-18 | 06 | PATCH, optimistic concurrency, userEdited | To Do | 2h |
 | CVB-18 | T-19 | 06 | PDF export, A4, real text layer | To Do | 3h |
 
-**Lane 04 is the critical chain** — CVB-9 → 10 → 11 → 12 cannot be parallelised
-and sets the wave's wall-clock. Everything else runs beside it.
+| CVB-25 | T-24 | — | Design tokens and spec for this product | In Progress | 1h |
+
+**Lane 04 is the critical chain** — CVB-9 → 10 → 11. CVB-12 was moved out to
+lane 07: the verifier is a pure function over frozen types and never needed the
+LLM stages. CVB-25 runs outside the lanes entirely (designer, Fable).
 
 ## Sprint 001 — wave B (after wave A is integrated)
 

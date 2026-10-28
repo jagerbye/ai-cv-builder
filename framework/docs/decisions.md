@@ -19,6 +19,49 @@ Format — newest on top, one block per decision:
 
 ---
 
+## ADR-011: Six parallel lanes in one wave; no worktrees (2026-10-28, accepted)
+
+- **Context:** the owner asked to go faster by adding teams. Three sequential
+  sprints would have cost roughly six more hours of wall-clock, most of it
+  spent waiting on lanes that have no dependency on each other.
+- **Decision:** collapse sprints 2 and 3 into **two waves** inside SPRINT-001.
+  Wave A runs **six** lanes in parallel after a three-task blocking
+  foundation; wave B runs the four tasks that genuinely depend on wave A's
+  output. The playbook's "≤3 lanes unless the Integrator budget is raised on
+  purpose" is raised here on purpose, and this ADR is that purpose.
+- **Alternatives rejected:** git worktrees per lane — the tool isolates a
+  *single agent*, and a lane is three agents (test-engineer → developer →
+  reviewer) that must share one tree, so the developer would not see the
+  tests. Worktrees are therefore unavailable at lane granularity, which means
+  lane isolation has to be bought with strictly disjoint file areas instead.
+  Also rejected: running sprints 1 and 2 as two concurrent runners (two
+  runners editing one tree with no shared dependency graph).
+- **Consequences:** (1) every lane owns a disjoint path set, enforced by
+  `check-lane.sh`; (2) the only shared files — `api/src/server.ts` and the
+  cross-lane TypeScript interfaces — are created up front by foundation task
+  T-07, so no lane ever edits a file another lane owns; (3) wall-clock is now
+  set by the one chain that cannot be parallelised: gateway → extract →
+  compose → verifier; (4) the Integrator merges six lanes instead of three,
+  but against disjoint paths, so the cost moves from conflict resolution to
+  running the union of tests after each merge.
+
+## ADR-010: The dependency list must include the toolchain (2026-10-28, accepted)
+
+- **Context:** `architecture.md` §1 listed only runtime libraries. The
+  scaffold task therefore had no linter, no DOM test environment and no web
+  bundler available, and — forbidden from adding dependencies — substituted
+  `tsc` with extra flags for `lint`, ran web tests in a Node environment, and
+  made the web "build" a type-check. The reviewer caught all three.
+- **Decision:** ESLint + typescript-eslint, `happy-dom`, `@vitejs/plugin-react`
+  and an exact `@types/node` 22.x are first-class entries in §1. `lint` in
+  `gate.config.sh` means a real linter.
+- **Alternatives rejected:** keeping `tsc --noUnusedLocals` as "lint" (it
+  passes style and correctness rules silently, so the gate would be green on
+  code no linter would accept); jsdom (heavier, nothing here needs it).
+- **Consequences:** a "no new dependencies" rule is only safe when the
+  approved list is complete — an incomplete list does not prevent improvisation,
+  it forces it. The Architect owns that completeness.
+
 ## ADR-009: Jira is virtual, and the Orchestrator commits (2026-10-28, accepted)
 
 - **Context:** the owner has no Atlassian instance for this task and asked for

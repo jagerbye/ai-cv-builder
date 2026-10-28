@@ -22,10 +22,19 @@
 | React + Vite | 18 / 5 | smallest credible SPA toolchain |
 | TanStack Query | 5 | server state, polling and cache invalidation are the whole frontend problem here |
 | Vitest + Supertest + Testing Library | current | one runner for api and web |
+| `@vitejs/plugin-react` | 4 | without it `npm run build` for web is a bare `tsc`, which never produces a bundle |
+| `happy-dom` | 15 | Vitest environment for web tests; lighter than jsdom and enough for Testing Library |
+| ESLint + `typescript-eslint` | 9 / 8 | `lint` in gate.config.sh must be a real linter; `tsc` with extra flags is a stand-in that silently passes style and correctness rules |
+| `@types/node` | **22.x exact** | the runtime is Node 22; a transitive 26.x types package type-checks against APIs the container does not have |
 | Docker Compose | v2 | the brief's only run target: `docker compose up` |
 
 Dependency budget is deliberate: every entry above is load-bearing. Adding one
 needs Teamlead approval in the lane report (`.claude/rules/coding-standards.md`).
+
+The last four rows were added on 2026-10-28 after T-01: the original list named
+only runtime libraries, so the scaffold had no linter, no DOM test environment
+and no web bundler, and the developer had to improvise all three. A dependency
+list that omits the toolchain is an incomplete contract, not a lean one.
 
 ## 2. Components
 

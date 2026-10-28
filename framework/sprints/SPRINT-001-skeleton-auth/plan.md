@@ -1,149 +1,159 @@
-# Sprint 01 — plan
+# Sprint 01 — plan (re-planned 2026-10-28 into two waves, ADR-011)
 
 > **What this file is:** the Teamlead's plan for one sprint: goal, lanes,
-> mode per lane, and the task list each lane owns.
+> mode per lane, and the task list each lane owns. The task blocks here are
+> canonical; `.claude/workflows/sprint.js` carries the expanded, self-contained
+> version of each one that an agent actually receives.
 
-- **Goal (owner's language):** a user can sign up, log in and come back to an
-  empty "My CVs" page — and the whole thing starts with `docker compose up`.
-- **Backlog items:** B-001 … B-006
-- **Contracts frozen:** C-000, C-001, C-002
-- **Base ref:** `main` @ initial commit (empty tree + framework)
-- **Dates:** start → target: one sprint run (~90 min of workflow wall-clock)
+- **Goal (owner's language):** the whole product — sign in, feed it a CV or
+  free text, get a grounded draft with questions, edit it, download an A4 PDF.
+- **Backlog items:** B-001 … B-020 (B-021…023 parked)
+- **Contracts frozen:** C-000 … C-013 — all of them, before wave A starts.
+  This is what buys the parallelism: six lanes code against contracts, not
+  against each other's implementations.
+- **Base ref:** moves with the foundation. `check-lane.sh` diffs against the
+  commit at the end of lane 01, not against the sprint's first commit —
+  orchestrator-level commits (board, ADRs, doc fixes) sit in between and are
+  not lane work.
+- **Dates:** re-planned 2026-10-28; ~4h15m of workflow wall-clock remaining.
+
+## Why this shape (ADR-011)
+
+The original three sequential sprints spent most of their time waiting. Only
+one chain is genuinely sequential — **gateway → extract → compose → verifier**
+— and it sets the floor. Everything else is independent once the contracts are
+frozen, so it runs beside that chain.
+
+Worktrees are not available at lane granularity: the isolation flag wraps a
+single agent, and a lane is three agents that must share one tree. Lane
+isolation is therefore bought with **strictly disjoint file areas**, and the
+two files that would otherwise be shared — `api/src/server.ts` and the
+cross-lane TypeScript interfaces — are created up front by T-07 so that no
+lane ever edits a file another lane owns.
 
 ## Lanes
 
-| Lane | Team/agent set | Mode (A disjoint / B worktree) | Files area | Tasks |
-|---|---|---|---|---|
-| 01 | tests+dev+review | A | `package.json`, `tsconfig*`, `.eslintrc*`, `docker-compose.yml`, `api/prisma/**`, `api/src/db/**`, `.github/**`, `framework/scripts/gate.config.sh` | T-01, T-02 |
-| 02 | tests+dev+review | A | `api/src/core/auth/**`, `api/src/routes/auth.ts`, `api/src/http/**`, `tests/contract/auth*` | T-03, T-04 |
-| 03 | tests+dev+review | A | `web/**` | T-05, T-06 |
+### Wave 0 — foundation (blocking, lane 01)
 
-**Lane 01 is a blocking prologue, not a parallel lane.** Nothing can be
-typechecked, tested or migrated before the workspace and the schema exist, so
-T-01 and T-02 run to completion first; lanes 02 and 03 start only afterwards
-and then run in parallel. This is a dependency, not a change of plan — the
-board already had T-03 and T-05 waiting on lane 01.
+| Lane | Mode | Files area | Tasks |
+|---|---|---|---|
+| 01 | A | root configs, `api/prisma/**`, `api/src/db/**`, `api/src/env.ts`, `api/src/server.ts`, `api/src/routes/*.ts` (empty plugins), `api/src/core/*/types.ts`, `docker-compose.yml`, Dockerfiles | T-01, T-02, T-07 |
 
-Lane 02 and lane 03 both depend on C-001/C-002, which are **frozen** — lane 03
-codes against the contract, not against lane 02's implementation, so they run
-in parallel (Mode A, no worktrees needed: the file areas are disjoint).
+### Wave A — six lanes in parallel
 
-Lane 01's T-01 installs **every** dependency from architecture.md §1 for both
-workspaces, and T-02 creates `api/prisma/schema.prisma` covering **all six
-tables** (not only sprint 1's two). Both are deliberate: `package.json` and the
-migration directory then have exactly one owner for the whole project, and no
-later lane has to touch them.
+| Lane | Mode | Files area | Tasks |
+|---|---|---|---|
+| 02 | A | `api/src/core/auth/**`, `api/src/routes/auth.ts`, `api/src/http/**` | T-03, T-04 |
+| 03 | A | `web/**` | T-05, T-06, T-13, T-14 |
+| 04 | A | `api/src/core/generation/**`, `api/src/llm/**`, `tests/fixtures/llm/**` | T-09, T-10, T-11, T-12 |
+| 05 | A | `api/src/core/intake/**`, `api/src/core/jobs/**`, `api/src/routes/cvs-create.ts`, `api/src/routes/jobs.ts` | T-15, T-16 |
+| 06 | A | `api/src/core/cv/**`, `api/src/core/export/**`, `api/src/routes/cvs.ts`, `api/src/routes/export.ts` | T-17, T-18, T-19 |
+
+Lane 04 is the critical chain and sets the wave's wall-clock. Lane 05's job
+runner calls lane 04's pipeline **through the C-012 interface from T-07** — it
+never imports lane 04's implementation, which is why the two can run at once.
+
+### Wave B — after wave A is integrated
+
+| Lane | Mode | Files area | Tasks |
+|---|---|---|---|
+| 07 | A | `api/src/core/cv/answer*`, `api/src/routes/cvs.ts` | T-20 |
+| 08 | A | `api/src/http/**`, `api/src/routes/**` (cross-cutting only) | T-21 |
+| 09 | A | `web/src/features/cv/**` | T-22 |
+| 10 | A | `README.md` | T-23 |
 
 ## Status board
 
-Statuses: `todo → red (tests written) → green (code passes) → done (review
-approved)`, or `blocked(<reason>)`.
+Statuses: `todo → red → green → done`, or `blocked(<reason>)`.
 
-| Task | Lane | Depends on | Status |
-|---|---|---|---|
-| T-01 | 01 | — | green (code passes) |
-| T-02 | 01 | T-01 | todo |
-| T-03 | 02 | T-02 | todo |
-| T-04 | 02 | T-03 | todo |
-| T-05 | 03 | T-01 | todo |
-| T-06 | 03 | T-05 | todo |
+| Task | Lane | Wave | Depends on | Issue | Status |
+|---|---|---|---|---|---|
+| T-01 | 01 | 0 | — | CVB-1 | green — review returned a fix-list, reopened |
+| T-02 | 01 | 0 | T-01 | CVB-2 | red (tests written, code pending) |
+| T-07 | 01 | 0 | T-02 | CVB-24 | todo |
+| T-03 | 02 | A | T-07 | CVB-3 | todo |
+| T-04 | 02 | A | T-03 | CVB-4 | todo |
+| T-05 | 03 | A | T-07 | CVB-5 | todo |
+| T-06 | 03 | A | T-05 | CVB-6 | todo |
+| T-13 | 03 | A | T-06 | CVB-13 | todo |
+| T-14 | 03 | A | T-13 | CVB-14 | todo |
+| T-09 | 04 | A | T-07 | CVB-9 | todo |
+| T-10 | 04 | A | T-09 | CVB-10 | todo |
+| T-11 | 04 | A | T-10 | CVB-11 | todo |
+| T-12 | 04 | A | T-11 | CVB-12 | todo |
+| T-15 | 05 | A | T-07 | CVB-7 | todo |
+| T-16 | 05 | A | T-15 | CVB-8 | todo |
+| T-17 | 06 | A | T-07 | CVB-15 | todo |
+| T-18 | 06 | A | T-17 | CVB-16 | todo |
+| T-19 | 06 | A | T-17 | CVB-18 | todo |
+| T-20 | 07 | B | T-12, T-17 | CVB-17 | todo |
+| T-21 | 08 | B | wave A | CVB-19 | todo |
+| T-22 | 09 | B | T-17, T-14 | CVB-15 | todo |
+| T-23 | 10 | B | wave A | CVB-20 | todo |
 
 ## Tasks
 
-### T-01 Repo scaffold and the gate  (lane 01, size ~2h)
+### T-01 Repo scaffold and the gate  (lane 01) — REOPENED
+- Criteria: the original B-001 criteria, plus the reviewer's blocking
+  fix-list: api runtime dependencies are declared and in the lockfile, the
+  stray root `tsconfig.json` is resolved, `@types/node` is pinned to 22.x, and
+  the four toolchain entries added to architecture.md §1 by ADR-010 are
+  installed (ESLint + typescript-eslint, happy-dom, @vitejs/plugin-react).
+  `lint` becomes a real linter and the web `build` produces a bundle.
+- Files: root configs, `api/package.json`, `web/package.json`, lockfile.
 
-- Criteria (B-001, spec §4):
-  - npm workspaces `api` and `web`; root scripts `typecheck`, `lint`, `test`,
-    `build` each fan out to both workspaces and exit non-zero on failure.
-  - `framework/scripts/gate.sh` passes on the empty tree; `.github/workflows/ci.yml`
-    runs the same script and is green.
-  - One placeholder test per workspace, asserting a real value (not `expect(true)`).
-- Depends on: —
-- Files: `package.json`, `tsconfig.base.json`, `api/`, `web/` scaffolds,
-  `.eslintrc.cjs`, `vitest.config.ts`, `.github/workflows/ci.yml`
-- Read: `framework/docs/architecture.md` §1, `framework/docs/testing-strategy.md` §Commands,
-  `framework/scripts/gate.config.sh`
-- Out of scope: any feature code, any dependency not in architecture.md §1.
+### T-02 Compose stack and the full schema  (lane 01)
+- Criteria: B-002; the schema covers **seven** tables per database-schema.md
+  (six entities plus `sessions`), every listed index including the FK indexes
+  added on 2026-10-28 and the two partial ones as raw SQL. Health per C-013.
+- Files: `docker-compose.yml`, Dockerfiles, `.env.example`, `api/prisma/**`,
+  `api/src/db/**`, `api/src/env.ts`, `api/src/server.ts`, `api/src/routes/health.ts`.
 
-### T-02 Compose stack and the full schema  (lane 01, size ~2h)
+### T-07 Route registry and cross-lane interfaces  (lane 01)
+- Criteria: `api/src/server.ts` registers five route plugins —
+  `auth.ts`, `cvs-create.ts`, `jobs.ts`, `cvs.ts`, `export.ts` — each of which
+  exists as an **empty, registered, typechecking** Fastify plugin owned later
+  by exactly one lane. The C-012 pipeline interface and the C-006 CV DTO types
+  exist as declaration-only modules with no implementation. The gate is green
+  on the empty plugins. This task exists so that no wave-A lane edits a file
+  another lane owns.
+- Files: `api/src/server.ts`, `api/src/routes/*.ts`,
+  `api/src/core/generation/types.ts`, `api/src/core/cv/types.ts`.
 
-- Criteria (B-002, database-schema.md):
-  - `docker compose up` from a clean clone starts `db`, `api`, `web`; the api
-    container runs `prisma migrate deploy` before listening; the printed URL
-    serves the web app.
-  - `GET /api/health` returns `{ ok: true, db: true }`.
-  - Prisma schema and the initial migration define all six tables with the
-    columns, checks and indexes in `framework/docs/database-schema.md`,
-    including the two **partial** indexes on `generation_jobs` (raw SQL in the
-    migration — Prisma cannot express them).
-  - The app boots with `ANTHROPIC_API_KEY` unset (F-010).
-- Depends on: T-01
-- Files: `docker-compose.yml`, `api/Dockerfile`, `web/Dockerfile`,
-  `.env.example`, `api/prisma/**`, `api/src/db/**`, `api/src/routes/health.ts`
-- Read: `framework/docs/database-schema.md` (whole), `framework/docs/architecture.md` §5
-- Out of scope: auth, CV, jobs — tables only, no services.
+### T-03 / T-04 — auth (lane 02)
+Unchanged from the original plan: registration; then login, session cookie,
+`requireUser`, `assertOwnership`. Criteria in spec.md F-001 and contracts
+C-001, C-002.
 
-### T-03 Register  (lane 02, size ~2h)
+### T-05 / T-06 / T-13 / T-14 — web (lane 03)
+Shell and API client; auth screens; intake form (F-002); progress view with
+reload-safe resume (F-003). Criteria in spec.md §3.1, §3.2, §3.3, §3.9.
 
-- Criteria (F-001, C-001): all seven F-001 criteria that concern registration —
-  argon2id hash, ≥10-char password, field-level 400s, 409 on duplicate with a
-  generic message and no timing tell, no plaintext in any log.
-- Depends on: T-02 (needs the workspace, the gate and the schema).
-- Files: `api/src/core/auth/**`, `api/src/routes/auth.ts`, `api/src/http/errors.ts`,
-  `tests/contract/auth-register.test.ts`
-- Read: `framework/docs/api-contracts.md` C-000, C-001; `framework/docs/domain-model.md`
-  User/Session; `.claude/rules/security.md`
-- Test command for THIS lane: `npm -w api run test -- --run src/core/auth tests/contract/auth`
-- Out of scope: login, sessions, anything under `web/`.
+### T-09 / T-10 / T-11 / T-12 — generation (lane 04, critical chain)
+Anthropic gateway (C-012, F-010); extract stage with verbatim quotes; compose
+stage from facts only; deterministic verifier plus questions and the five
+adversarial golden fixtures. Criteria in spec.md §3.4, §3.5 and ADR-002/006.
 
-### T-04 Login, session, ownership guard  (lane 02, size ~2h)
+### T-15 / T-16 — intake and jobs (lane 05)
+PDF and free-text intake with every rejection case (C-003, C-004); durable job
+table, lease loop, reclaim, timeout, status endpoint (C-005, ADR-003/004).
 
-- Criteria (F-001, C-002): cookie attributes exactly as specified, identical
-  401 message for unknown email and wrong password, logout idempotent, `/me`,
-  `requireUser` hook returning 401 before any work, and `assertOwnership`
-  throwing `NotFound` (never `Forbidden`) — with a test proving another user's
-  id yields 404.
-- Depends on: T-03
-- Files: as T-03 plus `api/src/http/requireUser.ts`,
-  `tests/contract/auth-session.test.ts`
-- Read: same as T-03, plus ADR-007
-- Out of scope: rate limiting (B-019, sprint 3).
+### T-17 / T-18 / T-19 — CV API and export (lane 06)
+Read/list/delete (C-006, C-007); PATCH with optimistic concurrency and
+`userEdited` protection (C-008); A4 PDF with a real text layer (C-011, ADR-005).
 
-### T-05 Web shell  (lane 03, size ~2h)
-
-- Criteria (B-005, F-009):
-  - Vite + React + TanStack Query app; router with a public and a protected
-    branch; a typed API client that parses the C-000 error envelope and
-    surfaces `message` to the UI.
-  - Design tokens from `framework/docs/design/design.json`; mobile-first
-    layout: no horizontal scroll at 375×812, tap targets ≥44 px.
-  - One smoke render test per screen.
-- Depends on: T-01
-- Files: `web/**`
-- Read: `framework/docs/api-contracts.md` C-000; `framework/docs/design/README.md`;
-  `framework/docs/spec.md` §3.9
-- Out of scope: any api file; intake and editor screens (sprint 2/3).
-
-### T-06 Auth screens  (lane 03, size ~2h)
-
-- Criteria (F-001 from the user's side): sign-up and log-in forms with
-  inline field errors from `details`, a protected `/cvs` page showing an
-  empty state, session restored from `GET /api/auth/me` on mount so a reload
-  stays signed in, logout returns to the public branch.
-- Depends on: T-05
-- Files: `web/src/features/auth/**`, `web/src/routes/**`
-- Read: `framework/docs/api-contracts.md` C-001, C-002
-- Out of scope: "remember me", password strength meters, the CV list's content.
+### Wave B
+T-20 answer → user fact → section-scoped recompose (C-009); T-21 hardening —
+rate limits, error envelope everywhere, LLM degradation (F-010); T-22 editor UI
+with inline questions (F-006); T-23 README (B-020).
 
 ## Risks / notes
 
-- **E-001 applies:** while lanes run in parallel, each lane uses its own
-  scoped test command from the table above, never the root `npm test`.
-- T-02 writes the schema for tables sprint 2 will own. That is deliberate
-  (one migration owner for the project) and must be stated in the lane report
-  so sprint 2's Teamlead does not re-plan it.
-- Likeliest escalation: the partial unique index in the Prisma migration
-  (handwritten SQL). If Haiku fails twice, escalate per model-routing rather
-  than letting it invent a Prisma feature that does not exist.
-- Grep `framework/knowledge/errors.md` for: `prisma`, `docker`, `argon2`,
-  `cookie`, `vitest`.
+- **E-001 applies**: lanes use their own scoped test command, never root `npm test`.
+- Six lanes against a 9-agent concurrency cap means wave A runs ~6 agents at
+  once with headroom; it is not oversubscribed.
+- Lane 04's verifier (T-12) is the likeliest escalation in the project. It is
+  deterministic code with adversarial fixtures — if Haiku fails it twice, let
+  it go to Sonnet rather than re-briefing a third time.
+- Lane 05 must not import from `api/src/core/generation/` except `types.ts`.
+  The reviewer checks this explicitly; it is the seam the whole wave rests on.

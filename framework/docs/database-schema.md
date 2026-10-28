@@ -19,11 +19,18 @@
 - Naming: `snake_case` tables and columns, plural tables.
 - No soft delete: `DELETE /api/cvs/:id` really deletes, by `ON DELETE CASCADE`
   from `cvs`.
-- Every foreign key is indexed; every index below names the query it serves.
+- Every foreign key is indexed — PostgreSQL does not do this automatically, and
+  an unindexed FK turns every `ON DELETE CASCADE` into a sequential scan. Where
+  a composite index below already starts with the FK column, that index counts
+  and no second one is created. Every index names the query or cascade it serves.
 - Raw SQL is allowed in exactly one place — the job lease (`FOR UPDATE SKIP
   LOCKED`), which Prisma cannot express; everywhere else the typed client.
 
 ## Tables
+
+Seven tables. `framework/docs/domain-model.md` describes six *entities*: the
+seventh table, `sessions`, belongs to the User entity and has no separate
+business meaning.
 
 ## users  (owner: core/auth)
 
@@ -38,7 +45,7 @@
   `token_hash text not null` — sha256 of the cookie value, `expires_at`,
   `created_at`.
 - Indexes: `unique(token_hash)` — the per-request session lookup;
-  `(expires_at)` — expiry sweep.
+  `(expires_at)` — expiry sweep; `(user_id)` — cascade on user delete.
 - Written by: core/auth; read by: core/auth.
 
 ## cvs  (owner: core/cv)
@@ -60,7 +67,8 @@
   `kind text not null`, `text text not null`, `source_quote text not null
   default ''`, `source text not null check in ('document','user')`,
   `created_at`.
-- Indexes: `(cv_id)` — the verifier loads every fact of a CV at once.
+- Indexes: `(cv_id)` — the verifier loads every fact of a CV at once, and the
+  cascade from `cvs`.
 - Written by: core/generation (document facts), core/cv (user facts from
   answers and edits); read by: core/generation (verifier), api (C-006).
 
@@ -71,9 +79,10 @@
   `path text not null`, `order_index int not null`, `data jsonb not null`,
   `fact_ids uuid[] not null default '{}'`, `relevance numeric(4,3)`,
   `user_edited boolean not null default false`, `created_at`, `updated_at`.
-- Indexes: `(cv_id, kind, order_index)` — rendering a CV in order;
-  `unique(cv_id, path)` — the path is the addressing scheme questions and
-  patches use, so it must be unique per CV.
+- Indexes: `(cv_id, kind, order_index)` — rendering a CV in order, and the
+  cascade from `cvs` (it leads with `cv_id`); `unique(cv_id, path)` — the path
+  is the addressing scheme questions and patches use, so it must be unique per
+  CV; `(parent_id)` — a bullet's cascade when its experience entry is deleted.
 - Note: `fact_ids` is an array rather than a join table on purpose — items are
   always loaded whole with their CV, never queried by fact; a join table would
   add a migration and a query for no read we actually perform.
@@ -88,7 +97,8 @@
   `answer text`, `answered_at`, `follow_up_of_id uuid fk→questions`,
   `priority int not null default 100`, `created_at`.
 - Indexes: `(cv_id, status, priority)` — "open questions for this CV, most
-  important first" is the only way this table is read.
+  important first" is the only way this table is read, and it leads with
+  `cv_id` so it serves the cascade too; `(follow_up_of_id)` — self-FK cascade.
 - Written by: core/generation (raise), core/cv (answer); read by: api.
 
 ## generation_jobs  (owner: core/jobs)
@@ -104,5 +114,8 @@
   - `(status, leased_until) where status in ('queued','running')` — the lease
     query (`FOR UPDATE SKIP LOCKED`) and the dead-lease reclaim.
   - `unique(cv_id) where status in ('queued','running')` — enforces "at most
-    one job in flight per CV", which is what C-010's 409 relies on.
+    one job in flight per CV", which is what C-010's 409 relies on. It is
+    partial, so it does NOT serve the cascade from `cvs`; `(cv_id)` is created
+    separately for that.
+  - `(cv_id)` — cascade from `cvs`; `(user_id)` — cascade from `users`.
 - Written by: core/jobs; read by: api (C-005), core/jobs.

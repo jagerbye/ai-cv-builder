@@ -164,6 +164,16 @@ Format:
 - Errors: `404 NOT_FOUND`; `409 CONFLICT` (CV not in state `ready`)
 - Status: **frozen (sprint 3)**
 
+## C-013 Health (owner: api, consumers: compose healthcheck, tests)
+
+- `GET /api/health` — no session required.
+- Response `200`: `{ ok: true, db: true }` when a trivial query against
+  PostgreSQL succeeds.
+- Response `503`: `{ ok: false, db: false }` when it does not. The body carries
+  no driver message, no connection string and no credentials — the reason goes
+  to the log only.
+- Status: **frozen (sprint 1)**
+
 ## C-012 Internal: the generation pipeline (owner: core/generation, consumers: core/jobs, tests)
 
 Module-level contract — the seam the LLM is mocked at, so the whole suite runs

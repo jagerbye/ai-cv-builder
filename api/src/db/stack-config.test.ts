@@ -75,8 +75,18 @@ describe('.env.example', () => {
     expect(keys).toContain('DATABASE_URL');
   });
 
+  // WEB_PORT is the host port compose maps to the web container (vite's 5173
+  // is routinely taken on dev machines). It is the only non-secret allowed in
+  // here; add a key to this list only together with its compose/runbook change.
   it('lists nothing else', () => {
-    expect(keys.sort()).toEqual(['ANTHROPIC_API_KEY', 'DATABASE_URL']);
+    expect(keys.sort()).toEqual(['ANTHROPIC_API_KEY', 'DATABASE_URL', 'WEB_PORT']);
+  });
+
+  it('WEB_PORT is a plain port number that docker-compose.yml actually consumes', () => {
+    const line = env.split('\n').find((l) => l.startsWith('WEB_PORT='));
+    expect(line).toBeDefined();
+    expect(line!.slice('WEB_PORT='.length).trim()).toMatch(/^\d{2,5}$/);
+    expect(read('docker-compose.yml')).toMatch(/\$\{WEB_PORT(:-\d+)?\}/);
   });
 
   it('holds no secret value for ANTHROPIC_API_KEY (empty or placeholder only)', () => {

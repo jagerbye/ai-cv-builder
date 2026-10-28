@@ -4,15 +4,49 @@
 //     routes: RouteEntry[]                         one entry per feature
 //     resolveRoute(pathname): RouteEntry | undefined
 //   RouteEntry = { feature, path, branch: 'public' | 'protected', component }
-//   web/src/features/<feature>/route.tsx default-exports an EMPTY placeholder
-//   component (renders nothing). Later tasks fill these modules; the router
-//   itself is never edited again.
-import { describe, it, expect, afterEach } from 'vitest';
+//   web/src/features/<feature>/route.tsx default-exports the feature's screen.
+//   T-05 shipped these as empty placeholders; T-06/T-13/T-14 filled them in,
+//   so the registry is now proven by rendering the real screens (see the
+//   SPRINT-001 integration notes). The router itself is never edited again.
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
+import type { ComponentType } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const FEATURES = ['auth', 'intake', 'generation', 'cv'] as const;
+type Feature = (typeof FEATURES)[number];
 
-const sample = (path: string) => path.replace(/:[A-Za-z_]+/g, 'test-id');
+// A concrete pathname for a pattern: `:param` and a trailing `*` become a segment.
+const sample = (path: string) => path.replace(/:[A-Za-z_]+/g, 'test-id').replace(/\*$/, 'test-id');
+
+// What each real screen must put on the page when mounted at its own path.
+// Structural markers, not copy: the feature suites own the wording.
+const SCREEN_MARKER: Record<Feature, string> = {
+  auth: 'form',
+  intake: 'form',
+  generation: '[role="status"], [role="alert"]',
+  cv: 'h1',
+};
+
+// Screens may call the API on mount; the network is the only external and is
+// stubbed with the C-000 NOT_FOUND envelope so nothing leaves the process.
+function stubNetwork() {
+  const body = JSON.stringify({ error: { code: 'NOT_FOUND', message: 'No such route.' } });
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response(body, { status: 404, headers: { 'content-type': 'application/json' } })),
+  );
+}
+
+function mountAt(pathname: string, Component: ComponentType) {
+  window.history.replaceState({}, '', pathname);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
+      <Component />
+    </QueryClientProvider>,
+  );
+}
 
 async function loadRegistry() {
   return await import('./routes');
@@ -31,7 +65,11 @@ async function loadFeatureModule(feature: (typeof FEATURES)[number]) {
   }
 }
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  window.history.replaceState({}, '', '/');
+});
 
 describe('web route registry (T-05, CVB-5)', () => {
   it('declares one route entry per feature: auth, intake, generation, cv', async () => {
@@ -70,12 +108,20 @@ describe('web route registry (T-05, CVB-5)', () => {
     expect(entry?.component).toBe(mod.default);
   });
 
-  it.each(FEATURES)('the %s feature module is an empty placeholder that renders nothing', async (feature) => {
-    const mod = await loadFeatureModule(feature);
-    const Component = mod.default as () => null;
-    const { container } = render(<Component />);
-    expect(container.innerHTML).toBe('');
-    cleanup();
+  it.each(FEATURES)('resolving a %s path yields a component that renders the real %s screen', async (feature) => {
+    stubNetwork();
+    const { routes, resolveRoute } = await loadRegistry();
+    const entry = routes.find((r: { feature: string }) => r.feature === feature);
+    expect(entry).toBeDefined();
+    const pathname = sample(entry!.path);
+    const hit = resolveRoute(pathname);
+    expect(hit?.component, `resolving ${pathname}`).toBe(entry!.component);
+
+    const { container } = mountAt(pathname, hit!.component);
+    // Not the T-05 placeholder any more: a real screen with its own landmark.
+    expect(container.innerHTML).not.toBe('');
+    expect(container.textContent?.trim().length).toBeGreaterThan(0);
+    expect(container.querySelector(SCREEN_MARKER[feature]), `${feature} screen marker`).not.toBeNull();
   });
 
   it('resolves every declared route path to its own feature entry', async () => {

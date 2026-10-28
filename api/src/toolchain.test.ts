@@ -42,13 +42,14 @@ describe('api runtime dependencies (B-001)', () => {
   });
 });
 
-describe('api toolchain (ADR-010)', () => {
-  it('pins @types/node to an exact 22.x version in the declaration', () => {
-    expect(pkg.devDependencies?.['@types/node']).toMatch(/^22\.\d+\.\d+$/);
+describe('api toolchain (ADR-010, ADR-012)', () => {
+  // ADR-012 moved the project to Node 24 LTS; @types/node tracks it (24.x exact).
+  it('pins @types/node to an exact 24.x version in the declaration', () => {
+    expect(pkg.devDependencies?.['@types/node']).toMatch(/^24\.\d+\.\d+$/);
   });
 
-  it('resolves @types/node from api to a 22.x install (not 26.x)', () => {
-    expect(installedVersion('@types/node')).toMatch(/^22\./);
+  it('resolves @types/node from api to a 24.x install (not 22.x or 26.x)', () => {
+    expect(installedVersion('@types/node')).toMatch(/^24\./);
   });
 
   it('lint script is ESLint with --max-warnings 0, not tsc', () => {

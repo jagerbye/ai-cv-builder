@@ -30,6 +30,7 @@ entry.
 - **Root cause:** the job queue is global by design (claimNext takes any queued row), so committed rows from another file leak in. Either side can win: a claim picks a boundary row, or a boundary insert hits a row jobs.test just deleted.
 - **Fix:** the partial-index cases create their rows inside a transaction that always rolls back, so nothing is committed. Verified 8 runs in a row.
 - **Prevention:** a test file that writes to a shared queue table commits no non-terminal rows, or the suite runs with fileParallelism off. Open: vitest include/fileParallelism is a Teamlead decision (outside the lane allowlist).
+- **Recurrence (SPRINT-001 integration, 2026-10-28):** tests/contract/cvs-create.test.ts (T-15) commits queued jobs through the real POST /api/cvs; in the union run jobs.test.ts's reclaim worker claimed one of them ("expected <uuid> to be <uuid>" at jobs.test.ts:272). Lane gates ran the two suites separately, so only the union could show it. Fix: cvs-create now holds the job-suite lock too (fourth holder). Rule of thumb: any suite that commits a queued/running generation_jobs row takes acquireJobSuiteLock().
 
 ## E-001 union test run red while parallel lanes in flight (missing-module / foreign-suite failures)  (2026-10-23)
 
@@ -53,3 +54,6 @@ entry.
 
 ## auth / errors (T-04)
 - An `instanceof ApiError` check fails when the same error class is loaded twice (vitest `vi.resetModules()` plus a static import). The envelope then answers 500 for a deliberate 401 or 404, and the symptom reads as "expected 500 to be 401". Fix: match ApiError by shape (name, numeric status, enum code) as well as instanceof (http/errors.ts `isApiErrorLike`).
+
+## toolchain pins (T-24)
+- A version pin asserted in a test is a second place the version lives: an ADR that changes the pin (ADR-012, Node 22 to 24) must change the test in the same breath, or the union gate goes red on a correct change (api/src/toolchain.test.ts asserted @types/node 22.x after T-03 repinned it to 24.19.2).

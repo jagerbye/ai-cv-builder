@@ -37,6 +37,11 @@ function questionText(path: string, reason: QuestionReason): string {
   return 'Which source fact supports this item? The drafted text is not confirmed by the cited source.';
 }
 
+// Co-occurrence (ADR-013 amendment): recombination is defeated by one cited fact that holds both halves of a
+// pair, not by per-field checks over a set. Each predicate is evaluated against a single fact's text.
+const someFactHolds = (facts: readonly Fact[], test: (text: string) => boolean): boolean =>
+  facts.some((f) => test(f.text));
+
 // questions carry reason and priority (PlannedQuestion), a narrowing of the frozen QuestionDraft[].
 export interface PlannedVerification extends VerificationResult {
   questions: PlannedQuestion[];
@@ -81,7 +86,18 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
       fails.push({ path: `${p}.period`, detail: `period "${edu.period}" not in cited facts` });
     }
     if (fails.length === 0) {
-      accepted.education.push({ ...edu, factIds: [...edu.factIds] });
+      const paired = someFactHolds(resolved.facts, (t) => containsText(t, edu.institution) && containsPeriod(t, edu.period));
+      if (paired) {
+        accepted.education.push({ ...edu, factIds: [...edu.factIds] });
+        return;
+      }
+      dropped.push({ path: p, reason: `no cited fact names both institution "${edu.institution}" and period "${edu.period}"` });
+      candidates.push({
+        path: `${p}.institution`,
+        text: 'Which school or university did you attend, and in which years? The cited facts name them separately.',
+        reason: 'missing',
+        priority: 1,
+      });
       return;
     }
     dropped.push({ path: p, reason: fails.map((f) => f.detail).join('; ') });
@@ -125,8 +141,22 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
       return;
     }
 
-    // A title outside the entry's facts keeps the entry and asks which title was meant (vague, priority 3).
-    if (!containsText(citedText, entry.role)) {
+    // Recombination: one cited fact must hold both the employer and the period (ADR-013). Two real facts about
+    // two different jobs fail here even though each field occurs somewhere in the citation.
+    if (!someFactHolds(resolved.facts, (t) => containsText(t, entry.employer) && containsPeriod(t, entry.period))) {
+      dropped.push({ path: p, reason: `no cited fact names both employer "${entry.employer}" and period "${entry.period}"` });
+      candidates.push({
+        path: `${p}.employer`,
+        text: 'Which employer did this role happen at, and during which years? The cited facts name them separately.',
+        reason: 'missing',
+        priority: 1,
+      });
+      return;
+    }
+
+    // The title must occur in a cited fact that also names the employer. Otherwise the entry is kept and the
+    // title is asked about (vague, priority 3): a source often puts employer and title in separate sentences.
+    if (!someFactHolds(resolved.facts, (t) => containsText(t, entry.role) && containsText(t, entry.employer))) {
       candidates.push({ path: `${p}.role`, text: questionText(`${p}.role`, 'vague'), reason: 'vague', priority: 3 });
     }
 

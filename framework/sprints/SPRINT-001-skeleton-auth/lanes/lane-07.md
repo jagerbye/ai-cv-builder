@@ -169,3 +169,7 @@ Non-blocking:
 - Why red 3 stays red: with a per-field check over the entry's cited facts, citing both f1 and f2 makes employer, role and period each occur in some cited fact, so {Acme Ltd, Backend engineer, 2019} is still accepted. ADR-013 literally specifies the per-field rule, so the ADR and the acceptance example conflict. The fix needs a rule that employer and period co-occur in ONE cited fact (or equivalent). That is an architect choice; not made here.
 - golden: verify.golden 30/30 green. prompt-injection output unchanged.
 - gate: lane-scoped gate RED (lane-test FAILED on red 3 only).
+
+### T-12 final pass — co-occurrence (developer)
+- code: verify.ts now requires one cited fact holding BOTH employer and period (experience) or institution and period (education); otherwise the entry is dropped with a priority-1 question. The role must occur in a cited fact that also names the employer, else the entry is kept with a vague question. Bullets unchanged (ADR-002). No clock, randomness, or LLM. types.ts and decisions.md untouched.
+- GREEN: `npm -w api run test -- --run src/core/generation/verify src/core/generation/questions` 68/68; gate.sh lane-scoped all green.

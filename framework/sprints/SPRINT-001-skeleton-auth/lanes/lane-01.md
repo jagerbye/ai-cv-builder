@@ -319,3 +319,12 @@ blocking:
 - non-blocking: the register regex does not check that the calls sit inside the `prefix: '/api'` block. A call outside it would pass. Consider a structural check later.
 - Orchestrator fix-list: (a) commit T-01..T-06, or supply a per-lane base; (b) stage or `git add -N` the T-07 files, or change check-lane to include untracked files; (c) add lane-01.md and plan.md to the lane allowlist as process files; (d) re-run check-lane, then send T-07 for re-review.
 - nothing committed. board.md and plan.md not touched by this review.
+
+## T-24 Align the toolchain pin test with ADR-012
+- code (developer): `api/src/toolchain.test.ts` now asserts @types/node as an exact 24.x pin in `devDependencies` and as the installed 24.x version (was 22.x; ADR-012 moved the runtime to Node 24 LTS, T-03 pinned 24.19.2). The describe block cites ADR-010 and ADR-012. Still reads the real api/package.json and node_modules, nothing hard-coded to 24.19.2. Entry added to `framework/knowledge/errors.md`. GREEN: `npm -w api run test -- --run src/toolchain` 17/17; `GATE_LANE_TEST='npm -w api run test -- --run src/toolchain' bash framework/scripts/gate.sh` gate ✓ all green.
+- gates: typecheck n/a (lane-scoped gate) lint ✓ tests ✓
+- review (code-reviewer): pending
+- escalations: none
+- errors worth remembering: none new (the errors.md entry added is the lesson itself)
+- docs touched: framework/knowledge/errors.md (one entry, the pin-in-a-test lesson)
+- nothing committed.

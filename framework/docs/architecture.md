@@ -26,15 +26,26 @@
 | `happy-dom` | 15 | Vitest environment for web tests; lighter than jsdom and enough for Testing Library |
 | ESLint + `typescript-eslint` | 9 / 8 | `lint` in gate.config.sh must be a real linter; `tsc` with extra flags is a stand-in that silently passes style and correctness rules |
 | `@types/node` | **22.x exact** | the runtime is Node 22; a transitive 26.x types package type-checks against APIs the container does not have |
+| `@types/react`, `@types/react-dom` | 18.x | without them no `.tsx` type-checks, so the web app cannot mount at all |
+| `@testing-library/dom` | 10.x | a peer of `@testing-library/react`; listed because it installs either way and an unlisted dependency is an unreviewed one |
 | Docker Compose | v2 | the brief's only run target: `docker compose up` |
 
 Dependency budget is deliberate: every entry above is load-bearing. Adding one
 needs Teamlead approval in the lane report (`.claude/rules/coding-standards.md`).
 
-The last four rows were added on 2026-10-28 after T-01: the original list named
+The toolchain rows were added on 2026-10-28 after T-01: the original list named
 only runtime libraries, so the scaffold had no linter, no DOM test environment
-and no web bundler, and the developer had to improvise all three. A dependency
-list that omits the toolchain is an incomplete contract, not a lean one.
+and no web bundler, and the developer had to improvise all three. The React
+type packages were added on the second pass, when the same gap stopped the web
+entry point from being written. A dependency list that omits the toolchain is
+an incomplete contract, not a lean one — and "no new dependencies" is only a
+safe rule while the approved list is complete.
+
+**Install scripts.** npm 11 does not run a dependency's install script unless
+it is approved. `prisma`, `@prisma/client` and `esbuild` need theirs (client
+generation and the native binary), and they are approved: configure the
+allowance in the repo, do not work around it by vendoring or by skipping
+`prisma generate`.
 
 ## 2. Components
 

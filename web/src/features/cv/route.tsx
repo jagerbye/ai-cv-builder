@@ -1,4 +1,10 @@
-// Placeholder for the CV list and editor. Renders nothing until its task fills it.
+// CV list. Only the empty state exists so far; the list and editor are filled by their tasks.
 export default function CvRoute() {
-  return null;
+  return (
+    <section className="screen-message">
+      <h1>Your CVs</h1>
+      <p>You have no CVs yet.</p>
+      <a href="/cvs/new">Create your first CV</a>
+    </section>
+  );
 }

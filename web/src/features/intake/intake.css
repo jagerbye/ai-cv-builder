@@ -1,0 +1,129 @@
+/* Intake screen (T-13). Values come from tokens.css; mobile-first, one column. */
+
+.intake {
+  max-width: var(--space-form-max);
+  min-width: 0;
+}
+
+.intake-heading {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-h1-size);
+  line-height: var(--text-h1-line-height);
+  font-weight: var(--text-h1-weight);
+  letter-spacing: var(--text-h1-letter-spacing);
+}
+
+.intake-lead {
+  margin: 0 0 var(--space-6);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+  color: var(--color-text-secondary);
+}
+
+.intake-form {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.intake-tabs {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: var(--border-hairline) solid var(--color-border-subtle);
+}
+
+.intake-tab {
+  padding: 0 var(--space-4);
+  background: none;
+  border: none;
+  border-bottom: var(--border-emphasis) solid transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-line-height);
+  font-weight: var(--text-label-weight);
+  cursor: pointer;
+}
+
+.intake-tab[aria-selected="true"] {
+  color: var(--color-text-primary);
+  border-bottom-color: var(--color-accent-default);
+}
+
+.intake-panel,
+.intake-field {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.intake-label {
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-line-height);
+  font-weight: var(--text-label-weight);
+  color: var(--color-text-primary);
+}
+
+.intake-hint {
+  margin: 0;
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line-height);
+  color: var(--color-text-muted);
+}
+
+.intake-textarea,
+.intake-input {
+  width: 100%;
+  padding: var(--space-3);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: var(--border-hairline) solid var(--color-border-input);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+}
+
+.intake-textarea {
+  min-height: 12rem;
+  resize: vertical;
+}
+
+.intake-file {
+  font-size: var(--text-body-size);
+  color: var(--color-text-primary);
+}
+
+.intake-alert {
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-danger-bg);
+  border: var(--border-hairline) solid var(--color-danger-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-danger-text);
+}
+
+.intake-alert-message,
+.intake-alert-details {
+  margin: 0;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+}
+
+.intake-submit {
+  justify-self: start;
+  padding: 0 var(--space-6);
+  background: var(--color-accent-default);
+  color: var(--color-text-on-accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-label-size);
+  font-weight: var(--text-label-weight);
+  cursor: pointer;
+}
+
+.intake-submit:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
+
+.intake-submit:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}

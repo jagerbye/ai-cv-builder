@@ -199,3 +199,29 @@ Per task, appended by the agents in order:
 - docs touched: none
 - escalations: none
 - jira: CVB-7 — sync pending
+
+## T-16 Durable jobs (developer, CVB-8)
+- tests (test-engineer, earlier run): api/src/core/jobs/jobs.test.ts (18), boundaries.test.ts (6), tests/contract/jobs.test.ts (8). The test-engineer's RED step was not repeated in this pass: the tests and worker already existed on disk and pass, so no RED was produced here and no test file was rewritten.
+- code (developer): no production change in this pass. Verified the existing implementation against the brief: worker.ts (lease via SELECT ... FOR UPDATE SKIP LOCKED, leasedUntil renewal, one reclaim retry, attempt above 2 fails, 180 s budget to JOB_TIMEOUT, terminal rows immutable), partial unique index for one non-terminal job per CV (409 on regenerate), GET /api/jobs/:id with classified error and 404 for another user's job. The only import from core/generation is `import type` from types.ts (boundaries.test.ts enforces it). No broker or queue dependency.
+- GREEN: `npm -w api run test -- --run src/core/jobs tests/contract/jobs` → 3 files, 32/32 passed (unit 24, contract 8), stable across repeated runs. Dead-worker reclaim and restart mid-run are covered in jobs.test.ts.
+- gate: `GATE_LANE_TEST='npm -w api run test -- --run src/core/jobs tests/contract/jobs' bash framework/scripts/gate.sh` → "gate ✓ all green" (database, lint, lane-test).
+- errors worth remembering: none new.
+- docs touched: none (no behavior change; the docs-sync rule was not triggered).
+- escalations: none.
+- time: verification ~0:10.
+- jira: CVB-8 — sync pending
+
+## T-16 review (code-reviewer, CVB-8)
+- verdict: ok=true. No blocking findings.
+- gate (GATE_LANE_TEST='npm -w api run test -- --run src/core/jobs tests/contract/jobs' bash framework/scripts/gate.sh): exit 0, "gate ✓ all green", 32/32 (boundaries 6, jobs 18, contract jobs 8). Log: /private/tmp/claude-501/-Users-mike/57b5388a-556b-4c60-b3fd-9f6d6b43757c/scratchpad/gate-t16.log
+- check-lane (ee63f25, allowlist api/src/core/jobs/**, api/src/routes/jobs.ts, tests/contract/jobs.test.ts, lane-05.md, plan.md): no T-16 file is a violation. The reported hits are other lanes' tree changes (auth, cv, generation, intake, web, docs, framework files), not lane 05 work.
+- criteria -> code/tests: SKIP LOCKED claim (worker.ts claimNext; tests "two workers claiming at the same instant", "skips a row another transaction holds locked"); lease renewal (renew, "renews leasedUntil"); dead-worker reclaim once (jobs.test "reclaims a job whose lease expired"); attempt above 2 fails, pipeline not run ("an expired lease on a job already at attempt 2"); 180 s budget to JOB_TIMEOUT (budgetMs override, "exceeds its budget", late pipeline does not revive); restart mid-run with stale worker fenced out ("a worker that dies mid-run is replaced"); partial unique index in migration (generation_jobs_cv_id_in_flight_key) and boundaries test; GET /api/jobs/:id with classified error and 404 for other user (contract tests); terminal immutability ("a succeeded job is not run again").
+- stub-test lens: pass. Assertions check concrete status, attempt, errorCode, finishedAt equality after a stale write, and call sequences from the fake pipeline. A constant return cannot satisfy the reclaim, fence, or timeout cases.
+- seam: worker.ts imports only `import type` from core/generation/types.ts; no broker dependency (boundaries.test enforces both).
+- non-blocking notes:
+  - api/src/routes/jobs.ts carries a temporary copy of the sha256 session lookup from cvs-create.ts. The auth lane should replace both with one helper.
+  - The RED step is not reproducible from this pass (tests already pass on disk). The reviewer could not verify RED-first ordering. Record it in the lane report as a process gap, not a code defect.
+  - The 409 on regenerate is enforced by the index, but the route that maps it to 409 is outside this lane. Confirm it lands in the regenerate lane.
+- docs touched: none needed (no behavior change in this pass).
+- escalations: none.
+- jira: CVB-8 — sync pending

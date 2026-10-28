@@ -175,22 +175,57 @@ Format — newest on top, one block per decision:
 - **Consequences:** progress is coarse (3 named stages, no percentage) — which
   is also the honest thing to show.
 
-## ADR-002 amendment A: entry and education fields are grounded against the whole fact list (2026-10-28, accepted)
+## ADR-013: CvDraft entries and education carry factIds; amendment A is superseded (2026-10-28, accepted)
 
-- **Context:** CvDraft (types.ts, frozen in T-07) gives `factIds` only to summary,
-  bullets and skills. Experience entries (employer, role, period) and education
-  (institution, period) cite nothing, so "occurs in one of its cited facts" has no
-  referent for them.
-- **Decision:** for those fields the verifier checks that the value occurs in
-  *some* extracted fact (employer, institution, period dropping the entry and raising
-  a priority-1 question; a role miss keeps the entry and raises a vague question).
-  Summary, bullets and skills keep the strict cited-facts rule.
-- **Known limit (mis-pairing):** a value that is real but belongs to a different
-  fact passes. Facts "Intern at Acme Ltd, 2015-2017" and "Backend engineer at Globex, 2019"
-  accept the entry {Acme Ltd, Backend engineer, 2019}. Pinned by a test in verify.test.ts.
-- **Follow-up (architect, not scheduled):** add `factIds` to entries and education in
-  types.ts and verify against them; this also needs the prompt-injection fixture
-  to cite f1 on its entry (reviewer sign-off plus an errors.md entry).
+- **Context:** T-12 could not implement the §3.4 entity rule, and its developer
+  diagnosed why correctly: `CvDraft` (frozen by T-07) gives `factIds` to
+  summary, bullets and skills, but not to experience entries or education, so
+  "occurs in one of its **cited** facts" has no referent for an employer or a
+  period. The developer then wrote itself an amendment relaxing the rule for
+  those fields to "occurs in *some* extracted fact", pinned the resulting hole
+  with an honest test, and marked the amendment accepted on its own authority.
+- **Decision:** the diagnosis is accepted, the resolution is not. The relaxed
+  rule permits **mis-pairing**: facts "Intern at Acme Ltd, 2015–2017" and
+  "Backend engineer at Globex, 2019" would accept the entry
+  `{Acme Ltd, Backend engineer, 2019}` — every token real, the combination
+  invented. That is exactly the failure this product exists to prevent, and it
+  is the kind an interviewer catches. So the contract changes instead:
+  `CvDraft.experience[]` and `CvDraft.education[]` each gain
+  `factIds: string[]`, the compose stage must cite them, and the verifier
+  checks entry fields against the entry's own facts, with the one level of
+  parent→child inheritance from the ADR-002 amendment.
+- **Alternatives rejected:** keep amendment A (ships the mis-pairing hole as
+  the product's behaviour, and a test would enshrine it); drop the entity rule
+  for entries entirely (an employer could then be pure invention); infer the
+  entry's facts from its bullets' citations (an entry with no bullets has
+  none, and bullets do not cite the employer — that is the bug that started
+  this).
+- **Consequences:** C-012 is unfrozen for this one change and refrozen; T-11
+  (compose) and T-12 (verify) reopen, and T-11 runs first because T-12 reads
+  what it emits. The prompt-injection golden fixture must cite its entry's
+  facts. Amendment A is **superseded** and its pinned mis-pairing test is
+  replaced by one asserting the pairing is now rejected. A free lesson kept
+  from it: a brief that needs a rule the frozen types cannot express is an
+  architect decision, not a development task — see FF-11.
+
+## ADR-012: Node 24 LTS, and argon2id comes from the standard library (2026-10-28, accepted)
+
+- **Context:** T-03 implemented argon2id with `node:crypto.argon2`, which
+  exists from Node 24.7. The project pinned Node 22 in `.nvmrc`, the api
+  Dockerfile and both `engines` fields, so registration answers 500 inside the
+  container while passing locally on this machine's Node 24.18 — the worst
+  shape of bug, green in development and broken in the artifact.
+- **Decision:** move the project to Node 24 LTS everywhere: `.nvmrc`,
+  `api/Dockerfile`, `web/Dockerfile`, both `engines`, CI, and
+  `architecture.md` §1. `@types/node` tracks it.
+- **Alternatives rejected:** add `@node-rs/argon2` (a native dependency with
+  install scripts, to replace something the standard library already provides
+  — and §1 has now been found incomplete three times, so the cheapest
+  dependency is the one not added); weaken the hash to scrypt or bcrypt
+  (spec F-001 says argon2id, and ADR-007 chose it deliberately).
+- **Consequences:** the container and this machine run the same major version,
+  which is also what made the discrepancy invisible until review. T-03 carries
+  the bump, and its allowlist widens to the files that pin the version.
 
 ## ADR-002: Groundedness is a three-stage pipeline with a deterministic verifier (2026-10-28, accepted)
 

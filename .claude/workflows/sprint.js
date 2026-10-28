@@ -350,5 +350,5 @@ const waveA = await parallel([
   () => runLane('07', ['T-12']),
 ])
 
-const lanes = [foundation, ...waveA.filter(Boolean)]
+const lanes = waveA.filter(Boolean)  // wave 0 is merged at ee63f25 and is not part of this run
 return { lanes, needsAttention: lanes.flatMap(l => l.tasks.filter(t => !t.dev || !t.review)) }

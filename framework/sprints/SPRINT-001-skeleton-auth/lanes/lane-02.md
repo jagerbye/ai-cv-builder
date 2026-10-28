@@ -292,3 +292,36 @@ Per task, appended by the agents in order:
 - docs touched: none. C-002, ADR-007, F-001 and domain-model.md Session already describe this behaviour.
 - nothing committed
 - jira: CVB-4 — sync pending
+
+## T-04 final review (code-reviewer, CVB-4, third pass)
+- review (code-reviewer): fix-list, NOT approved (ok=false). Code meets C-002, ADR-007 and the 404 ownership proof. Blocking items are the allowlist and the deploy toolchain, not the T-04 logic.
+- gate, run by reviewer: `GATE_LANE_TEST='npm -w api run test -- --run src/core/auth tests/contract/auth-session' bash framework/scripts/gate.sh` → gate ✓ all green, exit 0. Lane command now runs 2 files, 36/36 (9 unit + 27 contract). The vitest include gap is closed, so the 404 ownership proof is in the lane gate.
+- check-lane.sh ee63f25 with the T-04 allowlist (+ lane log, plan.md): exit 1, 105 violations on the shared tree. None under api/src/core/auth, routes/auth.ts, http/requireUser.ts, http/errors.ts or tests/contract/auth-session.test.ts. Two violations are attributable to T-04 or its surroundings: `framework/knowledge/errors.md` (T-04's own errors entry, not on the allowlist) and `api/vitest.config.ts` (changed outside any lane log; origin unknown, Orchestrator to confirm).
+- stub lens: pass. Contract suite runs real Postgres and asserts exact status, bodies, cookie attributes (httpOnly, SameSite=Lax, Max-Age=2592000), sha256-only storage, row deletion on logout, 404 (not 403) for a foreign CV, and byte-identical 401 bodies for unknown email vs wrong password. A hard-coded happy value fails it.
+- adversarial pass on the code: hashToken is sha256 hex, the token is 32 random bytes, requireUser rejects malformed cookies before DB work, and expiresAt is checked in the query. logout is idempotent and clears the cookie on every path. Unknown email runs one argon2 verify against a cached dummy hash. No silent catch found.
+- fix-list:
+  1. BLOCKING (allowlist): add `framework/knowledge/errors.md` to the T-04 allowlist, or the Orchestrator confirms it as allowed. The DoD requires the errors entry, so the lane cannot be clean without it.
+  2. BLOCKING for deploy (not a T-04 code fix): argon2 on Node 22. `password.ts` needs node:crypto.argon2 (Node 24.7+), and `api/Dockerfile` is node:22-bookworm-slim, so login and register return 500 INTERNAL in the container. Teamlead decision plus ADR: Node 24 in .nvmrc, Dockerfile and engines (reviewer recommends this), or a pinned @node-rs/argon2 (package.json and lockfile). Fixed by: a container smoke run of login returning 200.
+  3. Carried, non-blocking for T-04: `api/src/server.ts` still does not call installErrorEnvelope(app) at root, so non-/api 404s stay on the Fastify default. ADR-011 makes server.ts Orchestrator-owned.
+  4. Non-blocking: no Secure flag on the cookie (Teamlead policy call; no ADR requires it).
+- docs touched: none. Reviewer checked C-002 and F-001 against the code, and no change is needed.
+- plan.md T-04 row: not changed by this review (left as the last reviewer set it, blocked).
+- escalations: Teamlead decisions for items 1 and 2.
+- nothing committed
+- jira: CVB-4 — sync pending
+
+## T-04 re-review (code-reviewer, CVB-4, after developer no-change pass)
+- verdict: ok=false (no code defect in T-04 logic; blocking items are allowlist and deploy toolchain)
+- fix-list, item by item:
+  1. vitest include (api/vitest.config.ts): CLEARED in code. Include now has '../tests/contract/**/*.test.ts'. Change is in d937d17 (Orchestrator), outside the T-04 allowlist. BLOCKING for check-lane until the Orchestrator adds it to the allowlist or confirms it.
+  2. argon2 on Node 22: OPEN, deploy-blocking. api/Dockerfile still node:22-bookworm-slim, .nvmrc 22, password.ts still needs node:crypto.argon2 (Node 24.7+). Login and register return 500 in the container. Needs Teamlead decision and ADR. Not a T-04 logic fix.
+  3. installErrorEnvelope root: PARTLY CLEARED. authRoutes installs it with skip-override, so sibling /api plugins inherit the envelope. Non-/api 404s and the health route stay on the Fastify default until server.ts calls installErrorEnvelope(app) (ADR-011, Orchestrator). Non-blocking for T-04.
+  4. Secure cookie flag: unchanged, not set. Teamlead policy call. Non-blocking.
+  5. framework/knowledge/errors.md "auth / errors (T-04)" entry: OPEN, BLOCKING for check-lane. The file changed since ee63f25 and is not on the allowlist. Orchestrator adds it or confirms it.
+- lane gate (reviewer ran it): GATE_LANE_TEST='npm -w api run test -- --run src/core/auth tests/contract/auth-session' bash framework/scripts/gate.sh → gate ✓ all green, exit 0, 2 files, 36/36.
+- check-lane.sh ee63f25 with T-04 allowlist (api/src/core/auth/*, routes/auth.ts, http/requireUser.ts, http/errors.ts, tests/contract/auth-session.test.ts, lane-02.md, plan.md): exit 1, 112 violations on the shared tree. None under T-04 paths. The T-04-attributable ones are framework/knowledge/errors.md and api/vitest.config.ts (items 1 and 5). Others are sibling-lane, Orchestrator, or framework/* files.
+- stub lens: pass. Contract suite asserts exact status and envelope, cookie attributes, sha256-only rows, row deletion on logout, byte-identical 401 bodies, and 404 for user A on user B's CV through the real assertOwnership and requireUser (auth-session.test.ts ~L335). A hard-coded happy value fails it.
+- escalations: none (reviewer). Teamlead items: 2 and 4. Orchestrator items: 1, 5, and the server.ts line in item 3.
+- plan.md T-04 row flipped to "blocked (review)".
+- docs touched: none. Nothing committed.
+- jira: CVB-4 — sync pending

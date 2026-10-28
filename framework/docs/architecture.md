@@ -12,7 +12,7 @@
 | Choice | Version | Why (one line) |
 |---|---|---|
 | TypeScript | 5.6 | one language across api and web; the type is the contract the cheap models code against |
-| Node.js | 22 LTS | required by the brief; native `fetch`, stable test runner |
+| Node.js | **24 LTS** | required by the brief; `node:crypto.argon2` is stdlib from 24.7, which removes a native dependency (ADR-012) |
 | Fastify | 5 | REST with schema-per-route validation built in — the validation rule of F-010 is structural, not a habit |
 | PostgreSQL | 16 | required option in the brief; `FOR UPDATE SKIP LOCKED` gives a job queue without a broker (ADR-004) |
 | Prisma | 5 | migrations as checked-in SQL + typed client; raw SQL where the queue needs it |
@@ -26,7 +26,7 @@
 | `@vitejs/plugin-react` | 4 | without it `npm run build` for web is a bare `tsc`, which never produces a bundle |
 | `happy-dom` | 15 | Vitest environment for web tests; lighter than jsdom and enough for Testing Library |
 | ESLint + `typescript-eslint` | 9 / 8 | `lint` in gate.config.sh must be a real linter; `tsc` with extra flags is a stand-in that silently passes style and correctness rules |
-| `@types/node` | **22.x exact** | the runtime is Node 22; a transitive 26.x types package type-checks against APIs the container does not have |
+| `@types/node` | **22.x exact** | the runtime is Node 24; an unpinned types package type-checks against APIs the container does not have |
 | `@types/react`, `@types/react-dom` | 18.x | without them no `.tsx` type-checks, so the web app cannot mount at all |
 | `@testing-library/dom` | 10.x | a peer of `@testing-library/react`; listed because it installs either way and an unlisted dependency is an unreviewed one |
 | Docker Compose | v2 | the brief's only run target: `docker compose up` |

@@ -79,20 +79,20 @@ Statuses: `todo → red → green → done`, or `blocked(<reason>)`.
 | T-02 | 01 | 0 | T-01 | CVB-2 | green: round 3 fix-list cleared (CI postgres service, gate starts db, DATABASE_URL validation test); gate all green from stopped docker (api 69 + web 14). Awaiting re-review; allowlist needs main.ts, database-schema.md, errors.md |
 | T-07 | 01 | 0 | T-02 | CVB-24 | green: lane 17/17, core type tests 13/13, gate ✓ all green; review fix applied (register-call asserts); awaiting re-review |
 | T-03 | 02 | A | T-07 | CVB-3 | blocked(lane green 29/29 + gate; root envelope fixed in lane; open: argon2 on Node 22 needs Teamlead decision + ADR; .nvmrc, Dockerfile and engines pin Node 22) |
-| T-04 | 02 | A | T-03 | CVB-4 | green: lane gate all green, 36/36 (9 unit + 27 contract, incl. 404 ownership proof). Open, Teamlead: argon2 on Node 22 (login/register 500 in api/Dockerfile), server.ts root envelope, errors.md on allowlist |
+| T-04 | 02 | A | T-03 | CVB-4 | blocked (review): lane gate all green, 36/36 (9 unit + 27 contract, incl. 404 ownership proof). Open, Teamlead: argon2 on Node 22 (login/register 500 in api/Dockerfile), server.ts root envelope, errors.md on allowlist |
 | T-05 | 03 | A | T-07 | CVB-5 | green: lane 46/46 (7 files), lane gate ✓, web typecheck ✓ (routes.test.tsx:70 fixed); open: architecture.md §2.8 shell bullet is an orchestrator edit; awaiting re-review |
-| T-06 | 03 | A | T-05 | CVB-6 | red: tests written (3 files in web/src/features/auth), 16/17 fail on assertions against the T-05 placeholder; nothing committed |
-| T-13 | 03 | A | T-05 | CVB-13 | red |
-| T-14 | 03 | A | T-05 | CVB-14 | todo |
+| T-06 | 03 | A | T-05 | CVB-6 | green: 17/17 lane tests (auth + routes); App.tsx wraps protected branch in RequireSession and shows LogoutButton; cv/route.tsx empty state; lane gate green |
+| T-13 | 03 | A | T-05 | CVB-13 | green: lane gate 20/20, lint ✓; union red only at routes.test.tsx intake placeholder (T-05 test, not this lane); not committed |
+| T-14 | 03 | A | T-05 | CVB-14 | green: web/src/features/generation/route.tsx, 15/15 pass, lane gate green; not committed |
 | T-09 | 04 | A | T-07 | CVB-9 | green: lane gate (lint + T-09 subset) ✓, 34/34 with no network and no key; the lane command also pulls verify.golden (lane 07, 2 red, not T-09); awaiting re-review; nothing committed |
 | T-10 | 04 | A | T-09 | CVB-10 | green: lane gate ✓ (lint + extract 18/18, 0 failed); tests pre-existed from earlier RED, no code changed this run; awaiting re-review; nothing committed |
 | T-11 | 04 | A | T-10 | CVB-11 | green (lane gate: compose 14/14 + lint); awaiting review; nothing committed |
 | T-12 | 07 | A | T-07 | CVB-12 | green: lane 60/60, lane gate ✓; entry/education grounded against the whole fact list (types carry no entry factIds); stricter per-entry citation = optional future ADR |
 | T-15 | 05 | A | T-07 | CVB-7 | green: lane gate 37/37 (unit 17, contract 20 incl. multipart C-004); multipart parser hand-written in core/intake/multipart.ts (no dependency); not committed |
-| T-16 | 05 | A | T-15 | CVB-8 | green: jobs 24/24 (stable over 8 runs), contract jobs 8/8 via scratch config, gate red only on other lanes (typecheck web routes.test, lint compose.test/cvs.ts, stack-config, verify.golden); check-lane no T-16 violation; not committed |
+| T-16 | 05 | A | T-15 | CVB-8 | green: lane command 32/32 (jobs 18 + boundaries 6 + contract jobs 8, contract collected by the lane command); lane-scoped gate all green; no code change in this pass; not committed |
 | T-17 | 06 | A | T-07 | CVB-15 | green: lane 26/26 (types 7, order 5, merge 6, cvs-read 8) with DATABASE_URL set; lane-scoped gate green; ownership by where-clause on userId (404), not a call to assertOwnership; nothing committed |
 | T-18 | 06 | A | T-17 | CVB-16 | green after fix-list: reorder returned in stored order (asserted by position after PATCH and GET), vitest include now covers tests/contract; cvs-patch 9/9, cvs-read 8/8, core/cv 18/18. Open: regenerate path must call mergeRegenerated (lane 05, T-20) |
-| T-19 | 06 | A | T-17 | CVB-18 | todo |
+| T-19 | 06 | A | T-17 | CVB-18 | blocked(allowlist: api/package.json and package-lock.json need approval; lane gate 15/15 green) |
 | T-20 | 07 | B | T-12, T-17 | CVB-17 | todo |
 | T-21 | 08 | B | wave A | CVB-19 | todo |
 | T-22 | 09 | B | T-17, T-14 | CVB-15 | todo |

@@ -1,0 +1,99 @@
+/* Auth screens, phone first (F-009). Literal px values here are deliberate:
+   the mobile suite reads them statically, and 16px inputs stop iOS zoom-on-focus. */
+
+.auth-screen {
+  max-width: var(--space-form-max);
+}
+
+.auth-screen h1 {
+  margin: 0 0 var(--space-4);
+  font-size: 24px;
+  line-height: 1.25;
+  font-weight: var(--text-h2-weight);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.auth-field label {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+}
+
+.auth-field input {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  font-size: 16px;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: var(--border-hairline) solid var(--color-border-input);
+  border-radius: var(--radius-sm);
+}
+
+.auth-field input[aria-invalid="true"] {
+  border-color: var(--color-danger-border);
+}
+
+.auth-field-error {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--color-danger-text);
+}
+
+.auth-alert {
+  margin: 0;
+  padding: var(--space-3);
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--color-danger-text);
+  background: var(--color-danger-bg);
+  border: var(--border-hairline) solid var(--color-danger-border);
+  border-radius: var(--radius-sm);
+}
+
+.auth-submit,
+.auth-logout {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  font-size: 16px;
+  color: var(--color-text-on-accent);
+  background: var(--color-accent-default);
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.auth-submit:hover:not(:disabled),
+.auth-logout:hover {
+  background: var(--color-accent-hover);
+}
+
+.auth-submit:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.auth-footer {
+  margin: var(--space-4) 0 0;
+  font-size: 14px;
+}
+
+.auth-footer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 16px;
+  color: var(--color-text-link);
+}

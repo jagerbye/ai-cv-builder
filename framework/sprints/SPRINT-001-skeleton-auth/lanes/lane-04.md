@@ -305,3 +305,18 @@ Per task, appended by the agents in order:
 - open, not T-11 defects: CvDraft.experience has no entry-level factIds (types.ts frozen; T-12 blocker).
 - nothing committed.
 - jira: CVB-11 sync pending (not committed)
+
+## T-11 review (code-reviewer, CVB-11): approved, lane scope
+- gate (lane-scoped, run by reviewer): `GATE_LANE_TEST='npm -w api run test -- --run src/core/generation/compose' bash framework/scripts/gate.sh` → lint ✓, `compose.test.ts` 14/14 ✓, "gate ✓ all green", exit 0. Union gate not judged (E-001).
+- check-lane ee63f25 with T-11 allowlist (compose*.ts, prompts/compose*, fixtures/llm/compose*, lane-04.md, plan.md): zero violations mention a compose path. 110 violations are other lanes' files. Exit 1 comes from the shared tree.
+- criteria vs code: `compose(facts, targetRole)` is the only input, so the source cannot reach the gateway; one `callTool` per call ✓. Summary, bullets and skills cite factIds, enforced in parse ✓. Experience sorted relevance desc, then period end (present = newest), then start year ✓. Summary must contain the role ✓. Bullets trimmed, ≤240 chars ✓. Bullet containing a whole ≥40-char quote rejected, 39-char case accepted ✓. No facts → no call ✓.
+- stub lens: the fake gateway replays fixture output through the real `parse`, so the rejection tests and the ordering test (fixture order Globex, Acme, Initech → expected Initech, Acme, Globex) fail for any hard-coded or unsorted implementation. Acceptable.
+- non-blocking fix-list (none blocks T-11):
+  1. The "no sentinel in request" assertion is nearly tautological: the stage never receives the sentinel, so the check passes whatever the implementation does. The signature arity check is the real guard. Keep it, but do not cite it as proof.
+  2. No error-case tests for: a skill with no factIds, an education entry missing institution, an experience entry missing employer/role/period. The parse code handles them, but they are not pinned.
+  3. Recency tie-break has no test for two entries with the same relevance and same end year (start-year secondary key untested).
+  4. Spec gap, escalate to Architect/Teamlead (not a T-11 defect): spec §3.4 says every content item cites factIds, but `CvDraft.experience` entries (employer/role/period) carry no factIds, and `types.ts` is frozen. Only the bullets are cited. This is the T-12 blocker the developer noted.
+- docs-sync: no doc change needed (no interface or behaviour change in this step).
+- plan.md T-11 row: green is correct for lane scope. Reviewer did not edit plan.md.
+- nothing committed.
+- jira: CVB-11 review done (not committed)

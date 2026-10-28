@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { resolveRoute, type RouteEntry } from './routes';
+import { RequireSession, LogoutButton, useSessionUser } from '../features/auth/session';
 import './shell.css';
 
 function currentPath(): string {
@@ -19,10 +20,13 @@ function usePathname(): string {
   return pathname;
 }
 
-// Pass-through until T-06 decides the unauthenticated behaviour. No guard is
-// specified yet, so none is invented here.
 function ProtectedBranch({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+  return <RequireSession>{children}</RequireSession>;
+}
+
+function HeaderActions() {
+  const session = useSessionUser();
+  return session.data ? <LogoutButton /> : null;
 }
 
 function Screen({ route }: { route: RouteEntry }) {
@@ -56,6 +60,7 @@ export default function App() {
       <div className="shell">
         <header className="shell-header">
           <span className="shell-brand">AI CV Builder</span>
+          <HeaderActions />
         </header>
         <main className="shell-main">
           {route ? <Screen route={route} /> : <NotFound />}

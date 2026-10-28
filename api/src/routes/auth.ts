@@ -41,6 +41,7 @@ function unknownEmailHash(): Promise<string> {
 }
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
+  // Installed on the parent /api context (see skip-override below), so sibling /api plugins registered after this one get the C-000 envelope too.
   installErrorEnvelope(app);
 
   app.post(
@@ -84,3 +85,6 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     return reply.code(200).send({ user: { id: user.id, email: user.email } });
   });
 }
+
+// Same effect as fastify-plugin (not a dependency): run in the parent context instead of an encapsulated child.
+(authRoutes as unknown as Record<symbol, boolean>)[Symbol.for('skip-override')] = true;

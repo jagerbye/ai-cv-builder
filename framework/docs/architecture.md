@@ -18,6 +18,7 @@
 | Prisma | 5 | migrations as checked-in SQL + typed client; raw SQL where the queue needs it |
 | `@anthropic-ai/sdk` | 0.x pinned | the only LLM path allowed by the brief; tool-use gives schema-shaped output |
 | `pdf-parse` (pdf.js) | pinned | text extraction from the uploaded PDF, pure JS, no native build |
+| `@fastify/multipart` | 9 | C-004 is a file upload; without a multipart parser the route can only answer 415. Added 2026-10-28 — the third time §1 was found incomplete, and the first two were caught by the same symptom |
 | `@react-pdf/renderer` | 4 | A4 PDF with a real text layer, server-side, no headless browser (ADR-005) |
 | React + Vite | 18 / 5 | smallest credible SPA toolchain |
 | TanStack Query | 5 | server state, polling and cache invalidation are the whole frontend problem here |

@@ -144,3 +144,80 @@ Per task, appended by the agents in order:
 - gate.sh (DATABASE_URL via gate.config.sh): cvs-patch 9/9, cvs-read 8/8, src/core/cv 18/18 green. Still RED, none in lane 06: typecheck routes.test.tsx (lane 03), lint compose.test.ts (lane 07), stack-config, verify.golden prompt-injection (lane 07), jobs.test, cvs-create PDF/validation (lane 05).
 - Lane command run without DATABASE_URL fails collecting cvs-patch (env.ts requires it); set DATABASE_URL as gate.config.sh does.
 - Deferred link (non-blocking item): mergeRegenerated is not called by the regenerate path; belongs to lane 05 and T-20.
+
+## T-17 test-engineer re-check (CVB-15, 2026-10-28)
+- tests (test-engineer): no new files. Existing `api/src/core/cv/order.test.ts` (5) and `tests/contract/cvs-read.test.ts` (8) already cover every T-17 acceptance point: C-006 full shape with facts and source quotes, C-007 owner-only newest-first list with five keys, cascade DELETE 204, another user's id 404 with an owner-200 proof first, unknown id 404 envelope.
+- RED confirmed: not reproducible. The current tree is GREEN for this lane, so there is no failing step to report. The earlier RED (missing `order.js`, then 404 assertions before the route existed) is recorded in the T-17 block above.
+- lane command: `npm -w api run test -- --run src/core/cv tests/contract/cvs-read` needs DATABASE_URL in the environment (env.ts throws without it). With DATABASE_URL set from `.env.example`: 4 files, 26/26 pass (types 7, order 5, merge 6, cvs-read 8).
+- escalations: none
+- errors worth remembering: none. Lane command must run with DATABASE_URL set; without it the contract file fails at import with "Invalid environment: DATABASE_URL is required" (an env error, not a test failure).
+- docs touched: none
+- jira: CVB-15 — sync pending
+
+## T-17 green step (developer, CVB-15, 2026-10-28)
+- tests: lane command with DATABASE_URL from .env.example: 4 files, 26/26 green (types 7, order 5, merge 6, cvs-read 8). No test or production code changed in this step.
+- gate: `GATE_LANE_TEST='npm -w api run test -- --run src/core/cv tests/contract/cvs-read' bash framework/scripts/gate.sh` (DATABASE_URL exported) → all green (database, lint, lane-test).
+- code check against C-006/C-007: GET list is owner-only, newest first (`list.ts`); GET/DELETE scope by `userId` in the where clause and return 404 for another user's id (`read.ts`, `delete.ts`); experience uses relevance then period, or stored order once any entry is userEdited (`read.ts` line 79-81, shared with T-18).
+- deviation, recorded not changed: the spec names `assertOwnership`; the code enforces ownership through the userId where-clause instead. The observable result (404, never 403) is the same and tested. Switching to `assertOwnership` would be a refactor outside the stated decision, so it is left for the Teamlead.
+- lane command gap: it still needs DATABASE_URL in the environment. without it, the contract file fails at import (env.ts requires it). Export it before running the lane command.
+- plan.md: T-17 row set to green.
+- escalations: none
+- errors worth remembering: none new
+- docs touched: plan.md T-17 row
+- jira: CVB-15 — sync pending
+
+## T-17 review (code-reviewer, CVB-15, 2026-10-28, third pass)
+- review (code-reviewer): fix-list → open (ok=false, not approved)
+  1. Ownership is not via assertOwnership. The acceptance criterion names it. `api/src/core/auth/ownership.ts` now exists (T-04 is done), but `read.ts` and `delete.ts` still scope by userId in the WHERE and never call it. Fix: fetch without the owner filter, call `assertOwnership(userId, cv)` in `getCv` and in the delete path (it throws 404, not 403), and keep the WHERE filter as defence in depth. The T-17 deviation note is no longer a valid reason to skip it.
+  2. Lane command still needs DATABASE_URL in the environment. `framework/scripts/gate.config.sh` has no DATABASE_URL line, so the developer's note "DATABASE_URL via gate.config.sh" is wrong. Run with `env -u DATABASE_URL` → `Invalid environment: DATABASE_URL is required` (env error, not a test failure). Harness fix: export it in gate.config.sh or in the lane command. Not a lane-06 file.
+  3. Contract ordering does not separate stored order from relevance. In `tests/contract/cvs-read.test.ts` expHigh is seeded with orderIndex 0 and expLow with 1, so insertion order, stored order and relevance order all agree. Unit `order.test.ts` covers relevance with unsorted seeds, so this is a gap, not a blocker alone. Fix: seed expLow at orderIndex 0 and expHigh at 1, then assert the response is [expHigh, expLow].
+- verified by reviewer: lane-scoped gate run with DATABASE_URL from `.env.example`: `GATE_LANE_TEST='npm -w api run test -- --run src/core/cv tests/contract/cvs-read' bash framework/scripts/gate.sh` → database, lint, lane-test green. 4 files, 26/26 pass (types 7, merge 6, order 5, cvs-read 8). Contract file uses real DB and real requireUser path (no temp hook).
+- stub-test lens (testing.md): passes against a constant stub (ids are random per run). Weak point is item 3 above (an orderIndex-sorted implementation passes the contract order check). Cascade counts, stranger 404 with owner-200 proof and newest-first with non-sorted seeds are concrete.
+- check-lane (base ee63f25, lane-06 allowlist `api/src/core/cv/*`, `api/src/routes/cvs.ts`, `tests/contract/cvs-read.test.ts`, lane log, plan.md): no lane-06 path flagged. Flags come from other lanes (generation, intake, jobs, auth, cvs-create, llm, http, framework/knowledge, .claude/workflows, .wave-in-flight) and from `api/vitest.config.ts` (developer's T-18 include change, already recorded in the T-18 fix-list, outside this allowlist).
+- plan.md: T-17 row stays green from the developer. Reviewer did not change it. Flip to red or blocked if item 1 is not applied.
+- escalations: none
+- errors worth remembering: the three recurring causes in the Orchestrator's note are real. Contract tests need DATABASE_URL (item 2). Vitest include was fixed in T-18. Auth convention is now requireUser everywhere in routes/cvs.ts. Lanes 05 and 07 still need to move off their own session path.
+- docs touched: none
+- jira: CVB-15 — review open; sync pending
+
+## T-17 fix round (review fix-list)
+- Item 1 done: read.ts and delete.ts fetch without owner filter, call assertOwnership (404 via ApiError), userId kept in the delete WHERE. getCv now returns CvResponse (throws 404); deleteCv returns void; routes/cvs.ts no longer null-checks. patch.ts unchanged (its `cv ? ...` still type-checks).
+- Item 2 done: framework/scripts/gate.config.sh exports DATABASE_URL (default from .env.example). Gate passes with the env var unset.
+- Item 3 done: cvs-read.test.ts seeds expHigh at orderIndex 1 and expLow at 0; test still expects [expHigh, expLow].
+- Gate (lane-scoped): database, lint, lane-test green, 4 files, 26/26.
+
+## T-17 re-review after fix round (code-reviewer, CVB-15, 2026-10-28)
+- review (code-reviewer): fix-list → open on one item (ok=false). Code and tests are approved. Blocking item is the allowlist (item 4).
+  1. assertOwnership: applied. `read.ts` fetches by id, then calls `assertOwnership(userId, cv)`. `delete.ts` does the same and keeps `userId` in the deleteMany WHERE. A missing or foreign id gives 404 NOT_FOUND through ApiError (`http/errors.ts`). `getCv` callers: `routes/cvs.ts` and `patch.ts:504`, which still type-checks.
+  2. DATABASE_URL: applied. `framework/scripts/gate.config.sh` exports it. The lane-scoped gate passes with DATABASE_URL unset.
+  3. Order test: applied. `cvs-read.test.ts` seeds expHigh at orderIndex 1 and expLow at 0 and expects [expHigh, expLow]. A stored-order implementation returns [expLow, expHigh] and fails.
+  4. Allowlist (blocking): `api/vitest.config.ts` (adds `../tests/contract/**/*.test.ts`) and `framework/scripts/gate.config.sh` (DATABASE_URL export) are tracked and changed by this lane, and neither is on the lane-06 allowlist. Both are the harness fixes the developer made on the reviewer's requests. Fix: the Orchestrator or Teamlead adds both paths to the lane-06 allowlist or accepts them as shared harness, then check-lane is re-run. No code change needed.
+- gate (lane-scoped, `GATE_LANE_TEST='npm -w api run test -- --run src/core/cv tests/contract/cvs-read' bash framework/scripts/gate.sh`, DATABASE_URL unset): exit 0, "gate ✓ all green". 4 files, 26/26 (types 7, order 5, merge 6, cvs-read 8).
+- check-lane (base ee63f25, allowlist `api/src/core/cv/*`, `api/src/routes/cvs.ts`, `tests/contract/cvs-read.test.ts`): no lane-06 code path flagged. Flags that belong to lane 06: `api/vitest.config.ts`, `framework/scripts/gate.config.sh`. Other flags are other lanes (`api/src/routes/cvs-create.ts` is lane 05, and the rest are web/**, tests/fixtures, generation, intake, jobs, auth, logs, board, STATE).
+- stub-test lens (testing.md): passes. The ids are random per run. Seeds are out of order for both experience (orderIndex 1 then 0) and the list (updatedAt non-sorted). Error cases: stranger 404 with owner-200 proof first, unknown id 404 envelope, DELETE of another user's CV leaves rows, cascade counts 4/8/2/1 before and 0 after. An orderIndex-sorted or constant list fails. Gap, not blocking: no 401 test for an unauthenticated request.
+- plan.md: T-17 row left as the developer set it (green). It stays green on the code. The Orchestrator decides whether to hold the commit until item 4 is resolved.
+- escalations: none
+- errors worth remembering: none new. The three recurring causes from the Orchestrator's note are now addressed for lane 06: DATABASE_URL in gate.config.sh, the vitest include, and requireUser with request.user.id in routes/cvs.ts.
+- docs touched: none
+- jira: CVB-15 — review open (item 4); sync pending
+
+## T-18 test-engineer re-run (CVB-16, 2026-10-28)
+- tests (test-engineer): no new files. Existing `api/src/core/cv/merge.test.ts` (6), `api/src/core/cv/order.test.ts` (5), `api/src/core/cv/types.test.ts` (7) and `tests/contract/cvs-patch.test.ts` (9) cover the T-18 criteria: partial update with version bump, stale version 409 VERSION_CONFLICT with no write, 400 VALIDATION with version unchanged, stranger and unknown id 404, userEdited on touched fields, add/delete/reorder of experience, bullets, education and skills, user-sourced fact for ungrounded summary, and userEdited survival across two simulated regenerations (merge.test.ts).
+- RED confirmed: not reproducible. Lane command `npm -w api run test -- --run src/core/cv tests/contract/cvs-patch` with DATABASE_URL from `.env.example` is GREEN: 4 files, 27/27 (types 7, merge 6, order 5, cvs-patch 9). No failure to attribute.
+- gaps not covered by tests (recorded, not written): answer-question path never overwriting userEdited (C-009, T-20); regenerate HTTP path calling mergeRegenerated (lane 05); no 401 test for an unauthenticated PATCH.
+- plan.md: T-18 row not changed by this step. The row state is the Orchestrator's call; the code and tests currently pass.
+- escalations: none
+- errors worth remembering: none new
+- docs touched: none
+- jira: CVB-16 — sync pending
+
+## T-18 green re-run (developer, CVB-16, 2026-10-28)
+- tests: `npm -w api run test -- --run src/core/cv tests/contract/cvs-patch` with DATABASE_URL from `.env.example`: 4 files, 27/27 green (types 7, merge 6, order 5, cvs-patch 9). No test or production code changed in this step.
+- gate: `GATE_LANE_TEST='npm -w api run test -- --run src/core/cv tests/contract/cvs-patch' bash framework/scripts/gate.sh` → database, lint, lane-test green, exit 0 ("gate ✓ all green"). Log: scratchpad gate-lane06.log.
+- code check against C-008: patch.ts guards version in the first transaction write (`where: { id, userId, version }`), so a stale version returns VERSION_CONFLICT (409) with no write; touched items get userEdited (line 273); routes/cvs.ts PATCH uses requireUser preHandler (401 before the handler).
+- criteria gaps, not blocking, not written here: (1) no 401 test for an unauthenticated PATCH; (2) the answer-question path must never overwrite userEdited is T-20 (wave B, not implemented here); (3) the regenerate HTTP path calling mergeRegenerated belongs to lane 05 (T-20).
+- plan.md: T-18 row already reads green from the fix-list round; no change in this step.
+- escalations: none. The lane-level command and gate are green on this tree.
+- errors worth remembering: none new. Lane command needs DATABASE_URL in the environment (env.ts), as already recorded.
+- docs touched: none (no change to docs-sync scope this step)
+- jira: CVB-16 — sync pending

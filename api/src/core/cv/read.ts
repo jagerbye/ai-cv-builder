@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { assertOwnership } from '../auth/ownership.js';
 import { orderExperience } from './order.js';
 import type {
   CvBullet,
@@ -21,17 +22,18 @@ interface ExperienceData { employer: string; role: string; period: string; locat
 interface EducationData { institution: string; degree?: string; period: string }
 interface SkillData { name: string; group?: string }
 
-// Ownership is enforced in the query: another user's id finds no row, so it reads as not found.
-export async function getCv(prisma: PrismaClient, userId: string, cvId: string): Promise<CvResponse | null> {
+// Ownership: assertOwnership throws 404 for a missing or foreign CV.
+export async function getCv(prisma: PrismaClient, userId: string, cvId: string): Promise<CvResponse> {
   const cv = await prisma.cv.findFirst({
-    where: { id: cvId, userId },
+    where: { id: cvId },
     include: {
       items: { orderBy: { orderIndex: 'asc' } },
       facts: { orderBy: { createdAt: 'asc' } },
       questions: { orderBy: [{ priority: 'asc' }, { createdAt: 'asc' }] },
     },
   });
-  if (!cv) return null;
+  assertOwnership(userId, cv);
+  if (!cv) throw new Error('unreachable');
 
   const itemsOf = (kind: string) => cv.items.filter((item) => item.kind === kind);
 

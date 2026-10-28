@@ -4,8 +4,10 @@ import type { CvDraft, Fact } from './types.js';
 
 // T-12 (CVB-12). verify(draft, facts) is pure: no LLM, no clock, no randomness (ADR-002).
 // Spec §3.4 (groundedness) and §3.5 (questions). Modelling choices pinned here, see lane-07.md:
-//  - an experience entry has no factIds of its own; its cited facts are the union of its bullets' factIds;
-//  - experience.employer and experience.period must occur in those cited facts (period matched as one token,
+//  - an experience entry and an education entry have no factIds of their own (types.ts, T-07); their
+//    employer/institution and period are grounded against the whole fact list (ADR-002 amendment A;
+//    known limit: a real value from a different fact passes, pinned below);
+//  - experience.employer and experience.period must occur in some fact (period matched as one token,
 //    so "2017-2019" is not supported by facts that mention 2017 and 2019 separately);
 //  - experience.role is matched as a substring of the cited facts; a miss keeps the entry and raises a 'vague' question;
 //  - named technologies are whole words from the verifier lexicon (Kafka, PostgreSQL, Go, Kubernetes, ...);
@@ -82,7 +84,25 @@ describe('verify — citation rule (ADR-002)', () => {
 });
 
 describe('verify — entity rule (spec §3.4)', () => {
-  it('drops an entry whose employer is not in its cited facts and asks for the employer', () => {
+  it('pins the ADR-002 amendment A limit: a mis-paired employer/role/period from different facts is accepted', () => {
+    const facts = [
+      fact('f1', 'Intern at Acme Ltd, 2015-2017', 'employment'),
+      fact('f2', 'Backend engineer at Globex, 2019', 'employment'),
+    ];
+    const entry = {
+      employer: 'Acme Ltd',
+      role: 'Backend engineer',
+      period: '2019',
+      relevance: 0.5,
+      bullets: [{ text: 'Worked at Acme Ltd', factIds: ['f1'] }],
+    };
+    const r = verify(base({ experience: [entry] }), facts);
+    // Known limit, not desired behaviour: tighten only via per-entry factIds (ADR amendment follow-up).
+    expect(r.accepted.experience).toHaveLength(1);
+    expect(r.questions).toEqual([]);
+  });
+
+  it('drops an entry whose employer occurs in no fact and asks for the employer', () => {
     const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2019')];
     const draft = base({
       experience: [
@@ -357,5 +377,26 @@ describe('verify — purity and contract', () => {
     expect(r.accepted).toEqual(clean);
     expect(r.dropped).toEqual([]);
     expect(r.questions).toEqual([]);
+  });
+});
+
+describe('verify — education is grounded', () => {
+  const facts = [fact('f1', 'BSc at Warsaw University, 2010-2014', 'education')];
+  it('keeps an education entry whose institution and period occur in the facts', () => {
+    const edu = { institution: 'Warsaw University', degree: 'BSc', period: '2010-2014' };
+    const r = verify(base({ education: [edu] }), facts);
+    expect(r.accepted.education).toEqual([edu]);
+    expect(r.dropped).toEqual([]);
+  });
+  it('drops an invented school and raises a priority-1 question on its path', () => {
+    const r = verify(base({ education: [{ institution: 'MIT', period: '2010-2014' }] }), facts);
+    expect(r.accepted.education).toEqual([]);
+    expect(r.dropped.map((d) => d.path)).toEqual(['education[0]']);
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'education[0].institution', reason: 'missing', priority: 1 }));
+  });
+  it('drops an education entry with an invented period', () => {
+    const r = verify(base({ education: [{ institution: 'Warsaw University', period: '2001-2005' }] }), facts);
+    expect(r.accepted.education).toEqual([]);
+    expect(r.questions.map((q) => q.path)).toEqual(['education[0].period']);
   });
 });

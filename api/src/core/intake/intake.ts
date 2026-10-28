@@ -51,12 +51,14 @@ function checkText(text: string): ExtractedSource {
   return { kind: 'text', text };
 }
 
+export const PDF_TOO_LARGE_MESSAGE = 'the PDF is larger than 10 MB; export a smaller file or paste the text instead';
+
 async function extractPdf(bytes: Buffer): Promise<ExtractedSource> {
   if (bytes.length > MAX_PDF_BYTES) {
     throw new IntakeError(
       'PAYLOAD_TOO_LARGE',
       413,
-      'the PDF is larger than 10 MB; export a smaller file or paste the text instead',
+      PDF_TOO_LARGE_MESSAGE,
     );
   }
   if (bytes.subarray(0, 5).toString('latin1') !== '%PDF-') {

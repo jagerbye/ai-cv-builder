@@ -138,7 +138,7 @@ Read first: framework/docs/api-contracts.md C-012, framework/docs/decisions.md A
 
 Do NOT: implement extract, compose or verify (later tasks in this lane); import the SDK anywhere else; touch api/src/core/generation/types.ts — it is frozen by T-07.
 
-Lane test command: npm -w api run test -- --run src/llm src/core/generation` },
+Lane test command: npm -w api run test -- --run src/llm src/core/generation/gateway src/core/generation/sdk-seam src/core/generation/types` },
 
   'T-10': { lane: '04', issue: 'CVB-10', brief:
 `Task T-10: the extract stage — source text becomes atomic facts with verbatim evidence.
@@ -283,7 +283,7 @@ async function runTask(id) {
   let dev = await agent(
     'You are the developer (.claude/agents/developer.md).\n\n' + head +
     'Tests exist and are RED. The test-engineer reported:\n' + (red ? red.report : '(no report)') +
-    '\n\nYour step: make them green. Run your lane test command, then the lane-scoped gate (GATE_LANE_TEST=... bash framework/scripts/gate.sh) as the preamble describes. Update any doc the docs-sync rule names for what you touched. If a criterion needs a decision that is not yours to make, implement the rest and say so plainly — do not improvise a dependency or a tool.',
+    '\n\nNote: fixing a TYPE ERROR in a test file is your job and is not "weakening a test" — the rule forbids removing or loosening assertions, not making the file compile.\n\nYour step: make them green. Run your lane test command, then the lane-scoped gate (GATE_LANE_TEST=... bash framework/scripts/gate.sh) as the preamble describes. Update any doc the docs-sync rule names for what you touched. If a criterion needs a decision that is not yours to make, implement the rest and say so plainly — do not improvise a dependency or a tool.',
     { label: 'dev:' + id, phase: 'Code', model: 'haiku', schema: RESULT })
 
   if (!dev || !dev.ok) {

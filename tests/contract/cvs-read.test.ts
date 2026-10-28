@@ -109,8 +109,8 @@ async function seedCv(
     data: [
       { id: ids.contact, cvId, kind: 'contact', path: 'contact', orderIndex: 0, data: { fullName: 'Ada Lovelace', email: 'ada@example.com', phone: '+44 20 7946 0000', location: 'London', links: ['https://example.com/ada'] }, factIds: [ids.factSummary], userEdited: false },
       { id: ids.summary, cvId, kind: 'summary', path: 'summary', orderIndex: 0, data: { text: 'Backend engineer who ships fast builds.' }, factIds: [ids.factSummary], userEdited: false },
-      { id: ids.expHigh, cvId, kind: 'experience', path: 'experience[0]', orderIndex: 0, data: { employer: 'Babbage Works', role: 'Lead Engineer', period: 'Mar 2019 – Present' }, factIds: [], relevance: 0.9, userEdited: false },
-      { id: ids.expLow, cvId, kind: 'experience', path: 'experience[1]', orderIndex: 1, data: { employer: 'Analytical Engines', role: 'Engineer', period: 'Jan 2015 – Dec 2017' }, factIds: [], relevance: 0.4, userEdited: false },
+      { id: ids.expHigh, cvId, kind: 'experience', path: 'experience[0]', orderIndex: 1, data: { employer: 'Babbage Works', role: 'Lead Engineer', period: 'Mar 2019 – Present' }, factIds: [], relevance: 0.9, userEdited: false },
+      { id: ids.expLow, cvId, kind: 'experience', path: 'experience[1]', orderIndex: 0, data: { employer: 'Analytical Engines', role: 'Engineer', period: 'Jan 2015 – Dec 2017' }, factIds: [], relevance: 0.4, userEdited: false },
       { id: ids.bulletA, cvId, kind: 'bullet', parentId: ids.expHigh, path: 'experience[0].bullets[0]', orderIndex: 0, data: { text: 'Cut build time by 40%' }, factIds: [ids.factBullet], userEdited: false },
       { id: ids.bulletB, cvId, kind: 'bullet', parentId: ids.expHigh, path: 'experience[0].bullets[1]', orderIndex: 1, data: { text: 'Led a team of six' }, factIds: [ids.factUser], userEdited: true },
       { id: ids.education, cvId, kind: 'education', path: 'education[0]', orderIndex: 0, data: { institution: 'University of London', degree: 'BSc Mathematics', period: '2011 – 2014' }, factIds: [], userEdited: false },

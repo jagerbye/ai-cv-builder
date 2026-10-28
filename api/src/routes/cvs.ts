@@ -27,9 +27,7 @@ export async function cvsRoutes(app: FastifyInstance): Promise<void> {
     const userId = sessionUserId(request);
     const { cvId } = request.params;
     if (!UUID.test(cvId)) return notFound(reply);
-    const cv = await getCv(app.prisma, userId, cvId);
-    if (!cv) return notFound(reply);
-    return cv;
+    return getCv(app.prisma, userId, cvId);
   });
 
   app.patch<{ Params: { cvId: string } }>('/cvs/:cvId', { preHandler: requireUser }, async (request, reply) => {
@@ -51,7 +49,7 @@ export async function cvsRoutes(app: FastifyInstance): Promise<void> {
     const userId = sessionUserId(request);
     const { cvId } = request.params;
     if (!UUID.test(cvId)) return notFound(reply);
-    if (!(await deleteCv(app.prisma, userId, cvId))) return notFound(reply);
+    await deleteCv(app.prisma, userId, cvId);
     return reply.code(204).send();
   });
 }

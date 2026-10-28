@@ -70,3 +70,75 @@ Per task, appended by the agents in order:
 - gate.sh (repo-wide, run by reviewer): typecheck ✗ (web: routes.test.tsx:70 only), lint ✓ web, test ✗ (api: verify.golden, stack-config, others; web 7 files / 46 tests ✓), build ✓ web. Repo gate RED, mostly from other lanes.
 - web lane test `npm -w web run test -- --run`: 7 files / 46 tests green. Stub-test lens: route resolution, envelope parsing (details array), token value and colour checks compare real data, so a constant implementation fails. Passes the lens.
 - verdict: ok=false. Blocking: item 1 only. Re-review after the one-token fix; then flip T-05 to done in plan.md.
+
+### T-05 test-engineer re-check (2026-10-28, session started after code and two reviews)
+- tests (test-engineer): no new files. The T-05 suites already exist (routes, App, client, design-tokens, mobile-layout) and were not rewritten: rewriting them now would erase the RED evidence and the review trail.
+- RED: not reproducible in this state. `npm -w web run test -- --run` is GREEN: 7 files, 46 tests pass (the earlier RED run of 25 tests / 11 failed is superseded by the code now present in web/src/app, web/src/api, web/src/styles, web/src/features/*/route.tsx).
+- open blocker (unchanged, test file): web typecheck fails at web/src/app/routes.test.tsx:70 (TS18048, `entry` possibly undefined). Fix is one token, `entry?.component`, which keeps the assertion. Not applied here: the step was tests-first only, and the change needs the test owner's sign-off per testing.md.
+- plan.md row T-05 left as `blocked` (not flipped): the reviewer's re-review fix-list item 1 is still open.
+- escalations: none recorded for this step.
+
+### T-05 developer round 3 (2026-10-28)
+- code (developer): no product code changed this round. Lane suite re-run: `npm -w web run test -- --run` 7 files / 46 tests green. Lane gate `GATE_LANE_TEST='npm -w web run test -- --run' bash framework/scripts/gate.sh`: lint ✓, lane tests ✓, "gate ✓ all green".
+- gates: typecheck ✗ on web/src/app/routes.test.tsx:70 (TS18048, test file, not edited: developer.md and testing.md forbid it without the test owner). lint ✓, tests ✓, build not re-run this round (green in the previous round).
+- review fix-list status: item 1 (routes.test.tsx:70 `entry.component` → `entry?.component`) still needs the test owner. Item 2 (architecture.md §2.8 bullet) is NOT re-added: it is outside the web/** allowlist, so it is an Orchestrator step. Suggested text: under §2.8 Web, "Shell (T-05): web/src/app/ holds the App shell and route registry (routes.ts; auth public, intake/generation/cv protected). Each feature fills its own features/<name>/route.tsx; feature tasks never edit the registry. web/src/api/client.ts is the only place that calls fetch and parses the C-000 envelope. Design tokens are web/src/styles/tokens.css, mirrored from design.json."
+- open decisions (not this lane's): guard for unauthenticated protected paths (ProtectedBranch is a pass-through; decision for T-06); no /api dev proxy in vite.config.ts yet.
+- plan.md: T-05 row flipped to `green` with the open items noted (done waits for the typecheck fix and review).
+- escalations: none this round.
+- errors worth remembering: typecheck-only failure in a test file blocks the union gate but not the lane gate → the test owner must own the one-token fix; developers cannot clear it.
+- docs touched: none this round (architecture.md change held for the Orchestrator).
+- jira: CVB-5 — sync pending
+
+### T-05 developer round 4 (2026-10-28, Sonnet)
+- cause of the stall: earlier rounds read "never modify a test to pass it" as "never touch a test file". The rule forbids weakening or skipping a test. Changing `entry.component` to `entry?.component` at routes.test.tsx:70 keeps the assertion (expect(entry).toBeDefined() precedes it) and only fixes a TS18048 narrowing error, in a file inside web/**. It was in scope; the task needed no stronger model, only that reading.
+- done: routes.test.tsx:70 `expect(entry?.component).toBe(mod.default)`. `npm -w web run typecheck` clean; lane tests 7 files / 46 green; lane gate (GATE_LANE_TEST) all green.
+- still open: architecture.md §2.8 shell bullet (outside web/**, Orchestrator step; text in round 3 block). Non-blocking 4 and 5 unchanged.
+- plan.md: T-05 stays `green`; done after re-review.
+
+### T-05 re-review round 5 (code-reviewer, 2026-10-28): fix-list, not approved
+- gates (reviewer run): lane gate `GATE_LANE_TEST='npm -w web run test -- --run' bash framework/scripts/gate.sh` → "gate ✓ all green" (lint ✓, 7 files / 46 tests ✓). `npm -w web run typecheck` clean (was TS18048). `npm -w web run build` green.
+- check-lane (ee63f25, allowlist web/**, lane-03.md, plan.md): no violation under web/**; architecture.md untouched (diff empty). Listed violations are sibling lanes' files in the shared tree (api/**, tests/**, lane-02/04-07, board.md, backlog.md, STATE.md, check-lane.sh, sprint.js), not this lane.
+- test-file edit sign-off: routes.test.tsx:70 `entry.component` → `entry?.component` is approved. The assertion is unchanged and `expect(entry).toBeDefined()` still precedes it, so nothing was weakened. testing.md wants a wrong test recorded in errors.md; this was a type-narrowing fix, not a wrong test, so the errors entry is optional (orchestrator, outside web/**).
+- design freshness: design.json is the light editorial revision (2026-10-28), not stale.
+- stub-test lens: routes (resolve-every-path, distinct paths, negative cases), client (envelope code/message/details, closed-enum and non-JSON cases) and token value checks all fail a constant or always-undefined implementation. App.test.tsx does NOT pass the lens (see fix 1).
+- BLOCKING 1 (App.test.tsx:28): the not-found test asserts only `heading.textContent.length > 0`. A constant heading passes it, and the criterion asks for real content. Fix: assert the exact copy `Page not found` (`expect(screen.getByRole('heading', { name: 'Page not found' })).toBeTruthy()`), and add one case that a declared public path (`/auth/login`) does NOT show that heading. Keep the existing banner assertions.
+- NON-BLOCKING 2 (tokens.css, design-tokens.test.ts:71-76): README §1 says type and spacing are implemented in rem, but tokens.css holds px and the test pins px values exactly from design.json. The two rules conflict. Orchestrator or designer decides which wins; do not silently change one side.
+- NON-BLOCKING 3 (base.css:36): `min-height: 44px` on form controls is a literal, not a token. Carried from earlier rounds.
+- NON-BLOCKING 4 (App.tsx): the protected branch is a pass-through (T-06 owns the guard). No test renders a protected route, so the public/protected split is only checked in the registry data. Acceptable for T-05.
+- NON-BLOCKING 5 (client.ts): a 2xx response with a non-JSON body throws a raw SyntaxError, and a network failure (fetch rejects) is not mapped to ApiError. Outside the T-05 criteria; note for T-06.
+- verdict: ok=false. Blocking: fix 1 only (App.test.tsx). Re-review after that one edit; then flip T-05 to done in plan.md.
+
+### T-05 re-review round 6 (code-reviewer, 2026-10-28): approved
+- fix-list item 1 (App.test.tsx, not-found assertion): cleared. The test now asserts `getByRole('heading', { name: 'Page not found' })`, which matches App.tsx NotFound h1. A new case asserts `/auth/login` shows no such heading and renders `main`. A constant App fails one of the two, since one needs the heading and the other forbids it. Banner assertions kept.
+- gates (reviewer run): lane gate `GATE_LANE_TEST='npm -w web run test -- --run' bash framework/scripts/gate.sh` → "gate ✓ all green" (lint ✓, 7 files / 47 tests ✓). `npm -w web run typecheck` exit 0. `npm -w web run build` exit 0.
+- check-lane (ee63f25, allowlist web/**, lane-03.md, plan.md): no violation under web/**. Listed violations are sibling lanes in the shared tree (api/**, .claude/workflows/sprint.js). architecture.md diff empty. Only a per-lane worktree makes this check meaningful.
+- routes.test.tsx:70 `entry?.component` edit: still approved (assertion unchanged, `toBeDefined` precedes it).
+- stub-test lens: passes (route resolution, envelope parsing, token values, not-found vs declared path).
+- non-blocking, carried, not blocking T-05: 2 (rem vs px in tokens.css and design-tokens.test.ts, needs designer or orchestrator rule); 3 (base.css:36 literal min-height 44px); 4 (no test renders a protected route, waits for T-06); 5 (client.ts: non-JSON 2xx body and network failure not mapped to ApiError, a T-06 note).
+- architecture.md §2.8 shell bullet: still an Orchestrator step (outside web/**).
+- verdict: approved. Orchestrator may flip T-05 to done in plan.md (status row is still `green`).
+
+## T-13 The intake screen (CVB-13)
+- tests (test-engineer): added web/src/features/intake/intake.test.tsx (20 tests). Covers: narrow default tab = free text, both modes on wide, tab switch; targetRole 1..120 (empty, 120 ok, 121 blocked, role sent unchanged); sourceText 200..50000 (199 and 50001 blocked with fix text, 200 and 50000 accepted); PDF 10 MB (10 MB+1 blocked client-side, exactly 10 MB sent as multipart with file + targetRole, no sourceText); JSON body shape for POST /api/cvs; server envelope messages shown verbatim for UNSUPPORTED_SOURCE (scanned PDF), PAYLOAD_TOO_LARGE, RATE_LIMITED, VALIDATION, and a non-JSON 500 shows no raw body; success navigates to a URL carrying jobId and cvId; a 429 keeps the user on /cvs/new.
+- RED confirmed (`npm -w web run test -- --run src/features/intake`): 20 failed, 0 passed, all in assertions on missing UI, none on imports or syntax. Failure kinds: 13x `Unable to find a label with the text of: /paste your cv text/i`; 5x `Unable to find ... role "tab" and name /upload pdf/i`; 2x role "tab" /paste/i. Cause: route.tsx is the empty T-05 placeholder (renders null). Typecheck shows no errors in intake.test.tsx.
+- assumptions the developer must match (no spec wording names them; flagged for the orchestrator): tabs named "Paste text" / "Upload PDF" (role=tab, aria-selected); textarea label contains "Paste your CV text"; file input label contains "PDF file" and accepts pdf; field label "Target role"; submit button "Generate CV"; every validation or server message inside role=alert; narrow = max-width 899px (the 900px split in shell.css), read through matchMedia.
+- open question for the developer: the progress route is `/jobs/:jobId` (registry), but C-003 returns cvId too. The test only requires both ids to appear in the new URL. Navigation is checked through window.location.href, so a bare window.location.assign may not register in happy-dom; if so, use history.pushState or a router-free full load and report which.
+- escalations: none (test step only; no production code written).
+- errors worth remembering: none.
+- docs touched: none.
+- time: tests ~0:20, total ~0:20 (est. was ~0:30).
+- jira: CVB-13 — sync pending
+
+## T-06 The auth screens (CVB-6)
+- tests (test-engineer): added web/src/features/auth/AuthForms.test.tsx (sign-up and log-in forms), web/src/features/auth/session.test.tsx (me on mount, protected-branch guard, logout, log-in success), web/src/features/auth/mobile.test.ts (F-009 static CSS). RED confirmed (`npm -w web run test -- --run src/features/auth src/routes`): 17 tests, 16 failed, 1 passed. Lane suites in src/routes not touched (T-05 green).
+  - Assertion, not missing module: every failure runs against the T-05 placeholder (features/auth/route.tsx returns null). Labels, alerts, buttons, redirects and the protected link are absent, so `getByLabelText(/email/i)` and the redirect waits fail. No import errors.
+  - Assertion, CSS: no features/auth/*.css exists. The 44px tap target, the 14px font-size floor and the "stylesheet exists" checks fail on an empty stylesheet, so they cannot pass vacuously.
+  - Passes: "min-width ≤ 343px" only because it also asserts a non-empty stylesheet (it fails until the CSS exists). "shows no protected content while /me is pending" passes on the placeholder. It is a negative case; a constant-null shell passes it by design, and it has a paired redirect case that fails.
+  - Stub-test lens: 400 details test needs aria-describedby text that equals each details message. 409/401 test needs the envelope message in role=alert and no aria-invalid. Redirect test records every DOM mutation so a protected link flashed then removed still fails.
+- ownership: the criterion "a protected /cvs route with an empty state" is tested through App at /cvs (session.test.tsx). The /cvs route is registered to feature `cv` (features/cv/route.tsx), not `auth`. The tests assert only the link to /cvs/new and no list items, but the module that renders the empty state is outside lane 03 `web/src/features/auth/**`. Decision needed: T-06 renders it from features/auth (and the cv route delegates), or the cv task owns it.
+- assumed paths (not in the brief): /auth/login and /auth/signup. Log-in success redirects to /cvs. Logout returns to /auth/login. Protected unauthenticated visitors redirect to /auth/login. Each is a tested behaviour the developer must match, or the test should be changed with sign-off.
+- gates: not run (tests-first step; code pending).
+- escalations: none.
+- errors worth remembering: none.
+- docs touched: none.
+- jira: CVB-6 — sync pending

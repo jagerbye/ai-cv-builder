@@ -220,3 +220,88 @@ Per task, appended by the agents in order:
 - fix 4: plan.md T-11 row updated (lane 14/14).
 - lane: compose 14/14 green. gate.sh still red, only outside lane 04 (routes.test.tsx TS18048, stack-config, verify.golden, contract cvs-create 415). Output: scratchpad t11-gate2.txt.
 - nothing committed.
+
+## T-09 (test-engineer re-run, CVB-9): no new RED written
+- tests (test-engineer): none added. The RED step was already done (see the first T-09 block) and the gateway is implemented and committed in d937d17 and the working tree is clean. Writing a new RED on top of implemented code would mean inventing failures, so none was written.
+- RED confirmed: not applicable on this run. Current state of the lane command `npm -w api run test -- --run src/llm src/core/generation`: 2 failed, 121 passed (123). Both failures are in `src/core/generation/verify.golden.test.ts` (lane 07, `verify.ts` territory: golden output mismatch and empty `accepted.experience` on the prompt-injection fixture). No T-09 file fails.
+- T-09 subset (`src/llm`, `gateway`, `sdk-seam`, `types`): green.
+- errors worth remembering: none
+- docs touched: none
+- jira: CVB-9 — sync pending (not committed)
+
+## T-09 developer, make-green step (CVB-9)
+- state on entry: implementation committed in d937d17, working tree clean for T-09 files. Nothing new written in production code or tests.
+- T-09 subset `npm -w api run test -- --run src/llm src/core/generation/gateway src/core/generation/sdk-seam src/core/generation/types`: 4 files, 34/34 green. Re-run with `env -u ANTHROPIC_API_KEY`: still 34/34, no network needed.
+- lane command `npm -w api run test -- --run src/llm src/core/generation`: 2 failed, 121 passed. Both failures are in `verify.golden.test.ts` (lane 07: golden mismatch on prompt-injection, and empty `accepted.experience`). No T-09 file fails. The lane command pulls in lane 07's suite through the `src/core/generation` prefix; the Teamlead should narrow the lane command to the T-09 files, or accept it as a known foreign failure.
+- lane-scoped gate `GATE_LANE_TEST='<T-09 subset>' bash framework/scripts/gate.sh`: database ✓, lint ✓, lane-test ✓ → "gate ✓ all green".
+- plan.md T-09 row: status set to green (lane gate) and awaiting re-review.
+- docs-sync: framework/rules/docs-sync.md does not exist; no doc row checked.
+- nothing committed.
+- jira: CVB-9 sync pending (not committed)
+
+## T-09 developer, diagnosis round (CVB-9)
+- earlier "failure" cause: the lane command prefix `src/core/generation` pulls lane 07's verify.golden (red by design in a wave); T-09 itself was green. Brief defect, not a model defect: narrow the command to the T-09 files.
+- real gap found and fixed: budget was only checked after a response, and the schema retry reused the full max_tokens, so one callTool could spend up to 2x the budget. Now the retry gets max_tokens = remaining and nothing is sent when remaining <= 0 (gateway.ts). Test added in gateway.test.ts (retry gets 850 of 1000; 150 budget fails with LLM_BUDGET_EXCEEDED after one call).
+- gate (lane-scoped): lint + 35 T-09 tests green.
+- still a Teamlead decision: LLM_AUTH_FAILED / LLM_INVALID_REQUEST / LLM_BUDGET_EXCEEDED are outside the closed C-000 enum (contract frozen, docs not in my allowlist); ToolCallRequest has no separate user-message field (types.ts frozen).
+- nothing committed.
+
+## T-09 review (code-reviewer, CVB-9): re-review 2 → approved, lane command narrowed
+- gate (lane-scoped, run by reviewer): `GATE_LANE_TEST='npm -w api run test -- --run src/llm src/core/generation/gateway src/core/generation/sdk-seam src/core/generation/types' bash framework/scripts/gate.sh` → lint ✓, 4 files / 35 tests ✓, "gate ✓ all green". No network, no ANTHROPIC_API_KEY.
+- check-lane ee63f25 with T-09 allowlist (llm/*, gateway*.ts, sdk-seam.test.ts, fixtures/llm/*, lane-04.md, plan.md): no T-09 path flagged. `types.ts` unmodified (frozen). Remaining violations are other lanes' files.
+- criteria vs code: tool-use + tool_choice forced ✓; re-validation through `req.parse` on every response ✓; one schema retry with the error appended as tool_result ✓; 429/5xx/timeout retried, 3 attempts, exponential backoff ✓; 401/403 and 4xx fail once with distinct codes ✓; model from `ANTHROPIC_MODEL`, default Sonnet, no literal at call sites ✓; budget spans the schema retry, retry gets `max_tokens` = remaining, nothing sent at 0 ✓; no prompt body above debug, key never logged ✓; SDK import only in gateway.ts, guarded by sdk-seam.test.ts ✓.
+- stub lens: the suite uses scripted transport and recorded fixtures per error class, pins codes and call counts (1 / 2 / 3), and feeds a varied tool input, so a hard-coded return fails. Acceptable.
+- non-blocking fix-list (not blocking the task):
+  1. Budget is checked after the spend. Input tokens are not bounded by `max_tokens`, so an oversized prompt is sent and only then rejected. A pre-send estimate of input size would close that. Optional for T-09.
+  2. The gateway does not check the `inputSchema` itself. It trusts the caller's `parse` to enforce the same schema. Callers (T-10, T-11) must implement `parse` as the real validator. Worth a one-line note in api-contracts C-012.
+  3. `config.test.ts` checks the default model with /sonnet/ only. Weak but acceptable.
+- Teamlead escalations still open (not fixed here): C-000 must list `LLM_AUTH_FAILED`, `LLM_INVALID_REQUEST`, `LLM_BUDGET_EXCEEDED`, or they map to existing codes. `ToolCallRequest` has no user-message field, so the prompt travels in `description`, which the gateway also sends as the tool description (T-10 and T-11 depend on this).
+- verdict: ok=true. T-09 meets the acceptance criteria. Nothing committed. plan.md row not re-flipped by reviewer (developer already flipped it).
+- jira: CVB-9 sync pending (not committed)
+
+## T-10 developer, make-green step (CVB-10)
+- state on entry: tests (`api/src/core/generation/extract.test.ts`, 18 cases) and production (`extract.ts`, `prompts/extract.ts`) already exist from the earlier RED and review. No test or source file was changed in this run.
+- lane command `npm -w api run test -- --run src/core/generation/extract`: 1 file, 18/18 green, no network, no key.
+- lane-scoped gate `GATE_LANE_TEST='npm -w api run test -- --run src/core/generation/extract' bash framework/scripts/gate.sh`: database ✓, lint ✓, lane-test ✓ → "gate ✓ all green".
+- check-lane not re-run: no allowlisted file was touched in this step.
+- plan.md T-10 row updated to green with the lane gate result; awaiting re-review.
+- docs-sync: no docs touched (no behavior, interface or data-shape change in this step).
+- open items carried forward, not resolved here: (1) the untrusted block travels in `ToolCallRequest.description`, which the gateway also sends as the tool description (types.ts frozen, Teamlead decision); (2) append-only is enforced by id uniqueness only, storage invariant outside T-10's files; (3) the union gate is red on other lanes' files by design for this wave.
+- nothing committed.
+- jira: CVB-10 sync pending (not committed)
+
+## T-10 re-review (code-reviewer, CVB-10): second review of make-green step → approved, lane scope
+- gate (lane-scoped, run by reviewer): `GATE_LANE_TEST='npm -w api run test -- --run src/core/generation/extract' bash framework/scripts/gate.sh` → lint ✓, `extract.test.ts` 18/18 ✓, "gate ✓ all green". No network, no key. Union gate not judged (red on other lanes, E-001).
+- check-lane ee63f25 with T-10 allowlist (extract*.ts, prompts/extract*, fixtures/llm/extract*, lane-04.md, plan.md): no T-10 path flagged. Violations are other lanes' files only (compose.ts, gateway, verify, cv, routes, web, tests/contract). Exit 1 comes from the shared tree.
+- typecheck: `tsc --noEmit` reports no errors in `generation/extract*`.
+- criteria vs code: one `callTool` per extract (test pins call count 1) ✓; Fact[] with kind enum-pinned, normalised text, sourceQuote ✓; quote check is substring-after-whitespace-normalisation against the original source, drop-not-repair, stored unchanged ✓; paraphrase, case-only, empty-quote and no-substitution cases each have a test that fails on a repairing or unfiltered implementation ✓; source in one labelled UNTRUSTED block with BEGIN/END markers neutralised ✓; schema closed (`additionalProperties:false` on every object, only fact field names) ✓; SDK not imported (goes through gateway) ✓.
+- stub lens: a hard-coded return fails the call-count test and the computed-filter tests (the fake gateway replays fixtures through `req.parse`, so the filter is really exercised). Acceptable.
+- earlier blocking item (delimiter breakout) verified fixed by the previous re-review and still present in `prompts/extract.ts`.
+- non-blocking fix-list (none blocks T-10):
+  1. Verification gap, "facts are append-only": the test checks only that new ids do not repeat across runs. Nothing proves the stage never mutates or overwrites an earlier array. Storage invariant stays with the owner of the persistence task. Teamlead to confirm this is covered there.
+  2. `extract.test.ts` is untracked, so the 21 → 17 → 18 test-count history cannot be checked against git. Earlier review asked the Teamlead to confirm the RED list. Still open.
+  3. Quote check accepts a very short quote (for example "a") as verbatim evidence. Spec does not forbid it. Possible follow-up: a minimum quote length, decided by the Teamlead.
+- Teamlead decisions still open (not caused by T-10):
+  a. The untrusted block travels in `ToolCallRequest.description`, which the gateway also sends as the tool description (`gateway.ts` line 125 and line 152). Literal ADR-002 compliance is met, but the carrier is weak. A user-message field needs a `types.ts` change, which is frozen.
+  b. Frozen `Fact` in `types.ts` has no `cvId` or `createdAt`, while domain-model.md lists both. The extract stage returns the frozen shape, so the persistence layer must add them.
+- plan.md T-10 row: developer already flipped it to green. Reviewer did not edit plan.md. Suggested status: approved (lane scope), awaiting Integrator union run.
+- nothing committed.
+
+## T-11 (test-engineer re-run, CVB-11): no new RED written
+- tests (test-engineer): none added. `api/src/core/generation/compose.test.ts` already exists (14 cases after the review fix-list round) with fixture `tests/fixtures/llm/compose-ok.json`. The RED step and the GREEN step were already done earlier in this lane.
+- lane command `npm -w api run test -- --run src/core/generation/compose` → 1 file, 14/14 passed. No failures to report, so no RED was produced in this run.
+- no production code touched; nothing committed.
+- jira: CVB-11 — sync pending
+
+## T-11 developer, make-green step (CVB-11)
+- state on entry: `compose.test.ts` (14 cases), `compose.ts`, `prompts/compose.ts` and fixture `tests/fixtures/llm/compose-ok.json` already exist. No test or source file changed in this run.
+- criteria vs code: one `callTool` per compose, signature `(facts, targetRole)` so source text cannot enter ✓; every summary, bullet and skill cites factIds (empty or non-string rejected in parse) ✓; experience sorted relevance desc, then period end, then start year ✓; summary must contain target role (case-insensitive) ✓; bullets trimmed and capped at 240 chars, 240 accepted, 241 rejected ✓; bullet equal to or containing a whole source quote of 40+ chars rejected ✓; no facts gives no call ✓.
+- lane command `npm -w api run test -- --run src/core/generation/compose`: 1 file, 14/14 green.
+- lane-scoped gate `GATE_LANE_TEST='npm -w api run test -- --run src/core/generation/compose' bash framework/scripts/gate.sh`: lint ✓, lane-test ✓ → "gate ✓ all green".
+- `tsc --noEmit`: no errors in `generation/compose*`.
+- check-lane ee63f25 with T-11 allowlist (compose*, prompts/compose*, fixtures/llm/compose*, lane-04.md, plan.md): no compose path flagged. Remaining violations are other lanes' files.
+- docs-sync: `framework/rules/docs-sync.md` does not exist; no doc touched (no interface or behaviour change).
+- plan.md T-11 row set to green (lane gate), awaiting review.
+- open, not T-11 defects: CvDraft.experience has no entry-level factIds (types.ts frozen; T-12 blocker).
+- nothing committed.
+- jira: CVB-11 sync pending (not committed)

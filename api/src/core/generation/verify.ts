@@ -36,6 +36,7 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
   const byId = new Map(facts.map((f) => [f.id, f] as const));
   const dropped: DroppedItem[] = [];
   const candidates: PlannedQuestion[] = [];
+  const allText = facts.map((f) => f.text).join('\n');
 
   // Missing and unverifiable drops are priority 2; employer and period drops are priority 1 (see below).
   const checkItem = (path: string, text: string, factIds: string[]): boolean => {
@@ -49,9 +50,32 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
   const accepted: CvDraft = {
     targetRole: draft.targetRole,
     experience: [],
-    education: draft.education.map((e) => ({ ...e })),
+    education: [],
     skills: [],
   };
+
+  // Education has no citation either: institution and period must occur in some fact, else drop (priority 1).
+  draft.education.forEach((edu, i) => {
+    const p = `education[${i}]`;
+    const fails: { path: string; detail: string }[] = [];
+    if (!containsText(allText, edu.institution)) {
+      fails.push({ path: `${p}.institution`, detail: `institution "${edu.institution}" not in facts` });
+    }
+    if (!containsPeriod(allText, edu.period)) {
+      fails.push({ path: `${p}.period`, detail: `period "${edu.period}" not in facts` });
+    }
+    if (fails.length === 0) {
+      accepted.education.push({ ...edu });
+      return;
+    }
+    dropped.push({ path: p, reason: fails.map((f) => f.detail).join('; ') });
+    for (const f of fails) {
+      const text = f.path.endsWith('.institution')
+        ? 'Which school or university did you attend? The drafted name is not in the source.'
+        : 'What were the dates of this education? The drafted dates are not in the source.';
+      candidates.push({ path: f.path, text, reason: 'missing', priority: 1 });
+    }
+  });
 
   if (draft.summary !== undefined && checkItem('summary', draft.summary.text, draft.summary.factIds)) {
     accepted.summary = { text: draft.summary.text, factIds: [...draft.summary.factIds] };
@@ -59,19 +83,18 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
 
   draft.experience.forEach((entry, i) => {
     const p = `experience[${i}]`;
-    const citedText = [...new Set(entry.bullets.flatMap((b) => b.factIds))]
-      .map((id) => byId.get(id))
-      .filter((f): f is Fact => f !== undefined)
-      .map((f) => f.text)
-      .join('\n');
+    // CvDraft gives entries no factIds of their own (types.ts, T-07), so employer and period are
+    // grounded against the whole fact list: they must occur in some extracted fact. An invented
+    // employer or date occurs in none and is dropped. See ADR-002 amendment A for the mis-pairing limit.
+    const citedText = allText;
 
     // Employer and period are the entry's own facts: missing either drops the whole entry (priority 1).
     const entryFailures: { path: string; detail: string }[] = [];
     if (!containsText(citedText, entry.employer)) {
-      entryFailures.push({ path: `${p}.employer`, detail: `employer "${entry.employer}" not in cited facts` });
+      entryFailures.push({ path: `${p}.employer`, detail: `employer "${entry.employer}" not in facts` });
     }
     if (!containsPeriod(citedText, entry.period)) {
-      entryFailures.push({ path: `${p}.period`, detail: `period "${entry.period}" not in cited facts` });
+      entryFailures.push({ path: `${p}.period`, detail: `period "${entry.period}" not in facts` });
     }
     if (entryFailures.length > 0) {
       dropped.push({ path: p, reason: entryFailures.map((f) => f.detail).join('; ') });
@@ -81,7 +104,7 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
       return;
     }
 
-    // A title outside the cited facts keeps the entry and asks which title was meant (vague, priority 3).
+    // A title outside the facts keeps the entry and asks which title was meant (vague, priority 3).
     if (!containsText(citedText, entry.role)) {
       candidates.push({ path: `${p}.role`, text: questionText(`${p}.role`, 'vague'), reason: 'vague', priority: 3 });
     }

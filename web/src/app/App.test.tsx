@@ -20,12 +20,19 @@ describe('app shell (T-05, CVB-5)', () => {
     expect(screen.getByRole('main')).toBeTruthy();
   });
 
-  it('renders a not-found screen with non-empty heading content for an undeclared path', async () => {
+  it('renders the exact not-found copy for an undeclared path', async () => {
     const { default: App } = await import('./App');
     window.history.replaceState({}, '', '/no-such-page');
     render(<App />);
-    const heading = screen.getByRole('heading');
-    expect(heading.textContent?.trim().length ?? 0).toBeGreaterThan(0);
+    expect(screen.getByRole('heading', { name: 'Page not found' })).toBeTruthy();
     expect(screen.getByRole('banner').textContent).toContain('AI CV Builder');
+  });
+
+  it('does not show the not-found heading on a declared public path', async () => {
+    const { default: App } = await import('./App');
+    window.history.replaceState({}, '', '/auth/login');
+    render(<App />);
+    expect(screen.queryByRole('heading', { name: 'Page not found' })).toBeNull();
+    expect(screen.getByRole('main')).toBeTruthy();
   });
 });

@@ -67,7 +67,7 @@ describe('web route registry (T-05, CVB-5)', () => {
     const entry = routes.find((r: { feature: string }) => r.feature === feature);
     expect(entry).toBeDefined();
     expect(typeof mod.default).toBe('function');
-    expect(entry.component).toBe(mod.default);
+    expect(entry?.component).toBe(mod.default);
   });
 
   it.each(FEATURES)('the %s feature module is an empty placeholder that renders nothing', async (feature) => {

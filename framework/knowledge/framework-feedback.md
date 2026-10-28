@@ -221,3 +221,25 @@ is nowhere in the playbook.
   port it back. The sprint-playbook should also state plainly that during a
   wave "green" means the lane, and `hook-stop.sh` must not enforce the union.
 - Status: open
+
+## FF-11 Escalation is a brief-quality signal the runner throws away (found 2026-10-28, severity: gap)
+
+- Evidence: `model-routing.md` says "a task that defeats Sonnet is almost
+  always mis-decomposed or under-specified, not too hard", and the runner does
+  escalate — but it escalates **silently into another coding attempt**.
+- What it cost here: with the gate fixed, wave A's four escalations turned out
+  to be four *decisions that belonged to the Architect*, not coding failures.
+  Every escalated agent said so in its own words and correctly refused to
+  write code: a missing dependency (`@fastify/multipart`, never in §1), a rule
+  that contradicted its own golden fixture, and a lane test glob that swept a
+  sibling lane's suite. Sending a stronger model to retype the same task
+  cannot resolve any of them — it just pays twice to be told the same thing.
+- Why it recurs: the ladder's second rung assumes the failure is capability.
+  When the failure is specification, the correct next actor is the Orchestrator
+  or the Architect, and nothing routes there.
+- Proposed fix: the agent result schema gains a `blockedOn` field —
+  `code | brief | decision | dependency`. Only `code` escalates to the next
+  model tier; the other three stop the task and surface it to the Orchestrator
+  immediately, with the lane continuing to its next independent task. Cheap to
+  add, and it converts a wasted Sonnet pass into a one-line question.
+- Status: open

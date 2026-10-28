@@ -3,6 +3,8 @@
 # Used identically by the Stop hook, CI, the Integrator and humans.
 # docs/testing-strategy.md §Commands points here.
 
+export DATABASE_URL="${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/ai_cv_builder}"
+
 GATE_DB_UP='docker compose ps --status running --format "{{.Service}}" | grep -qx db || docker compose up -d --wait db'
 
 # --- Wave mode (knowledge/errors.md E-001) -----------------------------------

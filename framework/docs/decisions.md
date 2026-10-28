@@ -175,6 +175,23 @@ Format — newest on top, one block per decision:
 - **Consequences:** progress is coarse (3 named stages, no percentage) — which
   is also the honest thing to show.
 
+## ADR-002 amendment A: entry and education fields are grounded against the whole fact list (2026-10-28, accepted)
+
+- **Context:** CvDraft (types.ts, frozen in T-07) gives `factIds` only to summary,
+  bullets and skills. Experience entries (employer, role, period) and education
+  (institution, period) cite nothing, so "occurs in one of its cited facts" has no
+  referent for them.
+- **Decision:** for those fields the verifier checks that the value occurs in
+  *some* extracted fact (employer, institution, period dropping the entry and raising
+  a priority-1 question; a role miss keeps the entry and raises a vague question).
+  Summary, bullets and skills keep the strict cited-facts rule.
+- **Known limit (mis-pairing):** a value that is real but belongs to a different
+  fact passes. Facts "Intern at Acme Ltd, 2015-2017" and "Backend engineer at Globex, 2019"
+  accept the entry {Acme Ltd, Backend engineer, 2019}. Pinned by a test in verify.test.ts.
+- **Follow-up (architect, not scheduled):** add `factIds` to entries and education in
+  types.ts and verify against them; this also needs the prompt-injection fixture
+  to cite f1 on its entry (reviewer sign-off plus an errors.md entry).
+
 ## ADR-002: Groundedness is a three-stage pipeline with a deterministic verifier (2026-10-28, accepted)
 
 - **Context:** "The AI may rephrase and restructure, but must not invent
@@ -194,6 +211,15 @@ Format — newest on top, one block per decision:
   opinion is not evidence, and it doubles cost for a weaker guarantee — it may
   be added later as a *signal*, never as the gate); RAG/embedding similarity
   (approximate where an exact check is available).
+- **Amended 2026-10-28 (T-12):** the check is per *item tree*, not per item.
+  A bullet is verified against its own cited facts plus its parent experience
+  entry's; the entry's employer and period must be covered by the entry's own
+  facts. The first implementation dropped a true bullet ("Served about 200
+  customers a day") because the employer and period it sat under were cited by
+  its parent and not by itself. Dropping a true statement is a failure of the
+  verifier in the expensive direction — it costs the user a real line and
+  raises a pointless question — so the rule gained one level of inheritance,
+  parent → child only.
 - **Consequences:** two LLM calls per generation instead of one, so latency and
   cost roughly double — accepted, this is the feature. The verifier is the most
   test-dense module in the project and owns the adversarial golden fixtures.

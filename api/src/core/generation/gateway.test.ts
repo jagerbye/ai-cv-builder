@@ -266,6 +266,21 @@ describe('per-call token budget (ADR-006, F-010)', () => {
   });
 });
 
+describe('token budget across the schema retry', () => {
+  it('lets the retry spend only what is left, and refuses to send once nothing is left', async () => {
+    const t = scriptedFetch([fixture('schema-violation.json'), fixture('tool-ok.json')]);
+    await createAnthropicGateway({ ...CONFIG, tokenBudgetPerCall: 1000 }, { fetch: t.fetch, sleep })
+      .callTool(makeRequest());
+    expect(t.body(0).max_tokens).toBe(1000);
+    expect(t.body(1).max_tokens).toBe(850);
+
+    const t2 = scriptedFetch([fixture('schema-violation.json'), fixture('tool-ok.json')]);
+    await expect(createAnthropicGateway({ ...CONFIG, tokenBudgetPerCall: 150 }, { fetch: t2.fetch, sleep })
+      .callTool(makeRequest())).rejects.toMatchObject({ code: 'LLM_BUDGET_EXCEEDED' });
+    expect(t2.calls).toHaveLength(1);
+  });
+});
+
 describe('missing key and secret hygiene (F-010, NFR secrets)', () => {
   it('constructs without a key and fails generation with CONFIG_MISSING without any network call', async () => {
     const t = scriptedFetch([fixture('tool-ok.json')]);

@@ -1,9 +1,10 @@
 import type { PrismaClient } from '@prisma/client';
+import { assertOwnership } from '../auth/ownership.js';
 
-// Returns false when the CV does not exist or belongs to someone else (nothing is deleted).
-// The owner is part of the delete's WHERE, so ownership and removal are one statement.
-// Facts, cv_items, questions and generation_jobs go by ON DELETE CASCADE in the migration.
-export async function deleteCv(prisma: PrismaClient, userId: string, cvId: string): Promise<boolean> {
-  const { count } = await prisma.cv.deleteMany({ where: { id: cvId, userId } });
-  return count === 1;
+// assertOwnership throws 404 for a missing or foreign CV (nothing is deleted); the userId in the
+// delete's WHERE is a second guard. Facts, cv_items, questions and generation_jobs go by ON DELETE CASCADE.
+export async function deleteCv(prisma: PrismaClient, userId: string, cvId: string): Promise<void> {
+  const cv = await prisma.cv.findFirst({ where: { id: cvId }, select: { id: true, userId: true } });
+  assertOwnership(userId, cv);
+  await prisma.cv.deleteMany({ where: { id: cvId, userId } });
 }

@@ -295,7 +295,8 @@ describe('POST /api/cvs, multipart PDF (C-004, spec §3.2)', () => {
     expect(bigRes.json().error.code).toBe('PAYLOAD_TOO_LARGE');
     expect(bigRes.json().error.message).toMatch(/10 MB/);
 
-    const pdf = buildPdf([`Senior backend engineer at Acme Corp.\n${chars(300)}`]);
+    // Lines stay under the page width: pdf.js drops text that runs past the page edge.
+    const pdf = buildPdf([`Senior backend engineer at Acme Corp.\n${chars(80)}\n${chars(80)}\n${chars(80)}\n${chars(80)}`]);
     const nine = Buffer.concat([pdf, Buffer.alloc(9 * MB - pdf.length, 0x0a)]);
     const okRes = await app.inject({
       method: 'POST',
@@ -333,6 +334,19 @@ describe('POST /api/cvs, multipart PDF (C-004, spec §3.2)', () => {
     expect(res.statusCode).toBe(400);
     expect(res.json().error.code).toBe('UNSUPPORTED_SOURCE');
     expect(res.json().error.message).toContain('this PDF looks like a scan; paste the text instead');
+  });
+
+  it('maps a body over the transport limit (12 MB) to 413 naming the 10 MB fix', async () => {
+    const head = Buffer.from('%PDF-1.4\n', 'latin1');
+    const huge = Buffer.concat([head, Buffer.alloc(12 * MB - head.length, 0x0a)]);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/cvs',
+      ...multipart({ targetRole: 'Analyst' }, { name: 'huge.pdf', type: 'application/pdf', data: huge }),
+    });
+    expect(res.statusCode).toBe(413);
+    expect(res.json().error.code).toBe('PAYLOAD_TOO_LARGE');
+    expect(res.json().error.message).toMatch(/10 MB/);
   });
 
   it('gives each PDF rejection a distinct message (size, magic, pages, scan)', async () => {

@@ -109,7 +109,7 @@ export function createAnthropicGateway(config: LlmConfig, deps: GatewayDeps = {}
 
   // One provider request, retried on rate limit / 5xx / transport errors.
   // The SDK's own retries are off (maxRetries: 0): the policy lives here.
-  async function send(req: ToolCallRequest<unknown>, messages: unknown[]): Promise<SentResponse> {
+  async function send(req: ToolCallRequest<unknown>, messages: unknown[], maxTokens: number): Promise<SentResponse> {
     if (!client) {
       client = new Anthropic({
         apiKey: config.apiKey,
@@ -120,7 +120,7 @@ export function createAnthropicGateway(config: LlmConfig, deps: GatewayDeps = {}
     }
     const params = {
       model: config.model,
-      max_tokens: config.tokenBudgetPerCall,
+      max_tokens: maxTokens,
       messages,
       tools: [{ name: req.name, description: req.description, input_schema: req.inputSchema }],
       tool_choice: { type: 'tool' as const, name: req.name },
@@ -153,7 +153,14 @@ export function createAnthropicGateway(config: LlmConfig, deps: GatewayDeps = {}
       let usedTokens = 0;
 
       for (let attempt = 1; attempt <= MAX_SCHEMA_ATTEMPTS; attempt++) {
-        const response = await send(req as ToolCallRequest<unknown>, messages);
+        // The budget is per callTool, across the schema retry: the retry may
+        // only spend what is left, and nothing is sent once it is gone.
+        const remaining = config.tokenBudgetPerCall - usedTokens;
+        if (remaining <= 0) {
+          logger.warn({ tool: req.name, code: 'LLM_BUDGET_EXCEEDED' });
+          throw new GatewayError('LLM_BUDGET_EXCEEDED');
+        }
+        const response = await send(req as ToolCallRequest<unknown>, messages, remaining);
         usedTokens += response.tokens;
         if (usedTokens > config.tokenBudgetPerCall) {
           logger.warn({ tool: req.name, code: 'LLM_BUDGET_EXCEEDED' });

@@ -290,3 +290,27 @@ describe('F-001: the plaintext password appears in no log, error or response', (
     expect(output).not.toContain(SECRET);
   });
 });
+
+describe('C-000 envelope reaches sibling /api plugins', () => {
+  it('unmatched /api path answers the NOT_FOUND envelope', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/no-such-route-here' });
+    expect(res.statusCode).toBe(404);
+    expect(JSON.parse(res.body)).toEqual({ error: { code: 'NOT_FOUND', message: 'Not found.' } });
+  });
+
+  it('malformed JSON to a sibling route (POST /api/cvs) answers a VALIDATION envelope, not the Fastify default', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/cvs',
+      headers: { 'content-type': 'application/json' },
+      payload: '{"broken":',
+    });
+    expect(res.statusCode).toBe(400);
+    const body = JSON.parse(res.body);
+    expect(Object.keys(body)).toEqual(['error']);
+    expect(body.error.code).toBe('VALIDATION');
+    expect(ERROR_CODES).toContain(body.error.code);
+    expect(body.error).not.toHaveProperty('stack');
+  });
+});
+

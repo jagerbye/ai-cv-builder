@@ -133,6 +133,14 @@ This is the feature the product is judged on; its mechanism is
   - [ ] The verifier rejects any CV content item whose `factIds` are empty or
         unknown, and any item containing an organisation name, a date, a
         number, or a named technology that appears in none of its cited facts.
+  - [ ] **Composite items are checked against their own facts plus their
+        parent's.** An experience entry's employer and period must be covered
+        by the entry's own `factIds`; a bullet inside it is checked against
+        its own `factIds` **and** its parent entry's. Without this a correct
+        bullet is dropped for not re-citing the employer named one line above
+        it, which is rejection of a true statement, not protection from a
+        false one. Inheritance goes one level only, parent → child, never
+        sideways between siblings.
   - [ ] A rejected item never reaches the user as content: it is dropped, and a
         clarifying question (F-005) is raised in its place.
   - [ ] Every bullet point, every date, and the summary carry the ids of the

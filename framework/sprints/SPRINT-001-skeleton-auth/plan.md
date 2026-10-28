@@ -78,19 +78,19 @@ Statuses: `todo → red → green → done`, or `blocked(<reason>)`.
 | T-01 | 01 | 0 | — | CVB-1 | round 5 review: fix-list (not approved). Lint, build, web tests green; gate red only on T-02 files; check-lane allowlist gap; Teamlead scoping pending |
 | T-02 | 01 | 0 | T-01 | CVB-2 | green: round 3 fix-list cleared (CI postgres service, gate starts db, DATABASE_URL validation test); gate all green from stopped docker (api 69 + web 14). Awaiting re-review; allowlist needs main.ts, database-schema.md, errors.md |
 | T-07 | 01 | 0 | T-02 | CVB-24 | green: lane 17/17, core type tests 13/13, gate ✓ all green; review fix applied (register-call asserts); awaiting re-review |
-| T-03 | 02 | A | T-07 | CVB-3 | blocked(item 4 done, argon2 test now verifies hash; items 1-3 need Teamlead/Orchestrator edits outside allowlist: argon2 on Node 22 + ADR, vitest include, root envelope install in server.ts) |
-| T-04 | 02 | A | T-03 | CVB-4 | blocked(code green 36/36 with contract; open items need Teamlead edits outside allowlist: vitest include, Dockerfile Node 24 or argon2 dep, server.ts envelope) |
-| T-05 | 03 | A | T-07 | CVB-5 | blocked(typecheck: routes.test.tsx:70 test-file error, code otherwise green) |
-| T-06 | 03 | A | T-05 | CVB-6 | todo |
-| T-13 | 03 | A | T-05 | CVB-13 | todo |
+| T-03 | 02 | A | T-07 | CVB-3 | blocked(lane green 29/29 + gate; root envelope fixed in lane; open: argon2 on Node 22 needs Teamlead decision + ADR; .nvmrc, Dockerfile and engines pin Node 22) |
+| T-04 | 02 | A | T-03 | CVB-4 | green: lane gate all green, 36/36 (9 unit + 27 contract, incl. 404 ownership proof). Open, Teamlead: argon2 on Node 22 (login/register 500 in api/Dockerfile), server.ts root envelope, errors.md on allowlist |
+| T-05 | 03 | A | T-07 | CVB-5 | green: lane 46/46 (7 files), lane gate ✓, web typecheck ✓ (routes.test.tsx:70 fixed); open: architecture.md §2.8 shell bullet is an orchestrator edit; awaiting re-review |
+| T-06 | 03 | A | T-05 | CVB-6 | red: tests written (3 files in web/src/features/auth), 16/17 fail on assertions against the T-05 placeholder; nothing committed |
+| T-13 | 03 | A | T-05 | CVB-13 | red |
 | T-14 | 03 | A | T-05 | CVB-14 | todo |
-| T-09 | 04 | A | T-07 | CVB-9 | green: gateway 23/23, config 4/4, seam 1/1, gate lint ✓; gate red only on other tasks (T-12 verify/questions, intake, web styles, web build); review fixes 1-4 landed, own suites 34/34; gate red only on other lanes (web routes TS18048, stack-config, verify.golden); awaiting re-review; nothing committed |
-| T-10 | 04 | A | T-09 | CVB-10 | green: extract 18/18; review fix-list item 1 fixed (markers neutralised), re-review pending; nothing committed |
-| T-11 | 04 | A | T-10 | CVB-11 | review fix-list 1-4 done: compose.ts + prompts/compose.ts, lane 14/14; gate red outside lane; nothing committed |
-| T-12 | 07 | A | T-07 | CVB-12 | blocked(architect): verifier built, lane 55/57; 2 golden reds on prompt-injection = entry-citation model undefined (CvDraft entries and education carry no factIds); needs ADR + reviewer sign-off on fixture, not a code fix |
-| T-15 | 05 | A | T-07 | CVB-7 | blocked(C-004 multipart: no parser in the dependency budget, Teamlead decision; contract 9/20 green, 11 red on 415; unit 17/17 green; reviewer ok=false) |
+| T-09 | 04 | A | T-07 | CVB-9 | green: lane gate (lint + T-09 subset) ✓, 34/34 with no network and no key; the lane command also pulls verify.golden (lane 07, 2 red, not T-09); awaiting re-review; nothing committed |
+| T-10 | 04 | A | T-09 | CVB-10 | green: lane gate ✓ (lint + extract 18/18, 0 failed); tests pre-existed from earlier RED, no code changed this run; awaiting re-review; nothing committed |
+| T-11 | 04 | A | T-10 | CVB-11 | green (lane gate: compose 14/14 + lint); awaiting review; nothing committed |
+| T-12 | 07 | A | T-07 | CVB-12 | green: lane 60/60, lane gate ✓; entry/education grounded against the whole fact list (types carry no entry factIds); stricter per-entry citation = optional future ADR |
+| T-15 | 05 | A | T-07 | CVB-7 | green: lane gate 37/37 (unit 17, contract 20 incl. multipart C-004); multipart parser hand-written in core/intake/multipart.ts (no dependency); not committed |
 | T-16 | 05 | A | T-15 | CVB-8 | green: jobs 24/24 (stable over 8 runs), contract jobs 8/8 via scratch config, gate red only on other lanes (typecheck web routes.test, lint compose.test/cvs.ts, stack-config, verify.golden); check-lane no T-16 violation; not committed |
-| T-17 | 06 | A | T-07 | CVB-15 | green on real session (requireUser wired by T-18 fix; contract cvs-read 8/8); lane command misses tests/contract (include gap) |
+| T-17 | 06 | A | T-07 | CVB-15 | green: lane 26/26 (types 7, order 5, merge 6, cvs-read 8) with DATABASE_URL set; lane-scoped gate green; ownership by where-clause on userId (404), not a call to assertOwnership; nothing committed |
 | T-18 | 06 | A | T-17 | CVB-16 | green after fix-list: reorder returned in stored order (asserted by position after PATCH and GET), vitest include now covers tests/contract; cvs-patch 9/9, cvs-read 8/8, core/cv 18/18. Open: regenerate path must call mergeRegenerated (lane 05, T-20) |
 | T-19 | 06 | A | T-17 | CVB-18 | todo |
 | T-20 | 07 | B | T-12, T-17 | CVB-17 | todo |

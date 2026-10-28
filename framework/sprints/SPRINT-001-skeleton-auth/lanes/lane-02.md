@@ -211,3 +211,84 @@ Per task, appended by the agents in order:
 - plan.md T-04 row: kept blocked, reason updated.
 - escalations: Teamlead decisions for items 1, 2, 3 and the errors.md allowlist entry.
 - nothing committed
+
+## T-03 re-run (test-engineer, RED step re-check)
+- tests (test-engineer): no new test files. `tests/contract/auth-register.test.ts` (18 tests) already exists from the first RED pass. No production code written in this step.
+- RED: not reproducible now. The lane command `npm -w api run test -- --run src/core/auth tests/contract/auth-register` runs 2 files, 27 tests, all passing (`src/core/auth/session.test.ts` plus the 18 register tests). The first RED (18/18 failing on `expected 404 to be 201`) was against code that no longer exists; the developer's GREEN pass has since landed. The vitest include gap recorded above no longer blocks the lane command.
+- criteria→test mapping: unchanged from the first RED block.
+- note: the lane's exit status was not captured in this run (output piped through tail), so the 27/27 count is the evidence, not the exit code.
+- docs touched: none
+
+## T-03 green pass (developer, CVB-3, run after the vitest include landed)
+- tests: unchanged. The vitest include now reaches `tests/contract/**`, so the lane command runs the suite.
+- code: no production change in this pass. Existing `errors.ts`, `password.ts`, `register.ts`, `routes/auth.ts` verified against C-000 / C-001 / F-001.
+- GREEN: `npm -w api run test -- --run src/core/auth tests/contract/auth-register` exit 0, 2 files, 27/27 (9 unit + 18 contract, live Postgres). Lane gate: `GATE_LANE_TEST='npm -w api run test -- --run src/core/auth tests/contract/auth-register' bash framework/scripts/gate.sh` prints "gate ✓ all green".
+- gates: typecheck ✓ (lane files) lint ✓ tests ✓ (lane)
+- still OPEN, outside this lane's allowlist, Teamlead/Orchestrator decision:
+  1. argon2id on Node 22 (api/Dockerfile, engines `^22`): `password.ts` uses `node:crypto.argon2` (Node 24.7+). On Node 22, register returns 500 INTERNAL. Options: (a) pinned `@node-rs/argon2` plus ADR, or (b) Node 24 in api/Dockerfile and engines plus ADR. Local Node is 24.18, so the lane suite cannot show this.
+  2. `api/src/server.ts`: call `installErrorEnvelope(app)` at root before registering routes. Until then the 404 and error envelope cover only the `/api/auth` context.
+- escalations: none in this pass (Haiku). The repeated escalation came from items 1 and 2 needing files outside the allowlist, not from the code.
+- errors worth remembering: none new (E-entries for vitest include and the Pino/argon2 items already exist or are in the T-03 block).
+- docs touched: none. C-000 and C-001 unchanged. Item 1 needs an ADR in decisions.md, not written here.
+- nothing committed
+- jira: CVB-3 — sync pending
+
+## T-03 review (code-reviewer)
+- review (code-reviewer): fix-list, NOT approved (ok=false). Gate and tests are sound; two blockers sit outside the lane allowlist.
+- lane gate: `GATE_LANE_TEST='npm -w api run test -- --run src/core/auth tests/contract/auth-register' bash framework/scripts/gate.sh` → gate ✓ all green (27/27).
+- stub-test lens: pass. Suite checks DB rows, PHC format and verify round-trip, per-user salt, citext duplicate, no row replacement, field-level details per path, secret absent from logs and headers. A hard-coded happy value fails it.
+- check-lane (base ee63f25): every lane-02 file is inside the allowlist. The reported violations are sibling-lane files (cv, generation, web, jobs, other contract tests), framework/ logs and board, and .claude/workflows/sprint.js. Run on the shared tree the check cannot pass; the Integrator must run it per lane on a lane worktree.
+- Blocker 1 (decision needed): password.ts uses node:crypto.argon2, present only on Node 24.7+. api/Dockerfile is node:22-bookworm-slim and engines is ^22, so POST /api/auth/register returns 500 INTERNAL in the deploy image. Options: (a) pinned @node-rs/argon2 plus ADR (needs Teamlead approval, one-line risk note); (b) Node 24 in api/Dockerfile and both engines plus ADR. Fix is not in the allowlist.
+- Blocker 2 (outside allowlist): installErrorEnvelope is called inside authRoutes. Fastify setErrorHandler and setNotFoundHandler are encapsulated, so sibling plugins under /api (cvsCreateRoutes, jobsRoutes, cvsRoutes, exportRoutes) do not get the C-000 shape. Fix: api/src/server.ts calls installErrorEnvelope(app) on the root before registering routes. server.ts belongs to no lane (ADR-011), so the Orchestrator or Architect makes this edit. Non-/api 404s also stay Fastify default until then.
+- Non-blocking: session.ts, ownership.ts and session.test.ts sit under the auth/** glob but belong to T-04/T-05. Confirm they are not lane-02 output. Last changed in d937d17 (orchestrator), not in this lane's log.
+- Re-review trigger: after decision 1 is recorded and server.ts installs the envelope at root, re-run the lane gate and add a contract case that throws from a sibling /api route and expects the envelope.
+- errors worth remembering: Node 22 has no node:crypto.argon2 → register 500 in the container → use a pinned dependency or Node 24 (decision pending). Fastify error and not-found handlers are encapsulated per plugin, so the envelope must be installed at the root.
+
+## T-03 fix round 2 (developer, CVB-3)
+- blocker 2 (root envelope): CLEARED inside the allowlist. routes/auth.ts marks authRoutes with Symbol.for('skip-override') (what fastify-plugin does, no new dependency), so installErrorEnvelope runs on the /api context and the sibling plugins registered after it inherit it. Not done: non-/api 404s stay Fastify default; that needs installErrorEnvelope(app) in server.ts (ADR-011, Orchestrator), optional now.
+- contract cases added (tests/contract/auth-register.test.ts): unmatched /api path -> NOT_FOUND envelope; malformed JSON to POST /api/cvs -> VALIDATION envelope without stack.
+- blocker 1 (argon2 on Node 22): NOT cleared. Both options need files outside the allowlist (api/Dockerfile + engines, or package.json + lockfile) and an ADR, a Teamlead decision. Not guessed.
+- non-blocking (session.ts, ownership.ts, session.test.ts): not lane-02 T-03 output; they are T-04/T-05 files under the auth/** glob. Not touched.
+- lane gate: GATE_LANE_TEST='npm -w api run test -- --run src/core/auth tests/contract/auth-register' bash framework/scripts/gate.sh -> gate all green, 29/29.
+- nothing committed
+
+## T-03 re-review round 2 (code-reviewer, CVB-3)
+- verdict: ok=false (blocker 1 open; blocker 2 cleared inside the lane)
+- fix-list, item by item:
+  1. argon2 on Node 22: OPEN, blocking. password.ts still needs node:crypto.argon2 (Node 24.7+). .nvmrc is 22, api/Dockerfile is node:22-bookworm-slim, engines are ^22 in api/package.json and package.json. Register answers 500 INTERNAL in the deploy image. Needs a Teamlead decision and an ADR: (a) pinned @node-rs/argon2 (package.json and lockfile, outside allowlist), or (b) Node 24 in .nvmrc, api/Dockerfile and both engines. Reviewer recommends (b): local toolchain is already 24.18 and it adds no native dependency. Not fixed here.
+  2. Root envelope for /api: CLEARED. routes/auth.ts sets Symbol.for('skip-override') and calls installErrorEnvelope on the /api context. server.ts registers the sibling plugins after authRoutes, so they inherit it. Contract cases confirm: unmatched /api path returns NOT_FOUND envelope; malformed JSON to POST /api/cvs returns VALIDATION envelope with no stack. The re-review trigger asked for a handler-thrown error from a sibling route. A parser error passes through the same handler, so this is accepted, but a handler-throw case would be stronger.
+  3. Non-/api 404 and the health route still use the Fastify default: carried, non-blocking. server.ts (ADR-011, Orchestrator) would call installErrorEnvelope(app) on the root. C-000 says every non-2xx, so this is a gap to close before release.
+- gate (reviewer ran it): GATE_LANE_TEST='npm -w api run test -- --run src/core/auth tests/contract/auth-register' bash framework/scripts/gate.sh → gate ✓ all green, 2 files, 29/29 (wave-in-flight lane mode, lint plus lane tests).
+- check-lane.sh ee63f25 with the lane-02 allowlist: exit 1 on the shared tree. No violation is in api/src/core/auth/**, routes/auth.ts, http/errors.ts or tests/contract/auth-register.test.ts. The reported violations belong to other lanes or the orchestrator, including api/src/http/requireUser.ts (T-04), cv/, generation/, intake/, jobs/, web/, fixtures and framework/*.
+- scope note (non-blocking): routes/auth.ts (login, logout, me) and register.ts (createSession, setSessionCookie) now carry T-04 code, and session.ts is a T-04 file under the auth/** glob. T-03 green depends on T-04 files. The Integrator must attribute these per lane at merge.
+- stub lens: pass. The suite checks DB rows, PHC format plus verify round-trip, per-user salt, citext duplicate, no row replacement, field-level details per path, and the secret absent from logs, headers and body. A hard-coded 201, 400 or 409 would fail.
+- docs touched: none by reviewer. plan.md T-03 row flipped to blocked.
+- escalations: Teamlead decision on argon2 and Node (blocker 1).
+- nothing committed
+
+## T-04 re-check (test-engineer, CVB-4, invoked again after GREEN)
+- tests (test-engineer): no files added or changed. The RED tests from the first pass already exist (`api/src/core/auth/session.test.ts`, `tests/contract/auth-session.test.ts`). Writing failing tests now would mean rewriting green coverage, so this pass did not.
+- RED: cannot be re-confirmed, because the implementation has landed. The earlier RED signals (missing `./session.js`, `expected 404 to be 200` on the unrouted login) are recorded in the RED block above.
+- lane command now: `npm -w api run test -- --run src/core/auth tests/contract/auth-session` → 2 files, 36/36 green. The vitest include gap from the earlier blocks is closed on the current tree, so the contract suite (including the 404 ownership proof) runs in the lane gate.
+- lane-02 review items still open, not test items: installErrorEnvelope root install in server.ts (T-03 item 3), argon2 on Node 22 (T-03 blocker 1, login and register answer 500 in the Node 22 image), Secure cookie flag (Teamlead policy), and errors.md on the allowlist.
+- criteria: the mapping in the RED block still applies. Not re-audited line by line in this pass.
+- escalations: none
+- docs touched: none
+- plan.md T-04 row: not changed. The lane is green on its tests, but the row stays blocked on the Teamlead items above.
+- nothing committed
+- jira: CVB-4 — sync pending
+
+## T-04 green pass (developer, CVB-4, after test-engineer re-check)
+- tests: unchanged. Vitest include already reaches tests/contract/** on the current tree, so the lane command runs the 27 contract cases (ownership 404 included).
+- code: no production change in this pass. Lane command checked against the criteria: 401 identical for unknown email and wrong password, cookie httpOnly + SameSite=Lax + 30-day expiry, sha256 of the opaque token only, idempotent logout deleting the row, GET /api/auth/me, requireUser 401 before work, assertOwnership NotFound (never Forbidden).
+- GREEN: `npm -w api run test -- --run src/core/auth tests/contract/auth-session` exit 0, 2 files, 36/36.
+- lane gate: `GATE_LANE_TEST='npm -w api run test -- --run src/core/auth tests/contract/auth-session' bash framework/scripts/gate.sh` gate ✓ all green.
+- plan.md: T-04 row flipped to green, with the Teamlead items listed in the row.
+- still OPEN, not in this lane's power (Teamlead / Orchestrator):
+  1. argon2 on Node 22 (api/Dockerfile node:22, password.ts needs node:crypto.argon2 from Node 24.7+): login and register return 500 in the deploy image. Decision needed: Node 24 base plus engines (reviewer recommendation) or a pinned @node-rs/argon2, both with an ADR.
+  2. api/src/server.ts: installErrorEnvelope(app) at root (ADR-011, not lane-editable). Non-/api 404s and the health route stay on the Fastify default.
+  3. Secure cookie flag: Teamlead policy call, not set.
+  4. framework/knowledge/errors.md is written by this lane (auth / errors (T-04) entry) but is missing from the lane allowlist.
+- docs touched: none. C-002, ADR-007, F-001 and domain-model.md Session already describe this behaviour.
+- nothing committed
+- jira: CVB-4 — sync pending

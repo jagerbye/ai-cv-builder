@@ -50,12 +50,14 @@
 lane 07: the verifier is a pure function over frozen types and never needed the
 LLM stages. CVB-25 ran outside the lanes entirely (designer, Fable) and is done.
 
-**Unscheduled scope found by CVB-25:** the design needs ~18 hand-written
-inline SVG icons, question-column alignment via offsetTop + ResizeObserver,
-and a `prefers-reduced-motion` block. None of it is in any wave-A task's
-acceptance criteria, so it will either inflate the web tasks or be cut. The
-Orchestrator decides at integration; it is recorded here so it cannot be
-absorbed silently.
+**Unscheduled scope found by CVB-25, resolved 2026-10-28:**
+- ~18 inline SVG icons → **cut to one** (`trash`). Everything else became the
+  text it was decorating. The rule that keeps the list from regrowing is in
+  `design.json` → `icons.rule`.
+- Question-column alignment (offsetTop + ResizeObserver) → **kept**: without
+  it the question-attached-to-a-field pattern does not work, and that pattern
+  is the product's one visual idea.
+- `prefers-reduced-motion` block → **kept**: one media query at the root.
 
 ## Sprint 001 — wave B (after wave A is integrated)
 

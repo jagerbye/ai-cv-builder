@@ -54,7 +54,7 @@ confirm something true (a save landed, a stage is running).
 | Accent (actions, links, focus) | `colors.accent.default` | `#215E6B` | 7.3 white-on-accent, 6.6 on page |
 | Input border | `colors.border.input` | `#857F74` | 4.0 on surface (non-text ≥3) |
 | Question text | `colors.question.text` | `#6B4E00` | 7.1 on question bg |
-| Question rule / icon | `colors.question.rule` | `#8A5F00` | 5.2 on question bg |
+| Question rule | `colors.question.rule` | `#8A5F00` | 5.2 on question bg |
 | Success text | `colors.success.text` | `#1F6B4A` | 5.6 on success bg |
 | Danger text / border | `colors.danger.text` | `#B3261E` | 5.6 on danger bg, 6.5 on surface |
 
@@ -126,7 +126,7 @@ empty. Cards scroll with the document; the column header is sticky at 80px.
 
 **Answering.** Focus in the textarea → card in `answering` state. "Save
 answer" (primary, 44px) → `saving` (button spinner, inputs locked) → on
-success the card flips to `answered` (green bg, check icon) for 1.8s, then
+success the card flips to `answered` (green bg, the word "answered") for 1.8s, then
 leaves the list; the field drops its amber rule and shows the neutral badge
 "answered"; only that section re-renders (spec §3.5 guarantees the rest is
 byte-identical, so no layout jump elsewhere). A follow-up question arrives as
@@ -138,8 +138,8 @@ blank". A failed save shows a danger caption under the textarea and a
 "Retry" quiet button; the answer text is never cleared.
 
 **Source quotes.** Any generated line has a `Show source` quiet caption
-button at its end (visible on hover/focus on desktop, always visible as a
-16px quote icon on mobile). It expands `components.source_quote` under the
+button at its end (visible on hover/focus on desktop, always visible as the
+14px caption "Source" on mobile). It expands `components.source_quote` under the
 line: sunken block, 3px grey left rule, 14px secondary text, the supporting
 span highlighted with `colors.selection_bg` when offsets exist, and an
 attribution line ("From your uploaded CV · page 2" or "From your answer on
@@ -253,15 +253,15 @@ quiet link. The card has no shadow; it sits flat on the page.
 
 Route "My CVs". `h1` "My CVs" with "New CV" primary on the right (full width
 under the title on mobile). Empty state is the designed case: left-aligned
-on mobile, centred from 600px, 32px outline `file-text` icon, `h2` "No CVs
-yet", body copy from `empty_state.variants.cv_list`, "Start a CV" primary.
+on mobile, centred from 600px, no icon — `h2` "No CVs yet" carries it — body
+copy from `empty_state.variants.cv_list`, "Start a CV" primary.
 Populated: a single column of `card.list_row` (min 72px): title in
 `body_strong` (falls back to target role when untitled), second line
 `caption` "Target role · updated 28 Oct"; state badge right-aligned;
 `generating` rows show the pulse dot badge and open straight into the
 progress view. Rows are full-row links with a 44px minimum; "Delete" is a
-danger_quiet button revealed on hover on desktop and always visible as a
-trash icon with a 44px hit area on mobile, with a confirm callout inline
+danger_quiet button revealed on hover on desktop and always visible as the
+one surviving icon, `trash`, with a 44px hit area on mobile, with a confirm callout inline
 (not a modal). Loading shows three `skeleton` rows. Newest first, no
 sorting UI.
 
@@ -269,7 +269,7 @@ sorting UI.
 
 | Primitive | Token block | Notes |
 |---|---|---|
-| Text input | `components.text_input` | 44px tall, label above, hint/error below; error = 2px red border + red caption + icon; focus = accent border + ring |
+| Text input | `components.text_input` | 44px tall, label above, hint/error below; error = 2px red border + red caption; focus = accent border + ring |
 | Textarea | `components.textarea` | autogrow, counter, 40vh cap on mobile |
 | Inline field | `components.inline_field` | looks like text; dashed underline on hover; ring on focus; amber rule when it has a question; "edited by you" badge |
 | Button | `components.button` | primary / secondary / quiet / danger_quiet; 44px; full width on mobile; loading keeps the label and locks width |
@@ -280,7 +280,7 @@ sorting UI.
 | Source quote | `components.source_quote` | sunken block with rule; user-sourced = accent rule |
 | Badge | `components.badge` | 22px pill, 14px text; CV state map |
 | Progress stage | `components.progress_stage` | vertical → horizontal at 600px; pulse with reduced-motion fallback |
-| Empty state | `components.empty_state` | three variants; single icon, no illustration |
+| Empty state | `components.empty_state` | three variants; no icon and no illustration — the heading carries it |
 | Dropzone | `components.dropzone` | OS picker on mobile; hint names the limits |
 | Sticky action bar | `components.sticky_action_bar` | mobile editor only; hides while an input has focus |
 | Toast | `components.toast` | two uses only; role=status |
@@ -301,7 +301,14 @@ never a colour change of text alone.
 - **Percentage or time-remaining progress.** There is no truthful number;
   stage + elapsed time is what the server knows.
 - **Icon package, illustration set, component library, CSS framework.** Not
-  on the approved list; icons are a handful of inline SVGs.
+  on the approved list.
+- **Icons, almost entirely.** The first draft of this spec named 18. The
+  Orchestrator cut the list to **one** — `trash`, on the CV-list row, where
+  the control repeats per row and has no room for a label. Everything else
+  became the text it was decorating: buttons say what they do, an input error
+  is a red border plus a red caption, the answered state is the word
+  "answered". The rule now lives in `design.json` → `icons.rule`, because a
+  list like that regrows one reasonable-sounding icon at a time.
 - **Modals.** Delete confirmation and conflicts are inline callouts; a modal
   on a 375px screen over a keyboard is the thing we are trying to avoid.
 - **Rich text, drag-and-drop reordering, undo.** Out of spec (§3.6); reorder

@@ -1,0 +1,33 @@
+{
+  "_comment": "The enforcement layer. All checks route through scripts/ so hooks, CI and agents agree on what 'green' means. Define this project's commands in scripts/gate.config.sh (see gate.config.example.sh); until then the scripts no-op and nothing blocks.",
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./**/secrets/**)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash framework/scripts/hook-postedit.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash framework/scripts/hook-stop.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

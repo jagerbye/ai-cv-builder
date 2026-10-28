@@ -1,0 +1,133 @@
+{
+  "meta": {
+    "type": "Dashboard / SaaS admin panel",
+    "theme": "light",
+    "style": "modern, rounded, bento-grid",
+    "canvas": { "background": "#A9B4A6", "device_frame": "rounded-3xl, light gray surface" }
+  },
+  "colors": {
+    "background": "#F3F5F1",
+    "surface": "#FFFFFF",
+    "surface_muted": "#E6EAE3",
+    "primary_dark": "#1E1E1E",
+    "accent_lime": "#E4FF7A",
+    "text_primary": "#1A1A1A",
+    "text_secondary": "#8A8F88",
+    "border_dashed": "#C9CEC7"
+  },
+  "typography": {
+    "font_family": "Geometric sans-serif (Inter / Manrope-like)",
+    "h1": { "size": "56px", "weight": 500, "line_height": 1.1 },
+    "metric_value": { "size": "64px", "weight": 500 },
+    "card_title": { "size": "20px", "weight": 500 },
+    "body": { "size": "16px", "weight": 400 },
+    "caption": { "size": "14px", "color": "text_secondary" }
+  },
+  "shape": {
+    "radius_card": "32px",
+    "radius_pill": "999px",
+    "radius_button": "24px",
+    "spacing_grid": "24px"
+  },
+  "layout": {
+    "type": "sidebar + main + right column",
+    "grid": "12 columns, bento",
+    "sidebar": { "width": "96px", "background": "primary_dark" },
+    "main": { "width": "~62%" },
+    "right_column": { "width": "~20%" }
+  },
+  "components": {
+    "sidebar": {
+      "logo": { "icon": "sparkle/star", "shape": "rounded square, inverted" },
+      "nav_items": ["home", "share", "puzzle (active)", "link", "globe", "more"],
+      "active_state": { "background": "rgba(255,255,255,0.12)", "radius": "24px" },
+      "bottom_items": ["book", "rocket", "help", "avatar"]
+    },
+    "header": {
+      "title": "Managing Your Team and Workflows",
+      "inline_badges": [
+        { "icon": "user-settings", "style": "white pill" },
+        { "icon": "sparkles", "style": "lime pill" }
+      ],
+      "actions": [
+        { "type": "icon_button", "icon": "settings", "style": "white circle" },
+        { "type": "button", "label": "+ Create a New Scenario", "style": "dark pill" }
+      ]
+    },
+    "tabs": {
+      "style": "pill",
+      "items": ["Organization", "Teams", "Users", "Subscription", "Payment", "Installed Apps", "Variables", "Scenario Properties"],
+      "active": "Organization",
+      "active_style": { "background": "primary_dark", "color": "#FFFFFF" },
+      "inactive_style": { "background": "surface", "color": "text_primary" }
+    },
+    "metric_cards": [
+      {
+        "title": "Operations",
+        "icon": "settings",
+        "background": "surface_muted",
+        "value": "780",
+        "total": "/ 1 000",
+        "badge": { "text": "82%", "style": "lime pill with progress ring" },
+        "progress": { "type": "segmented pills", "segments": 8, "filled": 5, "empty_style": "dashed outline" },
+        "menu": "kebab"
+      },
+      {
+        "title": "Data Transfer",
+        "icon": "arrows-swap",
+        "background": "accent_lime",
+        "value": "163",
+        "total": "/ 512.0 MB",
+        "badge": { "text": "68%", "style": "white pill with progress ring" },
+        "progress": { "type": "segmented pills", "segments": 8, "filled": 4 },
+        "menu": "kebab"
+      }
+    ],
+    "promo_card": {
+      "background": "dark image (futuristic portrait)",
+      "title": "Take Your Automation to the Next Level",
+      "title_icon": "trend-arrow lime",
+      "cta": { "label": "Upgrade", "icon": "play", "style": "white pill, full width" }
+    },
+    "statistics_chart": {
+      "title": "Statistics",
+      "icon": "bar-chart",
+      "legend": [
+        { "label": "Operations", "color": "primary_dark" },
+        { "label": "Data transfer", "color": "accent_lime" }
+      ],
+      "filter": { "type": "dropdown", "value": "2025" },
+      "chart": {
+        "type": "stacked rounded bar",
+        "y_axis": { "min": 0.1, "max": 1.0, "step": 0.1 },
+        "x_axis": ["27 Jun", "28 Jun", "29 Jun", "30 Jun", "1 Jul", "2 Jul", "3 Jul", "4 Jul"],
+        "bar_style": "pill-shaped, dark top segment + lime bottom segment, white/black dot markers",
+        "empty_days": { "dates": ["30 Jun", "2 Jul"], "style": "dashed outline, gray dot" },
+        "tooltips": [
+          { "date": "1 Jul", "label": "87%", "style": "dark pill" },
+          { "date": "1 Jul", "label": "32%", "style": "lime pill" }
+        ]
+      }
+    },
+    "right_column": {
+      "quick_links": [
+        { "title": "Community", "icon": "chat-bubbles", "layout": "square card, centered" },
+        { "title": "Academy", "icon": "graduation-cap", "layout": "square card, centered" }
+      ],
+      "resource_cards": [
+        { "title": "Help Center", "icon": "question", "description": "Explore our detailed documentation...", "action": "arrow-up-right" },
+        { "title": "Partner Directory", "icon": "users", "description": "Find the perfect partner to support...", "action": "arrow-up-right" },
+        { "title": "Blog", "icon": "list", "description": "Access popular guides & stories ab...", "action": "arrow-up-right" },
+        { "title": "Use Cases", "icon": "bar-chart", "description": "Get inspired by all the ways you ca...", "action": "arrow-up-right" }
+      ],
+      "card_style": { "background": "surface_muted", "icon_container": "white rounded square 56px" }
+    }
+  },
+  "design_principles": [
+    "Bento-grid composition with large rounded cards",
+    "Two-tone accent system: dark + lime for emphasis",
+    "Pill-shaped elements everywhere (tabs, badges, bars, progress)",
+    "Dashed outlines for empty/placeholder states",
+    "Generous whitespace, minimal borders, soft tonal layering"
+  ]
+}

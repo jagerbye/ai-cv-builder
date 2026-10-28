@@ -1,0 +1,18 @@
+# ci.yml — the gate lives outside sessions too. CI runs the SAME script as
+# the Stop hook and the agents (scripts/gate.sh), so a session cannot ship
+# anything CI would reject, and CI cannot demand anything sessions don't run.
+name: gate
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: bash framework/scripts/gate.sh

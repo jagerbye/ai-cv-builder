@@ -20,29 +20,29 @@
 
 | Issue | Task | Lane | Summary | Status | Est |
 |---|---|---|---|---|---|
-| CVB-1 | T-01 | 01 | Scaffold, workspaces, real lint and bundler | In Progress (reopened by review) | 2h |
-| CVB-2 | T-02 | 01 | Compose stack, seven-table schema, health | In Progress | 2h |
-| CVB-24 | T-07 | 01 | Route registry and cross-lane interfaces | To Do | 1h |
+| CVB-1 | T-01 | 01 | Scaffold, workspaces, real lint and bundler | Ready for test | 2h |
+| CVB-2 | T-02 | 01 | Compose stack, seven-table schema, health | Ready for test | 2h |
+| CVB-24 | T-07 | 01 | Route registry and cross-lane interfaces | Ready for test | 1h |
 
 ## Sprint 001 — wave A (six lanes in parallel)
 
 | Issue | Task | Lane | Summary | Status | Est |
 |---|---|---|---|---|---|
-| CVB-3 | T-03 | 02 | Registration, argon2id, error envelope | To Do | 2h |
-| CVB-4 | T-04 | 02 | Login, session cookie, ownership guard | To Do | 2h |
-| CVB-5 | T-05 | 03 | Web shell, API client, mobile layout | To Do | 2h |
-| CVB-6 | T-06 | 03 | Auth screens, session restore | To Do | 2h |
-| CVB-13 | T-13 | 03 | Intake screen | To Do | 2h |
-| CVB-14 | T-14 | 03 | Progress view, reload-safe | To Do | 2h |
-| CVB-9 | T-09 | 04 | Anthropic gateway, schema validation, retries | To Do | 2h |
-| CVB-10 | T-10 | 04 | Extract stage, verbatim quotes | To Do | 2h |
-| CVB-11 | T-11 | 04 | Compose stage, facts only | To Do | 2h |
-| CVB-12 | T-12 | 07 | Verifier, questions, golden fixtures | To Do | 3h |
-| CVB-7 | T-15 | 05 | Intake: PDF and free text, all rejections | To Do | 3h |
-| CVB-8 | T-16 | 05 | Durable jobs, lease, reclaim, timeout | To Do | 3h |
-| CVB-15 | T-17 | 06 | CV read, list, delete | To Do | 2h |
-| CVB-16 | T-18 | 06 | PATCH, optimistic concurrency, userEdited | To Do | 2h |
-| CVB-18 | T-19 | 06 | PDF export, A4, real text layer | To Do | 3h |
+| CVB-3 | T-03 | 02 | Registration, argon2id, error envelope | Ready for test | 2h |
+| CVB-4 | T-04 | 02 | Login, session cookie, ownership guard | Ready for test | 2h |
+| CVB-5 | T-05 | 03 | Web shell, API client, mobile layout | Ready for test | 2h |
+| CVB-6 | T-06 | 03 | Auth screens, session restore | Ready for test | 2h |
+| CVB-13 | T-13 | 03 | Intake screen | Ready for test | 2h |
+| CVB-14 | T-14 | 03 | Progress view, reload-safe | Ready for test | 2h |
+| CVB-9 | T-09 | 04 | Anthropic gateway, schema validation, retries | Ready for test | 2h |
+| CVB-10 | T-10 | 04 | Extract stage, verbatim quotes | Ready for test | 2h |
+| CVB-11 | T-11 | 04 | Compose stage, facts only | Ready for test | 2h |
+| CVB-12 | T-12 | 07 | Verifier, questions, golden fixtures | Ready for test | 3h |
+| CVB-7 | T-15 | 05 | Intake: PDF and free text, all rejections | Ready for test | 3h |
+| CVB-8 | T-16 | 05 | Durable jobs, lease, reclaim, timeout | Ready for test | 3h |
+| CVB-15 | T-17 | 06 | CV read, list, delete | Ready for test | 2h |
+| CVB-16 | T-18 | 06 | PATCH, optimistic concurrency, userEdited | Ready for test | 2h |
+| CVB-18 | T-19 | 06 | PDF export, A4, real text layer | Ready for test | 3h |
 
 | CVB-25 | T-24 | — | Design tokens and spec for this product | Done | 1h / 0:05 |
 
@@ -58,6 +58,19 @@ LLM stages. CVB-25 ran outside the lanes entirely (designer, Fable) and is done.
   it the question-attached-to-a-field pattern does not work, and that pattern
   is the product's one visual idea.
 - `prefers-reduced-motion` block → **kept**: one media query at the root.
+
+**Wave 0 and wave A are complete — 18 issues, every one reviewed and approved
+against its lane-scoped gate.** `Ready for test` here means merged into main
+and covered by the gate; there is no staging on this project (ADR-009), so QA
+runs locally against `docker compose up`. Integration of the union is in
+progress; two cross-lane conflicts were found that no lane gate could catch —
+a T-05 test that pinned the temporary empty-placeholder state of the web route
+modules, and a `.env.example` strictness test that predates `WEB_PORT`.
+
+Added during the wave, not in the original plan:
+| Issue | Task | Summary | Status | Est |
+|---|---|---|---|---|
+| CVB-27 | T-24 | Align the toolchain pin test with ADR-012 (Node 24) | Ready for test | 0.5h |
 
 ## Sprint 001 — wave B (after wave A is integrated)
 

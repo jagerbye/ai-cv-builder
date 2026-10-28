@@ -45,7 +45,7 @@ Format — newest on top, one block per decision:
   but against disjoint paths, so the cost moves from conflict resolution to
   running the union of tests after each merge.
 
-## ADR-010: The dependency list must include the toolchain (2026-10-28, accepted)
+## ADR-010: The dependency list must include the toolchain (2026-10-28, accepted; the Node/@types/node pin superseded by ADR-012)
 
 - **Context:** `architecture.md` §1 listed only runtime libraries. The
   scaffold task therefore had no linter, no DOM test environment and no web
@@ -53,7 +53,10 @@ Format — newest on top, one block per decision:
   `tsc` with extra flags for `lint`, ran web tests in a Node environment, and
   made the web "build" a type-check. The reviewer caught all three.
 - **Decision:** ESLint + typescript-eslint, `happy-dom`, `@vitejs/plugin-react`
-  and an exact `@types/node` 22.x are first-class entries in §1. `lint` in
+  and an exact `@types/node` are first-class entries in §1. (The version named
+  here was 22.x; ADR-012 moved the project to Node 24 and the pin with it. The
+  principle is what this ADR decides; the number lives in architecture.md §1
+  and in the toolchain test, which T-24 realigned.) `lint` in
   `gate.config.sh` means a real linter.
 - **Alternatives rejected:** keeping `tsc --noUnusedLocals` as "lint" (it
   passes style and correctness rules silently, so the gate would be green on

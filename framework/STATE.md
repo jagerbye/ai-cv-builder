@@ -6,15 +6,13 @@
 
 ## Now
 
-- **Phase:** sprint 01, re-planned into two waves (ADR-011) — executing,
-  runner `wf_b5169f19-7bc`. First runner stopped: it ignored T-01's blocking
-  fix-list, whose root causes were doc gaps (fixed in 9add869).
-- **Current focus:** wave 0 — T-01 fixes, T-02 schema, T-07 route registry.
+- **Phase:** sprint 01 — wave A complete (15/15 approved), integrating the union
+- **Current focus:** Integrator resolving two cross-lane conflicts; then wave B.
 
 ## In flight
 
-- wave 0 (lane 01): T-01 → T-02 → T-07, blocking
-- wave A (lanes 02–06, 15 tasks) starts automatically when the tree is green
+- Integrator (Fable): web route-registry tests that pinned the placeholder
+  state, and the `.env.example` strictness test vs `WEB_PORT`
 
 ## Waiting on
 

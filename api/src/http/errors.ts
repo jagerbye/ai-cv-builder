@@ -65,6 +65,11 @@ const DEFAULT_MESSAGE: Record<ErrorCode, string> = {
   INTERNAL: 'Something went wrong on our side.',
 };
 
+// ADR-017: the one fixed, safe message that belongs to a code. Never a thrown error's own text.
+export function safeMessage(code: ErrorCode): string {
+  return DEFAULT_MESSAGE[code];
+}
+
 export function envelope(code: ErrorCode, message?: string, details?: ErrorDetail[]): ErrorEnvelope {
   const body: ErrorEnvelope = { error: { code, message: message ?? DEFAULT_MESSAGE[code] } };
   if (details && details.length > 0) body.error.details = details;

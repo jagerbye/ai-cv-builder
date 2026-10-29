@@ -68,7 +68,10 @@ business meaning.
   `source_kind text not null check in ('pdf','text')`,
   `source_text text not null`, `state text not null check in
   ('generating','ready','failed')`, `version int not null default 1`,
-  `created_at`, `updated_at`.
+  `last_error_code text null`, `last_error_message text null` (ADR-017: the
+  closed C-000 code and its fixed safe message; set with state `failed` in the
+  same transaction, nulled on regenerate and on success; never a join to
+  generation_jobs, a CV outlives its jobs), `created_at`, `updated_at`.
 - Indexes: `(user_id, updated_at desc)` — the CV list (C-007), which is the
   only list query in the product.
 - Written by: core/intake (insert), core/cv (update), core/jobs (state);

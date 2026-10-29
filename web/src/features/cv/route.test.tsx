@@ -280,15 +280,19 @@ describe('CV editor — add, delete and reorder (F-006)', () => {
 });
 
 describe('CV editor — design rules (design.json: icons, text controls)', () => {
-  it('uses text for every control except the trash icon, and the trash icon sits only on a skill (negative case for extra icons)', async () => {
+  // design.json icons.rule (2026-10-28): an icon earns its place only on a per-row control with no room
+  // for a label. The trash icon was cut; every delete is now a word ("Delete", "Delete bullet"), so the editor has no
+  // SVG at all. This replaces the earlier assertion that a trash icon sat on a skill.
+  it('renders no icon anywhere in the editor, and every Delete control is a text label, "Delete" or "Delete bullet" (negative case for extra icons)', async () => {
     installApi([cvA()]);
     const { container } = mountEditor('/cvs/cv-1');
     await screen.findByRole('region', { name: 'Experience' });
-    const svgs = Array.from(container.querySelectorAll('svg'));
-    for (const svg of svgs) {
-      const button = svg.closest('button');
-      expect(button).not.toBeNull();
-      expect(button!.getAttribute('aria-label') ?? button!.textContent ?? '').toMatch(/^Delete skill /);
+    expect(container.querySelectorAll('svg')).toHaveLength(0);
+    const deletes = screen.getAllByRole('button', { name: /^Delete/ });
+    expect(deletes.length).toBeGreaterThan(0);
+    for (const b of deletes) {
+      expect(b.textContent).toMatch(/^Delete( bullet)?$/);
+      expect(b.querySelector('svg')).toBeNull();
     }
     const moveButtons = screen.getAllByRole('button', { name: 'Move up' });
     expect(moveButtons.length).toBeGreaterThan(0);

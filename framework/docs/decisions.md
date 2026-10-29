@@ -19,6 +19,31 @@ Format — newest on top, one block per decision:
 
 ---
 
+## ADR-018: The error enum gains the two provider failures F-010 asks to distinguish (2026-10-29, accepted)
+
+- **Context:** reviewing ADR-017's implementation, the reviewer noticed that
+  `gateway.ts` classifies a provider auth failure as `LLM_AUTH_FAILED` and a
+  rejected request as `LLM_INVALID_REQUEST`, and that neither is in the closed
+  C-000 enum — so both collapse to `INTERNAL` by the time they reach a job row
+  or a CV. F-010 asks for exactly the opposite: "invalid-request and auth
+  errors fail the job immediately with a **distinct code**".
+- **Decision:** `LLM_AUTH_FAILED` and `LLM_INVALID_REQUEST` join `ERROR_CODES`
+  with their own fixed safe messages. `INTERNAL` goes back to meaning what it
+  should mean — a fault on our side — instead of covering a mis-set API key,
+  which is the owner's to fix and is the single most likely failure in a fresh
+  deployment.
+- **Alternatives rejected:** leaving them as INTERNAL (loses the distinction
+  the spec names, and makes a configuration problem look like a bug); mapping
+  them both onto `CONFIG_MISSING` (an invalid request is not a missing key, and
+  a wrong key is not an absent one).
+- **Consequences:** adding codes to a closed enum is additive — a client that
+  does not know a code still renders its `message`, which is why the envelope
+  carries both. The gateway's internal codes and the contract's enum are now
+  the same list, so the next one that diverges is a compile error rather than
+  a silent downgrade.
+
+---
+
 ## ADR-017: A failed CV carries its own error, not a job id to go fetch (2026-10-29, accepted)
 
 - **Context:** QA-10 left the CV in `generating` forever when its job failed;

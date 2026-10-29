@@ -29,7 +29,7 @@ export async function enqueueRegenerate(
       // Ownership first: another user's CV and an unknown CV both read as 404.
       const cv = await tx.cv.findFirst({ where: { id: cvId }, select: { id: true, userId: true } });
       assertOwnership(userId, cv);
-      await tx.cv.update({ where: { id: cvId }, data: { state: 'generating' } });
+      await tx.cv.update({ where: { id: cvId }, data: { state: 'generating', lastErrorCode: null, lastErrorMessage: null } });
       const job = await tx.generationJob.create({
         data: { cvId, userId, status: 'queued', scope: 'full' },
         select: { id: true },

@@ -1,3 +1,4 @@
+import type { ErrorCode } from '../../http/errors.js';
 // C-006 (response DTO) and C-008 (patch shape) from api-contracts.md.
 // Declaration-only: types, no runtime code.
 
@@ -83,6 +84,8 @@ export interface CvResponse {
   skills: CvSkill[];
   questions: CvQuestion[];
   facts: CvFact[];
+  // ADR-017: present only in state failed.
+  lastError?: { code: ErrorCode; message: string };
 }
 
 // C-008 patch: any field present is replaced whole; absent fields untouched.

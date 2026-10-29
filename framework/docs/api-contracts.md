@@ -110,8 +110,12 @@ Format:
     education:  [ { id, institution, degree?, period, order, userEdited } ],
     skills:     [ { id, name, group?, factIds: string[], userEdited } ],
     questions:  [ { id, path, text, status: "open"|"answered"|"dismissed" } ],
-    facts:      [ { id, kind, text, sourceQuote, source: "document"|"user" } ] }
+    facts:      [ { id, kind, text, sourceQuote, source: "document"|"user" } ],
+    lastError?: { code: <C-000 code>, message: string } }
   ```
+- `lastError` (ADR-017) is present only when `state` is `failed`: the closed
+  C-000 code and its fixed safe message, never a provider, driver or parser
+  message. Absent in every other state; cleared by regenerate and by success.
 - `facts` is what lets the UI show "where did this line come from" (F-004).
 - **Question `path` grammar (clarified sprint 001, QA-05, ADR-016).** A question's
   `path` names the FIELD the question is about, never the item that holds it, so

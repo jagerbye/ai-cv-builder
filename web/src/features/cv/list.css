@@ -55,7 +55,7 @@
 
 .cv-list-row {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-1) var(--space-4);
   align-items: baseline;
   padding: var(--space-3) 0;
@@ -81,8 +81,8 @@
   grid-column: 1 / -1;
 }
 
-@media (max-width: 599px) {
+@media (min-width: 900px) {
   .cv-list-row {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) auto;
   }
 }

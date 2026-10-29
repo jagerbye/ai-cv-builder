@@ -262,5 +262,5 @@ export async function persistDraft(
   }
 
   // ADR-015: the stored content changed, so the version bumps and the CV is ready.
-  await tx.cv.update({ where: { id: cvId }, data: { state: 'ready', version: { increment: 1 } } });
+  await tx.cv.update({ where: { id: cvId }, data: { state: 'ready', version: { increment: 1 }, lastErrorCode: null, lastErrorMessage: null } });
 }

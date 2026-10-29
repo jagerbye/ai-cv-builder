@@ -1,7 +1,7 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import type { GenerationPipeline, Fact, VerificationResult } from '../generation/types.js';
 import { persistDraft } from '../cv/persist.js';
-import { ERROR_CODES, type ErrorCode } from '../../http/errors.js';
+import { ERROR_CODES, safeMessage, type ErrorCode } from '../../http/errors.js';
 
 // T-16 (CVB-8). ADR-004: Postgres is the queue. A lease is a row write (leased_until), claimed
 // with FOR UPDATE SKIP LOCKED. Every write a run makes is fenced on (id, attempt, status='running'),
@@ -83,8 +83,12 @@ function classify(err: unknown): { code: ErrorCode; message: string } {
 }
 
 // QA-10: the CV's state goes to failed; nothing else on the CV or its items changes (no version bump).
-async function markCvFailed(tx: Prisma.TransactionClient, cvId: string): Promise<void> {
-  await tx.cv.update({ where: { id: cvId }, data: { state: 'failed' } });
+// ADR-017: the CV's own columns carry the code and its fixed safe message, never the thrown error's text.
+async function markCvFailed(tx: Prisma.TransactionClient, cvId: string, code: ErrorCode): Promise<void> {
+  await tx.cv.update({
+    where: { id: cvId },
+    data: { state: 'failed', lastErrorCode: code, lastErrorMessage: safeMessage(code) },
+  });
 }
 
 export function createJobWorker(opts: JobWorkerOptions): JobWorker {
@@ -135,7 +139,7 @@ export function createJobWorker(opts: JobWorkerOptions): JobWorker {
             },
           });
           // QA-10: the CV is told in the same transaction. Its content and version are untouched.
-          await markCvFailed(tx, row.cv_id);
+          await markCvFailed(tx, row.cv_id, 'INTERNAL');
           return 'exhausted' as const;
         }
 
@@ -227,7 +231,7 @@ export function createJobWorker(opts: JobWorkerOptions): JobWorker {
         },
       });
       if (res.count !== 1) return;
-      await markCvFailed(tx, lease.cvId);
+      await markCvFailed(tx, lease.cvId, code);
     });
   }
 

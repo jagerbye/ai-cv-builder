@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import type { ErrorCode } from '../../http/errors.js';
 import { assertOwnership } from '../auth/ownership.js';
 import { orderExperience } from './order.js';
 import type {
@@ -128,5 +129,8 @@ export async function getCv(prisma: PrismaClient, userId: string, cvId: string):
     skills,
     questions,
     facts,
+    ...(cv.state === 'failed' && cv.lastErrorCode && cv.lastErrorMessage
+      ? { lastError: { code: cv.lastErrorCode as ErrorCode, message: cv.lastErrorMessage } }
+      : {}),
   };
 }

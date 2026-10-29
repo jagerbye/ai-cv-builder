@@ -11,3 +11,5 @@ framework/docs/*
 framework/knowledge/*
 .claude/*
 .gitignore
+api/src/http/errors.ts
+api/src/core/generation/gateway*

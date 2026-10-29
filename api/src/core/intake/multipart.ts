@@ -1,6 +1,8 @@
-// T-15 (CVB-7, C-004). A bounded multipart/form-data reader. No library is in the
-// dependency budget (architecture.md §1), and intake needs only: text fields and at
-// most one file part, from a body Fastify has already buffered under a byte cap.
+// T-15 (CVB-7, C-004). A bounded multipart/form-data reader. Intake needs only text fields and at most one
+// file part, from a body Fastify has already buffered under a byte cap, so @fastify/multipart's streaming
+// machinery buys nothing here and its surface is larger than what this reads (architecture.md §1). That is a
+// deliberate trade — hand-rolled parsing of an untrusted wire format — and the bounds are the reason it is
+// defensible: MAX_PARTS, Fastify's byte cap before this runs, and no recursion.
 
 export const MAX_PARTS = 8;
 

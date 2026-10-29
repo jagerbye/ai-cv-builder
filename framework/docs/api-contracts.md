@@ -185,6 +185,12 @@ Format:
   is the exception and **bumps**: it is C-008's concurrency token, not content,
   and a section that changed under a still version is a section an open editor
   would silently overwrite (ADR-015).
+- **Restore (ADR-027).** The answer is stored as a user fact and the owning
+  section is recomposed and re-verified with it; an experience entry, education
+  entry or skill the new evidence supports that the CV does not hold is restored
+  into that section — this is what a priority-1 question's answer is for.
+  Bullets are never written by an answer. The section's open questions are
+  replaced by the re-verify's (each bound to its item or to the bare section).
 - Errors: `404 NOT_FOUND`; `409 CONFLICT` (already answered);
   `503` with the code the recompose failure actually had (ADR-020):
   `CONFIG_MISSING` (no API key), `LLM_AUTH_FAILED` (key rejected),
@@ -259,6 +265,7 @@ type VerificationResult = { accepted: CvDraft; questions: QuestionDraft[]; dropp
   CV's one `contact` item. C-006's `contact` gains an optional
   `citations?: { fullName?, email?, phone?, location?: string[] }`, the facts behind each generated field; it is
   absent on an intake or hand-edited contact. A `userEdited` contact is kept whole by a regeneration; an unedited
-  one is replaced field by field. The same ADR also changes `verify`'s summary rule: a summary naming an organisation,
-  figure or technology no cited fact holds is dropped; a merely vague one is kept with its question. The change is additive.
+  one is replaced field by field. (ADR-022's summary rule — drop a summary naming an entity no fact holds — was
+  superseded the same day by ADR-025: the summary is prose and is never dropped; it is kept with a priority-2
+  question.) The change is additive.
 - Status: **frozen (sprint 2)**

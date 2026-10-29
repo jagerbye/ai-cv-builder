@@ -83,6 +83,21 @@ the framework's planning stages — analyst, owner, manager, teamlead — produc
 a sound specification that could not have caught any of this: every defect
 lived at runtime or in a seam, and the only cure is to run the thing early.
 
-**Final state.** Gate green including the smoke step. The full flow verified on
-a live model, end to end, with the evidence in the sprint report.
+**After the first close, the sprint kept going, and that is the real story.**
+Two more source texts — a sparse one with no dates or company names, a messy
+one contradicting its own dates — ran all seven steps. Then the owner asked for
+the guarantee to be signed off, so it was ATTACKED instead of reviewed, and
+three sentences the spec promises turned out false: a question numbered against
+the drafted arrays landed beside a surviving entry once anything was dropped;
+"a cited fact must name it" was a substring test, so MIT was grounded by
+"Submitted 40 patches"; and answering a priority-1 question restored nothing.
+ADR-027 fixed all three, ADR-028 closed the word boundary by enumerating every
+separator, and ADR-029 came from the first full run on that build failing on a
+retry policy that satisfied the spec's wording with a 500 ms base.
 
+**Final state.** Gate green including the smoke step: api 811, web 251, smoke
+11. The whole flow verified on a live model four times, the last one on the
+build carrying every fix above. Navigation and a progress stepper added; the
+facts screen shows the verbatim quote behind every generated line. 42 issues,
+all Done, including CVB-12 — the groundedness guarantee — closed on the owner's
+word once the confirmation pass stopped finding breaks.

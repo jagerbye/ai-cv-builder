@@ -364,3 +364,23 @@ is nowhere in the playbook.
   how the browser reaches the api, because nobody owned that line here and
   every lane assumed another lane had.
 - Status: APPLIED to the template 2026-10-29 (B-024)
+
+## FF-16 Narrow lanes starve the central documents (found 2026-10-29, severity: structural)
+
+- Evidence: `rules/docs-sync.md` requires docs to change with the code and the
+  reviewer to verify it, and every lane in a day of parallel work satisfied it
+  — while the specification and the architecture document drifted into
+  describing behaviour that had been deliberately reversed (E-013 in this
+  project).
+- Why it recurs: lane isolation gives each lane a narrow allowlist so it cannot
+  collide with its neighbours. The central documents belong to no lane, sit on
+  no allowlist, and so are updated by nobody. The mechanism that makes parallel
+  work safe is the same mechanism that starves the documents, and it gets worse
+  as lanes multiply — which is the direction this framework pushes.
+- Proposed fix: make the wave's closing audit a step the Integrator owns, with
+  the output format that caught it here — for each change, "what the document
+  currently claims" BEFORE "what I changed", because a confidently wrong
+  sentence hides from a reader looking for gaps. Alternatively or additionally,
+  put the central documents on every lane's allowlist and let the union catch
+  the conflicts; the audit is cheaper.
+- Status: open

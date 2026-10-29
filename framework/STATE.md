@@ -1,46 +1,40 @@
 # STATE.md — the project's "now" (≤40 lines, hard cap)
 
-> **What this file is:** the Orchestrator's externalized working memory —
-> the ONLY file (besides CLAUDE.md) a session needs to resume exactly where
-> the last one stopped.
+> **What this file is:** the Orchestrator's externalized working memory — the
+> only file besides CLAUDE.md a session needs to resume where the last stopped.
 
 ## Now
 
-- **Phase:** sprint 01 closed. Waves 0, A and B built, integrated and QA'd;
-  all 15 QA findings fixed; B-024 harvested back into the template.
-- **Green:** `bash framework/scripts/gate.sh` ✓ on 10 of 10 consecutive serial
-  runs — api 591 passed / 5 skipped, web 220, smoke 11. One gate run at a time
-  per database (E-008).
-- **Nothing is in flight.** The next session starts from the backlog.
+- **Sprints 01 and 02 both closed.** 01 built the product; 02 took it to a real
+  model and fixed what that proved wrong. Board: 42 issues, all Done.
+- **Green:** `gate.sh` ✓ — api 811 / 1 skipped, web 251, smoke 11. One gate run
+  at a time per database (E-008).
+- **Proven live four times**, on three source texts (ordinary, sparse, messy)
+  and once on the current build: register → free text → generation → grounded
+  draft with questions → answer → manual edit → A4 PDF.
+- **Nothing is in flight.**
 
 ## Waiting on
 
-- **Owner:** `ANTHROPIC_API_KEY` in `.env`. The suite needs none and never
-  will — every Anthropic call goes through the C-012 seam, mocked everywhere.
-  A real generation has therefore never run; that is the one unproven claim
-  in the README and it is written there as such.
+Nothing blocking. The route and the retry budget are configuration
+(`ANTHROPIC_MODEL`, `ANTHROPIC_RETRY_BUDGET_SECONDS`): one proxy refused
+tool-use at roughly two in three, so the environment moved, not the defaults.
 
 ## Next 3 actions
 
-1. With a key: run one real generation end to end and record what the live
-   model does to the golden fixtures' assumptions.
-2. B-021…B-023 if the owner wants them (SSE progress, source-quote popover,
-   session sweep) — all parked with reasons on the board.
-3. The two notes B-024 left for the next project: a test-engineer failure
-   with `blockedOn: code` has no rung on the escalation ladder, and a blocked
-   task appears in both `blocked` and `needsAttention`.
+1. An automated browser test of the real flow — manual QA found four blockers
+   no suite could see, and nothing yet drives the actual screens.
+2. More live source texts. Each of three found something; one run is an
+   existence proof, not a sample.
+3. B-024's two notes for the next project: a test-engineer `blockedOn: code`
+   has no rung on the ladder; a blocked task lands in two lists.
 
-## Recent decisions (this week only)
+## The guarantee (ADR-002, 013, 022-028)
 
-- ADR-002/013/016 — groundedness: extract → compose(facts only) → deterministic
-  verify; entries cite their own facts; a question's path names a FIELD
-- ADR-011 — lanes are disjoint file sets; worktrees unavailable per lane
-- ADR-014/019 — the job-queue lock is a helper with a guard; the suite has its
-  own database, because four incidents had one cause
-- ADR-015/017/018/020 — version bumps on an answer; a failed CV carries
-  lastError; the two provider failures keep their own codes, on both paths
-
-## Known, owned by nobody
-
-- 5 container tests skipped until the api image is built
-- Facts screen built (B-022): "Show source" under every bullet, summary and skill; contact/header fields carry no factIds so have none
+A structured claim — employer, institution, skill, contact field — is
+established by a whole word in one of its own cited facts, or it is removed and
+its absence asked about at priority 1. Prose is flagged where the user sees it
+and never deleted. The verifier is pure. A question binds to the item it is
+about, so it is never shown against a line it was not written for. The limits
+are in ADR-024, ADR-025 and ADR-028, not implied away. Skill aliases ("JS" vs
+"JavaScript") drop with a question; no alias dictionary is coming.

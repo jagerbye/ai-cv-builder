@@ -6,7 +6,7 @@
 > **Who writes it:** PM (order, sizing), BA (links to spec), owner decisions
 > via Orchestrator. **Who reads it:** session start, sprint planning.
 
-**Current sprint:** SPRINT-001-skeleton-auth (closed — see HISTORY.md); next: B-024 ·
+**Current sprint:** SPRINT-002-live-model (closed — see its report.md); next: B-024 ·
 **Last updated:** 2026-10-29
 
 Format — ordered, top = next:
@@ -76,6 +76,22 @@ M ≈ 1–2 h, L ≈ 2–3 h. A task in a sprint plan is never larger than M
 - [x] B-020 README (run, tests, architecture, anti-hallucination, cuts, AI
       usage) + `docker compose up` verified from a clean clone — deliverable,
       size M, value: the README is graded, not just read
+
+### SPRINT-002 — live model (closed, 2026-10-29; see SPRINT-002-live-model/report.md)
+
+Walked the real-model path and fixed what it revealed (ADR-017…029). Items
+that surfaced here and are user-visible:
+
+- [x] B-025 Signed-in navigation in the shell header: "My CVs" / "New CV",
+      `aria-current` per page, hidden when signed out — F-008 (spec §3.8),
+      size S, built in `web/src/app/App.tsx`
+- [x] B-026 Generation progress stepper: the four named stages, current one
+      marked, no percentage and no progress bar by design — F-003 (spec §3.3),
+      size S, built in `web/src/features/generation/stepper.tsx`
+- [x] B-022 "Show source" disclosure — moved up from Parked; see there
+- [x] B-027 Question binding, whole-word grounding, answer restore, priority
+      meanings, retry policy, contact block — F-004/F-005/F-010, ADR-021…029,
+      size L in total (several lanes); docs re-synced 2026-10-29
 
 ### Framework work (not product — runs after the product is done)
 

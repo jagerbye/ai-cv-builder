@@ -94,18 +94,43 @@ Three stages, two of them LLM calls and one of them ordinary code:
 | `compose` | LLM (tool use, strict schema) | `Fact[]` + target role → `CvDraft` where every content item cites `factIds` and carries a `relevance` score |
 | `verify` | **pure code, no LLM** | `CvDraft` + `Fact[]` → accepted `CvDraft` + `Question[]` |
 
-- **Responsibility:** owns prompts, the Anthropic client wrapper (timeouts,
-  retries, token budget), the schemas, and the verifier.
+- **Responsibility:** owns prompts, the Anthropic gateway (`gateway.ts`: the
+  only SDK import — timeouts, retries, the token ledger), the schemas, and the
+  verifier.
+- **Gateway retries (ADR-029).** A 429, a 5xx or a transport failure is
+  retried; 401/403 (`LLM_AUTH_FAILED`) and any other 4xx
+  (`LLM_INVALID_REQUEST`) fail at once. The wait is the provider's
+  `Retry-After` (delta-seconds or HTTP date) when present, floored at the base
+  and capped at what is left of the budget; otherwise base × 2^(n−1) with up to
+  +50% jitter. Attempts are bounded by a **waiting budget per provider
+  request**, not by a count (a 12-attempt ceiling is a sanity brake only); when
+  the next wait would not fit, the call fails with the failure's own code. Two
+  settings: `ANTHROPIC_RETRY_BASE_SECONDS` (2) and
+  `ANTHROPIC_RETRY_BUDGET_SECONDS` (20). `callTool` makes up to two schema
+  attempts, so one generation can wait about twice the budget — inside C-005's
+  180 s. The tests drive this with an injected clock, sleep and random.
+- **Token ledger (ADR-021).** The spend budget is **per job**: the worker
+  creates one `TokenLedger` per run and every stage — extract, compose, a schema
+  retry — spends from it; the answer path (C-009) creates one per answer of the
+  same size. Nothing is sent once it is empty and an overdrawing response is
+  discarded unexamined; both are `LLM_BUDGET_EXCEEDED`. `max_tokens`
+  (`ANTHROPIC_MAX_OUTPUT_TOKENS`) bounds one response and is a different
+  number from `ANTHROPIC_TOKEN_BUDGET_PER_JOB`.
 - **Owned data:** `facts`, `cv_sections`/`cv_items`, `questions`.
 - **Must NOT:** write HTTP responses, and — the rule the whole product rests on
   — **the `compose` call must never receive the raw source text.** It sees the
   extracted facts only. A fact that was not extracted cannot be composed, so an
   invented employer has nowhere to come from (ADR-002).
-- **The verifier is the enforcement**, not the prompt: for every content item
-  it checks that the cited facts exist, and that every organisation name, date,
-  number and named technology in the item's text occurs in the text of one of
-  its cited facts (normalised comparison). An item that fails is dropped and
-  becomes a question. Prompts ask nicely; the verifier is what is tested.
+- **The verifier is the enforcement**, not the prompt (ADR-025, 027, 028):
+  for every item it checks that the cited facts exist. A **structured** item —
+  experience entry, education entry, skill, contact field — must be named as a
+  whole word in a cited fact (employer, institution, skill name, contact value;
+  one name-edge rule in `verify-entities.ts`) or it is dropped and becomes a
+  priority-1 question. **Prose** — the summary and bullet text — is never
+  dropped: an unsupported name, figure, technology or duration raises a
+  priority-2 question beside it. Prompts ask nicely; the verifier is what is
+  tested. A question is stored against the item's id, and its `path` is
+  derived at read time (ADR-027).
 
 ### 2.5 `core/jobs` — durable async work
 
@@ -171,11 +196,15 @@ uses only the web origin. (Sprint 001, QA-01.)
    the editor; a reload at any point resumes from step 9's poll.
 
 **Answering a question:** `POST …/answer` → the answer is stored as a
-user-sourced fact → only the section owning the bound path is recomposed and
-re-verified → `userEdited` fields in that section are preserved verbatim.
+user-sourced fact → only the section owning the bound item is recomposed and
+re-verified, with its own token ledger → an entry, education or skill the new
+evidence supports is restored (ADR-027) → `userEdited` fields in that section
+are preserved verbatim.
 
 **Failure:** any stage throwing → job `failed` with a classified code, CV state
-`failed`, source text intact, `regenerate` offered. Nothing is half-written:
+`failed` with `last_error_code`/`last_error_message` set in the same
+transaction (served as C-006 `lastError`, ADR-017; cleared by regenerate and by
+success), source text intact, `regenerate` offered. Nothing is half-written:
 each stage commits its own rows, and a retry starts from `extract`.
 
 ## 4. Cross-cutting concerns

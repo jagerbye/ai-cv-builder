@@ -102,6 +102,10 @@ business meaning.
   cascade from `cvs` (it leads with `cv_id`); `unique(cv_id, path)` — the path
   is the addressing scheme questions and patches use, so it must be unique per
   CV; `(parent_id)` — a bullet's cascade when its experience entry is deleted.
+- The contact block (ADR-022 Amendment A) is one row of `kind='contact'` at
+  `path='contact'`: `data` holds the field values and a per-field `citations`
+  map (`{ fullName?: uuid[], email?: … }`), `fact_ids` their union. It is what
+  C-006 serves as `contact.citations`.
 - Note: `fact_ids` is an array rather than a join table on purpose — items are
   always loaded whole with their CV, never queried by fact; a join table would
   add a migration and a query for no read we actually perform.
@@ -113,12 +117,19 @@ business meaning.
 - Columns: `id uuid pk`, `cv_id uuid fk→cvs on delete cascade`,
   `path text not null`, `text text not null`, `reason text not null`,
   `status text not null check in ('open','answered','dismissed')`,
-  `item_id uuid fk→cv_items on delete set null` (ADR-027: the item the question is about; null for a section-level, summary or contact question; a trigger on cv_items deletion also rewrites `path` to the bare section),
+  `item_id uuid fk→cv_items on delete set null` (ADR-027, migration
+  `20261029030000_question_item_binding`: the item the question is about;
+  null for a section-level, summary or contact question. The stored `path` is
+  the field spelling at write time and is NOT what C-006 serves — the read
+  derives the index from the item's current position. The trigger
+  `cv_items_unbind_questions` (BEFORE DELETE) nulls `item_id` and rewrites
+  `path` to the bare section),
   `answer text`, `answered_at`, `follow_up_of_id uuid fk→questions`,
   `priority int not null default 100`, `created_at`.
 - Indexes: `(cv_id, status, priority)` — "open questions for this CV, most
   important first" is the only way this table is read, and it leads with
-  `cv_id` so it serves the cascade too; `(follow_up_of_id)` — self-FK cascade.
+  `cv_id` so it serves the cascade too; `(follow_up_of_id)` — self-FK cascade;
+  `(item_id)` — the unbind trigger's lookup.
 - Written by: core/generation (raise), core/cv (answer); read by: api.
 
 ## generation_jobs  (owner: core/jobs)

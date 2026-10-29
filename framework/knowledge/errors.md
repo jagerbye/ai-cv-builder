@@ -251,3 +251,26 @@ entry.
   stated, and a feature that was supposed to be additive broke them. A test
   that reaches outside its subject to identify its subject will be broken by
   work that has nothing to do with it.
+
+## E-013 docs-sync degrades exactly when work is split into narrow lanes  (2026-10-29)
+
+- **Symptom:** an audit after a day of parallel work found the architecture
+  document describing a verifier that had been deliberately replaced, the spec
+  stating a grounding rule two ADRs had superseded, a question priority the
+  code no longer used, and no gateway section at all — while every individual
+  lane had passed review with "docs touched" satisfied.
+- **Cause, and it is structural rather than careless:** a lane is given a
+  narrow allowlist so it cannot collide with its neighbours. The central
+  documents — the specification, the architecture — belong to no lane and are
+  on nobody's allowlist, so a change to behaviour updates the ADR (which the
+  Orchestrator writes) and the lane's own corner, and the document a reader
+  actually starts from drifts. The more lanes, the faster it drifts. Each lane
+  was individually correct.
+- **Fix / rule:** a wave ends with a docs audit that reads the central
+  documents against the ADRs written during it, and the audit's output is "what
+  the doc currently claims" before "what I changed" — stating the claim first
+  is what surfaces a sentence that is confidently wrong rather than merely
+  missing.
+- **Worth noticing:** the dangerous entries were not the gaps. A missing
+  paragraph is visibly missing. A paragraph describing last month's rule reads
+  as authoritative, and the next agent builds on it.

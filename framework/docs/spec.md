@@ -105,6 +105,14 @@ the existence of someone else's record is itself not disclosed).
         `queued | running | succeeded | failed` and stage is one of
         `extracting | composing | verifying` — the UI shows the stage, not a
         fake percentage.
+  - [ ] The progress view is a **stepper** of the four named stages in the
+        server's order — Queued, Extracting, Composing, Verifying — with the
+        current one marked (`aria-current="step"`), earlier ones "done" and a
+        failed job marking the stage it failed in. There is deliberately **no
+        percentage and no progress bar**: the server does not know how long a
+        stage takes, so any percentage would be invented, in a product whose
+        point is not inventing what it does not know. A list with the current
+        step marked says only what is true.
   - [ ] Reloading the page during generation restores the progress view from
         the server; after a full browser restart and re-login the same CV is
         still found in its current state.
@@ -135,13 +143,35 @@ This is the feature the product is judged on; its mechanism is
         grounded in a cited fact or it is gone. Every unsupported phrase in
         prose (the summary and bullet text) is flagged where the user will see
         it. The verifier drops a structured item (entry, education, skill, contact field) whose `factIds` are empty or unknown; prose that cites nothing is kept with a question saying so.
-  - [ ] **No recombination.** An experience entry needs one cited fact
-        containing both its employer and its period; an education entry, one
-        containing both its institution and its period. Two true facts about
-        two different jobs must not be assembled into a third job that never
-        existed — every token real and the pairing invented is still
-        invention. A role named only in a fact that does not mention the
-        employer keeps the entry and raises a vague question.
+  - [ ] **No recombination.** An experience entry is established by one cited
+        fact naming its employer (an education entry, its institution); that is
+        strict and an entry without it is dropped (ADR-013, ADR-022). Its period
+        is lenient: when no cited fact names the employer **and** states the
+        period, the entry is kept and a priority-2 question is raised on the
+        period — which is where a mis-pairing (one employer's name with another
+        fact's dates) surfaces, as a question the user sees rather than a
+        silent deletion of a real job. Two true facts about two different jobs
+        must never be assembled into a third job that never existed. The
+        extract stage emits one employment fact per employer so the rule can
+        see them apart. A role named only in a fact that does not mention the
+        employer keeps the entry and raises a vague (priority-3) question; a
+        role no cited fact names is priority 2.
+  - [ ] **"Named" means a whole word (ADR-027, ADR-028).** An employer,
+        institution, skill, role or contact value is established only when it
+        occurs in a cited fact as a whole word or phrase, never as a substring:
+        "Amazon Web Services" does not ground `Amazon`, "NoSQL" does not ground
+        `SQL`, "Engineering Manager" does not ground `Engineer`. A name
+        continues through a letter, digit, `_`, and through `-`, `/`, U+2212, a
+        dash (U+2010–U+2015), `&`, `+`, `#`, or `.` followed by a letter or
+        digit ("Acme-Labs", "Acme&Co", "C++" and "C#" are different names);
+        `,`, `:`, `\`, `·`, U+2019 and a spaced dash end it. **Written limits,
+        deliberately not fixed:** `'` is a boundary, so "Acme's" grounds `Acme`
+        (a legitimate possessive) and "D'Angelo" grounds skill `D` — the
+        smaller cost, and fixing it would break every possessive; an employer
+        that is the first word of a longer capitalised name ("Acme" against
+        "Acme Warsaw") is dropped and asked about, by the same rule that drops
+        `Amazon` against "Amazon Web Services"; only the right edge of a name is
+        checked ("Ex-Acme" is not caught on the left).
   - [ ] **Composite items are checked against their own facts plus their
         parent's.** An experience entry's employer and period must be covered
         by the entry's own `factIds`; a bullet inside it is checked against
@@ -154,8 +184,10 @@ This is the feature the product is judged on; its mechanism is
         are never deleted for what they say. They are checked best-effort
         against the text of the cited facts plus the target role, and an
         unsupported name, acronym, number, technology or duration raises a
-        priority-1 question on that field naming what is unsupported; the
-        drafted text stays. Figures are compared after normalising separators
+        priority-2 question on that field naming what is unsupported
+        (ADR-026: the text is still in the CV, where a dropped entry is not);
+        the drafted text stays. A bullet or summary that cites nothing, or an
+        unknown fact, is likewise kept with a priority-2 question. Figures are compared after normalising separators
         ("1,000" = "1000"), non-Latin capitals count, and a duration is
         supported only when a cited fact states it. **Known limit, by
         design:** this is a flag, not a proof. Names with an internal capital
@@ -169,6 +201,14 @@ This is the feature the product is judged on; its mechanism is
   - [ ] A structured item that is rejected never reaches the user as content:
         it is dropped, and a clarifying question (F-005) is raised in its
         place. Prose is not rejected; it stays, with its question beside it.
+  - [ ] **The contact block (ADR-022).** Compose produces `contact`
+        (fullName, email, phone, location), each field citing its own facts;
+        the verifier checks every field strictly (the value must occur as a
+        whole token in a cited fact) and drops an unsupported one with a
+        question on `contact.<field>` — a wrong email is a real harm, unlike a
+        reformatted date; persist stores it as one `contact` item with
+        per-field citations, and `GET /api/cvs/:id` serves them as
+        `contact.citations` (absent on a hand-edited or intake-only contact).
   - [ ] Every bullet point, every date, and the summary carry the ids of the
         facts they rest on; `GET /api/cvs/:id` exposes them so the UI can show
         the user the source quote behind any line.
@@ -201,13 +241,28 @@ This is the feature the product is judged on; its mechanism is
   of filling the hole with a plausible guess.
 - **Acceptance criteria:**
   - [ ] Anything missing, vague, or rejected by the verifier becomes a question
-        row bound to a specific CV path (e.g. `experience[1].period`), with the
-        question text and, where applicable, the fact that was too vague.
+        row **bound to the item it is about** (ADR-027) plus the field on that
+        item, with the question text and, where applicable, the fact that was
+        too vague. The `path` the API shows (e.g. `experience[1].period`) is
+        derived when the CV is read from where that item currently sits, so a
+        drop, a regeneration or a reorder never leaves a question beside
+        someone else's job. A question about an item that was dropped, or has
+        since been deleted, binds to no item and names only its section
+        (`experience`, `education`, `skills`).
+  - [ ] Questions carry a priority the UI orders by: 1 — content is missing
+        from the CV; 2 — content is present but the source does not support
+        it; 3 — content is present and vague (ADR-026, defined in C-006).
   - [ ] `GET /api/cvs/:id` returns open questions; the UI shows them next to
         the field they belong to, not as a separate wall of text.
   - [ ] `POST /api/cvs/:id/questions/:qid/answer` with the user's answer
         updates **only** the bound path, marks the question answered, and
         records the answer as a new fact with the user as its source.
+  - [ ] **Answering a priority-1 question restores what was missing
+        (ADR-027).** The answer's fact goes back through the verifier with the
+        rest, and an experience entry, education entry or skill the new evidence
+        supports — and the CV does not hold — is restored into its section;
+        bullets are never written by an answer. The re-verify's questions
+        replace the open questions of that section only.
   - [ ] Answering a question never triggers a full regeneration: at most the
         one section the path belongs to is recomposed, and the rest of the CV
         is byte-identical afterwards — asserted by a test.
@@ -267,6 +322,13 @@ This is the feature the product is judged on; its mechanism is
         state, updated-at — newest first, and nobody else's.
   - [ ] Opening a CV from the list restores its full current state including
         open questions and in-flight generation.
+  - [ ] **Signed-in navigation.** The shell header shows a "Main" navigation
+        with exactly two links, "My CVs" (`/cvs`) and "New CV" (`/cvs/new`), in
+        that order and before "Log out"; it is absent for a signed-out visitor
+        (brand only, nothing to click). The current page carries
+        `aria-current="page"`; inside a CV (`/cvs/:id`) "My CVs" carries
+        `aria-current="true"` as the section the user is in; on a job page
+        nothing is current. Plain links, full page load, no icons.
   - [ ] `DELETE /api/cvs/:id` removes the CV, its facts, its questions and its
         jobs.
   - [ ] All state lives in Postgres; nothing user-visible depends on
@@ -302,8 +364,8 @@ criteria must become tests.
   - [ ] Anthropic API failures are classified: rate limit, 5xx and transport
         failures are retried; invalid-request and auth errors fail the job
         immediately with a distinct code. The retry policy (ADR-029): a
-        `Retry-After` header (seconds or HTTP date) sets the wait, capped at
-        what is left of the retry budget; without one, exponential backoff
+        `Retry-After` header (seconds or HTTP date) sets the wait, floored at
+        the base and capped at what is left of the retry budget; without one, exponential backoff
         from a 2 s base (2, 4, 8 s) with up to +50% jitter. Attempts are
         bounded by a 20 s waiting budget per provider request, not by a count;
         when the next wait would not fit, the job fails with the failure's

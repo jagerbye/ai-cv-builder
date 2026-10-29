@@ -274,6 +274,51 @@ Not built, though planned, is listed in Status and is not a cut. Nothing in this
 table has since been built; the end-to-end suite and a facts screen are
 unbuilt gaps, not cuts.
 
+## What I would do differently with more time
+
+In the order I would actually do them.
+
+**Run it against the real model, first.** Everything here is proven against the
+C-012 seam with a fake pipeline: no Anthropic call has ever been made, because
+there is no key on the machine this was built on. That is the one claim in this
+README with no evidence behind it, and it is the first thing a key would buy.
+The parts most likely to need a second pass are the prompts, not the plumbing —
+the schemas are enforced in code and a response that does not validate is
+retried once with the validation error and then fails the job, so the failure
+mode is a failed job rather than a wrong CV.
+
+**Make groundedness span-based instead of string-based.** The verifier asks
+whether a value occurs in one of the entry's cited facts, which is substring
+matching over the fact's text. It is honest and it resists recombination, but it
+is brittle: a date written one way in the source and another in the draft fails
+a check it should pass, and the user gets a question they should not have been
+asked. Facts already carry a verbatim `sourceQuote`; storing character offsets
+into the source and comparing spans would make the check robust to formatting
+without weakening it.
+
+**Give the compose stage a section scope.** Answering a question is supposed to
+recompose one section, and the response contract holds — but C-012 has no
+section-scoped entry point, so the implementation regenerates the whole CV and
+keeps the part it needs. Correct, and more tokens than it should cost.
+
+**Share the error-code enum between the api and the web.** Both sides keep
+their own copy, held together by a test that reads one and compares it to the
+other. That test exists because the copies had already drifted once and the web
+silently downgraded two codes it did not recognise. A small shared package
+would remove the class.
+
+**Show the facts.** C-006 serves every fact with its verbatim source quote, so
+the data for "where did this line come from" is already on the wire, and
+nothing in the UI shows it. It is the cheapest remaining feature and the one
+that would best demonstrate the anti-hallucination design to a user rather than
+to a reviewer.
+
+**Automate what the manual QA pass found.** Fifteen findings came out of one
+browser pass, and four of them were blockers no unit or contract test could see
+— including a web container with no route to the api at all, while 691 tests
+were green. The gate now has a smoke step that opens the product over HTTP;
+what it does not have is a browser-level end-to-end test of the actual flow.
+
 ## How AI was used
 
 This repository was built by AI coding agents (Claude models, run through

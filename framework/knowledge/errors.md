@@ -259,13 +259,24 @@ entry.
   stating a grounding rule two ADRs had superseded, a question priority the
   code no longer used, and no gateway section at all — while every individual
   lane had passed review with "docs touched" satisfied.
-- **Cause, and it is structural rather than careless:** a lane is given a
-  narrow allowlist so it cannot collide with its neighbours. The central
-  documents — the specification, the architecture — belong to no lane and are
-  on nobody's allowlist, so a change to behaviour updates the ADR (which the
-  Orchestrator writes) and the lane's own corner, and the document a reader
-  actually starts from drifts. The more lanes, the faster it drifts. Each lane
-  was individually correct.
+- **Cause — half structural, half the Orchestrator's, and the first draft of
+  this entry got the second half wrong.** The structural half: a lane is given
+  a narrow allowlist so it cannot collide with its neighbours, so it *cannot*
+  edit the specification or the architecture even when its change belongs
+  there. That is isolation working, not an agent being lazy. The first draft
+  concluded "the central documents belong to no lane" and stopped, which reads
+  as though they belong to nobody. They belong to the **Orchestrator**.
+  Isolation does not create a vacuum; it creates a HANDOFF — the lane reports
+  what changed and the Orchestrator carries it into the documents that
+  describe the system. That handoff is what did not happen. The ADRs were all
+  written, promptly, because writing them is obviously the Orchestrator's job;
+  the spec and the architecture were updated about half the time, because
+  carrying a lane's result into them looks like someone else's.
+- **The distinction that was being blurred:** an ADR records a DECISION; the
+  specification describes the PRODUCT; the architecture describes the SYSTEM.
+  Writing the first does not discharge the other two, and a day of ADRs with
+  no spec updates leaves a reader with twenty-nine decisions and a description
+  of something that no longer exists.
 - **Fix / rule:** a wave ends with a docs audit that reads the central
   documents against the ADRs written during it, and the audit's output is "what
   the doc currently claims" before "what I changed" — stating the claim first

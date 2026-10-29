@@ -372,12 +372,19 @@ is nowhere in the playbook.
   — while the specification and the architecture document drifted into
   describing behaviour that had been deliberately reversed (E-013 in this
   project).
-- Why it recurs: lane isolation gives each lane a narrow allowlist so it cannot
-  collide with its neighbours. The central documents belong to no lane, sit on
-  no allowlist, and so are updated by nobody. The mechanism that makes parallel
-  work safe is the same mechanism that starves the documents, and it gets worse
-  as lanes multiply — which is the direction this framework pushes.
-- Proposed fix: make the wave's closing audit a step the Integrator owns, with
+- Why it recurs: lane isolation gives each lane a narrow allowlist, so a lane
+  CANNOT edit the specification or the architecture even when its change
+  belongs there. That much is isolation working. What follows from it is a
+  handoff the framework never names: the lane reports, and the **Orchestrator**
+  carries the result into the documents that describe the system. The rules say
+  the Orchestrator writes ADRs, commits, and keeps STATE.md; they never say it
+  owns the spec and the architecture, so that work falls between the lane that
+  cannot do it and the Orchestrator that was never told to.
+- Proposed fix: name the ownership first — the Orchestrator updates the spec
+  and the architecture in the SAME action that writes the ADR, because an ADR
+  records a decision while those describe the product and the system, and
+  writing one does not discharge the others. The wave's closing audit is the
+  backstop, not the mechanism; make it a step the Integrator owns, with
   the output format that caught it here — for each change, "what the document
   currently claims" BEFORE "what I changed", because a confidently wrong
   sentence hides from a reader looking for gaps. Alternatively or additionally,

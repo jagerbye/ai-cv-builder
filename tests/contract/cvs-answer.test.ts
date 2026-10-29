@@ -2,6 +2,8 @@ import { describe, it, expect, afterAll, beforeEach, afterEach } from 'vitest';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
+import { GatewayError } from '../../api/src/core/generation/gateway.js';
+import { safeMessage } from '../../api/src/http/errors.js';
 import { buildServer } from '../../api/src/server.js';
 import type { CvDraft, Fact, GenerationPipeline, VerificationResult } from '../../api/src/core/generation/types.js';
 
@@ -115,7 +117,7 @@ interface FakePipeline {
   verifyCalls: number;
 }
 
-function fakePipeline(opts: { composeThrows?: boolean } = {}): FakePipeline {
+function fakePipeline(opts: { composeThrows?: boolean; composeError?: Error } = {}): FakePipeline {
   const state: FakePipeline = {
     composeFacts: [],
     verifyCalls: 0,
@@ -125,6 +127,7 @@ function fakePipeline(opts: { composeThrows?: boolean } = {}): FakePipeline {
       },
       async compose(facts: Fact[], targetRole: string): Promise<CvDraft> {
         state.composeFacts.push(facts);
+        if (opts.composeError) throw opts.composeError;
         if (opts.composeThrows) throw new Error('upstream exploded: sk-test-leak');
         const userFact = facts.find((f) => f.source === 'user');
         return {
@@ -475,4 +478,34 @@ describe('C-009 503 LLM_UNAVAILABLE — the answer is stored even when the targe
     expect(JSON.stringify(after.summary)).toBe(JSON.stringify(before.summary));
     expect(JSON.stringify(after.skills)).toBe(JSON.stringify(before.skills));
   });
+});
+
+// ADR-020: the status stays 503, the envelope carries the code the recompose failure actually had.
+describe('C-009 503 carries the real code (ADR-020)', () => {
+  const cases: Array<[string, Error]> = [
+    ['CONFIG_MISSING', new GatewayError('CONFIG_MISSING')],
+    ['LLM_AUTH_FAILED', new GatewayError('LLM_AUTH_FAILED')],
+    ['LLM_INVALID_REQUEST', new GatewayError('LLM_INVALID_REQUEST')],
+    ['LLM_UNAVAILABLE', new GatewayError('LLM_UNAVAILABLE')],
+  ];
+
+  for (const [code, error] of cases) {
+    it(`a recompose failing with ${code} answers 503 ${code} with its safe message, and the answer survives`, async () => {
+      const owner = await seedUser();
+      const cv = await seedCv(owner.userId);
+      app = await buildWith(fakePipeline({ composeError: error }).pipeline);
+      try {
+        const res = await answer(owner.cookie, cv.cvId, cv.ids.qPeriod, { answer: ANSWER });
+        const body = expectEnvelope(res, 503, code);
+        expect(body.error.message).toBe(safeMessage(code as Parameters<typeof safeMessage>[0]));
+        const userFacts = await prisma.fact.findMany({ where: { cvId: cv.cvId, source: 'user' } });
+        expect(userFacts.map((f) => f.text)).toEqual([ANSWER]);
+        const row = await prisma.question.findUniqueOrThrow({ where: { id: cv.ids.qPeriod } });
+        expect(row.status).toBe('answered');
+        expect(row.answer).toBe(ANSWER);
+      } finally {
+        await app.close();
+      }
+    });
+  }
 });

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { CvItem, Prisma, PrismaClient } from '@prisma/client';
-import { ApiError } from '../../http/errors.js';
+import { ApiError, safeMessage, type ErrorCode } from '../../http/errors.js';
+import { GatewayError } from '../generation/gateway.js';
 import type { CvDraft, Fact, GenerationPipeline } from '../generation/types.js';
 import { getCv } from './read.js';
 import type { CvResponse } from './types.js';
@@ -8,7 +9,7 @@ import type { CvResponse } from './types.js';
 // T-20 (CVB-17). C-009 POST /api/cvs/:cvId/questions/:questionId/answer, spec F-005 and F-006.
 // Order is the contract: the answer is stored first (a user fact, the question marked answered),
 // then the owning section is recomposed. A failed recompose leaves the stored answer in place
-// and answers 503 LLM_UNAVAILABLE. Only the bound path's field is written by the answer (F-005):
+// and answers 503 with the failure's real code (ADR-020). Only the bound path's field is written by the answer (F-005):
 // generated bullets are never written here.
 
 export const ANSWER_MAX_CHARS = 2000;
@@ -16,6 +17,9 @@ export const ANSWER_MAX_CHARS = 2000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Question paths name a field of one experience or education entry, e.g. experience[0].period.
 const BOUND_PATH = /^(experience|education)\[(\d+)\]\.period$/;
+
+// Gateway failures that keep their own code on the 503; everything else reads as transient.
+const NON_TRANSIENT: readonly ErrorCode[] = ['CONFIG_MISSING', 'LLM_AUTH_FAILED', 'LLM_INVALID_REQUEST'];
 
 const FACT_KIND: Record<string, string> = { experience: 'employment', education: 'education' };
 
@@ -92,8 +96,10 @@ export async function answerQuestion(
     const facts = (await prisma.fact.findMany({ where: { cvId }, orderBy: { createdAt: 'asc' } })).map(toFact);
     const draft = await pipeline.compose(facts, cv.targetRole);
     accepted = pipeline.verify(draft, facts).accepted;
-  } catch {
-    throw new ApiError(503, 'LLM_UNAVAILABLE', 'The generation service is unavailable. Try again later.');
+  } catch (err) {
+    // ADR-020: always 503, but the envelope carries the failure's real code when it is one nobody fixes by waiting.
+    const code = err instanceof GatewayError && NON_TRANSIENT.includes(err.code) ? err.code : 'LLM_UNAVAILABLE';
+    throw new ApiError(503, code, safeMessage(code));
   }
 
   // Step 3: the bound field takes the answer (F-006: a user fact bypasses the verifier, so the

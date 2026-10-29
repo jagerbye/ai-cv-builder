@@ -169,8 +169,11 @@ Format:
   and a section that changed under a still version is a section an open editor
   would silently overwrite (ADR-015).
 - Errors: `404 NOT_FOUND`; `409 CONFLICT` (already answered);
-  `503 LLM_UNAVAILABLE` (the targeted recompose failed; the answer is still
-  stored as a fact and the question stays answered)
+  `503` with the code the recompose failure actually had (ADR-020):
+  `CONFIG_MISSING` (no API key), `LLM_AUTH_FAILED` (key rejected),
+  `LLM_INVALID_REQUEST` (request rejected), or `LLM_UNAVAILABLE` (transient or
+  unclassified). The status is always 503; in every case the answer is still
+  stored as a fact and the question stays answered
 - Status: **frozen (sprint 3)**
 
 ## C-010 Regenerate (owner: core/jobs, consumers: web)

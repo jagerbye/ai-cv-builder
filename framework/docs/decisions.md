@@ -19,6 +19,53 @@ Format — newest on top, one block per decision:
 
 ---
 
+## ADR-024: Two tiers for prose, and no second closed list (2026-10-29, accepted)
+
+- **Context:** ADR-023 deleted the list of company names and the reviewer
+  attacked what replaced it. Eleven probes: three silent holes and five
+  over-fires. The holes — a sentence-initial invented organisation skipped
+  before the vocabulary is consulted, any non-ASCII capital invisible to an
+  `[A-Z]` regex, and **a second closed list, `TECHNOLOGIES`, still sitting
+  beside the one we deleted**. The over-fires — "Senior Backend Developer"
+  dropped on *Senior*, "since March 2019" dropped on *March*, "1000 users"
+  dropped against a fact saying "1,000 users". The diagnosis is one sentence:
+  the check was doing named-entity recognition with regular expressions, and a
+  token-level capitalisation heuristic fails in both directions at once.
+- **Decision:** stop classifying tokens as names, and grade by signal strength.
+  1. **Two tiers.** An unsupported thing shaped like a proper name — a
+     multi-token capitalised sequence, or an acronym — **drops** the section:
+     that is the injection shape and it is unambiguous. A single ambiguous
+     capitalised word **raises a question** instead. The product's own line,
+     again: a lie is removed, a doubt is shown.
+  2. **Unicode.** `\p{Lu}` with the `u` flag. A guarantee that holds only for
+     Latin names is not a guarantee; it is a locale.
+  3. **Sentence-initial tokens are checked like any other**, against the
+     vocabulary. Only genuinely English words are exempt, and the stoplist
+     grows month names — a language artefact, which is what that list is for.
+  4. **Numbers are compared after normalising separators**, so a fact saying
+     "1,000" supports a draft saying "1000". Formatting is not a claim.
+  5. **Durations use the envelope of the stated periods, not their sum.** A
+     real ten-year career with a gap was being rejected, and overlapping
+     periods were over-accepted.
+  6. **`TECHNOLOGIES` is deleted, like `COMPANIES` before it, and nothing
+     replaces it.** A lowercase technology name cannot be told from ordinary
+     prose by any deterministic rule, so this check does not catch one — and
+     that is written down as a limit rather than faked with a list that
+     catches the dozen someone thought of.
+- **Alternatives rejected:** growing the stoplist until the over-fires stop
+  (it would fill with proper nouns and become the thing ADR-023 deleted,
+  inverted); dropping on any unsupported capitalised word (it deletes real
+  summaries over *Senior* and *March*, and a product that eats the user's text
+  to protect them has misunderstood the job).
+- **Known limit, stated rather than hidden:** prose is checked token by token,
+  so a composite can still be assembled from two facts — "Engineer at Northwind
+  Payments" from one fact naming Northwind and another naming Payments. That is
+  why employer, period and institution are **structured fields** with their own
+  cited facts, and why recombination is caught there. Prose carries the weaker
+  guarantee, and now says so.
+
+---
+
 ## ADR-023: The facts are the vocabulary — no list of known organisations (2026-10-29, accepted)
 
 - **Context:** the reviewer attacked ADR-022's new rule instead of reading it

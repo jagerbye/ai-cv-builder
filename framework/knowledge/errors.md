@@ -230,3 +230,24 @@ entry.
   naming two employers hides a mis-pairing (fixed at extract, one fact per employer).
 - **Worth keeping:** "every stage succeeded" proves nothing about content. A
   zero-item result from a non-empty source is itself a signal worth asserting.
+
+## E-012 a test used a word as a proxy for a sentence, and a new element said the same word  (2026-10-29)
+
+- **Symptom:** adding a progress stepper to the generation view broke eight
+  tests that had been green and correct for weeks. `findByText(/extracting/i)`
+  began matching two nodes.
+- **Cause:** those queries meant "the status sentence names this stage and no
+  other", and they expressed it by searching the whole screen for the stage's
+  NAME. That held only while exactly one element on the page ever said the word.
+  The stepper names all four stages on purpose — that is its entire job — so
+  the proxy stopped standing for the thing it proxied.
+- **Fix / rule:** a query asserts the thing itself, not a token that currently
+  happens to be unique. The eight now match the sentence copy
+  (`/composing the draft/i`), which is what they were always about. No
+  assertion was removed or weakened, and the reviewer signed the correction off
+  as the testing rule requires.
+- **Worth noticing:** nothing was wrong with the old tests when they were
+  written. They encoded an assumption about the rest of the page that no one
+  stated, and a feature that was supposed to be additive broke them. A test
+  that reaches outside its subject to identify its subject will be broken by
+  work that has nothing to do with it.

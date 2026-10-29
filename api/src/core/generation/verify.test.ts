@@ -56,18 +56,19 @@ describe('verify — citation rule (ADR-002)', () => {
     );
   });
 
-  it('drops summary and skill items that cite unknown factIds, with an unverifiable question each', () => {
+  it('drops unsupported skills and keeps a summary with an unknown citation, flagged as summary.text (ADR-022)', () => {
     const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2019')];
+    const summary = { text: 'Backend engineer at Acme Ltd', factIds: ['f404'] };
     const draft = base({
-      summary: { text: 'Backend engineer at Acme Ltd', factIds: ['f404'] },
+      summary,
       skills: [
         { name: 'Leadership', factIds: ['f404'] },
         { name: 'Mentoring', factIds: [] },
       ],
     });
     const r = verify(draft, facts);
-    expect(r.dropped.map((d) => d.path).sort()).toEqual(['skills[0]', 'skills[1]', 'summary']);
-    expect(r.accepted.summary).toBeUndefined();
+    expect(r.dropped.map((d) => d.path).sort()).toEqual(['skills[0]', 'skills[1]']);
+    expect(r.accepted.summary).toEqual(summary);
     expect(r.accepted.skills).toEqual([]);
     expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', reason: 'unverifiable' }));
     expect(r.questions).toContainEqual(expect.objectContaining({ path: 'skills[0].name', reason: 'unverifiable' }));
@@ -124,7 +125,7 @@ describe('verify — citation rule (ADR-002)', () => {
 });
 
 describe('verify — entity rule against the entry\'s own facts (spec §3.4, ADR-013)', () => {
-  it('rejects an entry assembled from two unrelated facts: {Acme Ltd, Backend engineer, 2019} citing f1 and f2 raises a question', () => {
+  it('keeps an entry assembled from two unrelated facts and catches the mis-pairing as a period question, not a deletion (ADR-013, ADR-022)', () => {
     const facts = [
       fact('f1', 'Intern at Acme Ltd, 2015-2017', 'employment'),
       fact('f2', 'Backend engineer at Globex, 2019', 'employment'),
@@ -138,12 +139,18 @@ describe('verify — entity rule against the entry\'s own facts (spec §3.4, ADR
       bullets: [{ text: 'Worked at Acme Ltd', factIds: ['f1'] }],
     };
     const r = verify(base({ experience: [entry] }), facts);
-    expect(r.accepted.experience).toEqual([]);
-    expect(r.dropped.map((d) => d.path)).toEqual(['experience[0]']);
-    expect(r.questions.some((q) => q.path.startsWith('experience[0]'))).toBe(true);
+    // The employer is strict and holds in f1; the period 2019 is in f2 only, so no single cited fact pairs them.
+    expect(r.dropped).toEqual([]);
+    expect(r.accepted.experience).toHaveLength(1);
+    expect(r.accepted.experience[0].employer).toBe('Acme Ltd');
+    expect(r.accepted.experience[0].period).toBe('2019');
+    expect(r.questions).toContainEqual(
+      expect.objectContaining({ path: 'experience[0].period', reason: 'missing', priority: 1 }),
+    );
+    expect(r.questions.some((q) => q.path === 'experience[0].employer')).toBe(false);
   });
 
-  it('rejects the same mis-paired entry when compose cited only the Acme fact: the period 2019 is not in its own facts', () => {
+  it('keeps an entry whose period no cited fact states, with the drafted period and a priority-1 period question (ADR-022)', () => {
     const facts = [
       fact('f1', 'Intern at Acme Ltd, 2015-2017', 'employment'),
       fact('f2', 'Backend engineer at Globex, 2019', 'employment'),
@@ -157,8 +164,8 @@ describe('verify — entity rule against the entry\'s own facts (spec §3.4, ADR
       bullets: [{ text: 'Worked at Acme Ltd', factIds: ['f1'] }],
     };
     const r = verify(base({ experience: [entry] }), facts);
-    expect(r.accepted.experience).toEqual([]);
-    expect(r.dropped.map((d) => d.path)).toEqual(['experience[0]']);
+    expect(r.dropped).toEqual([]);
+    expect(r.accepted.experience).toEqual([entry]);
     expect(r.questions).toContainEqual(
       expect.objectContaining({ path: 'experience[0].period', reason: 'missing', priority: 1 }),
     );
@@ -216,7 +223,7 @@ describe('verify — entity rule against the entry\'s own facts (spec §3.4, ADR
     expect(r.questions).toContainEqual(expect.objectContaining({ path: 'experience[0].employer', reason: 'missing' }));
   });
 
-  it('drops an entry whose period bridges a gap between two jobs, and keeps the grounded en-dash period', () => {
+  it('keeps an entry whose period bridges a gap between two jobs, with its drafted period and a period question (ADR-022)', () => {
     const facts = [
       fact('f1', 'Backend Developer at Acme Ltd, 2015-2017', 'employment'),
       fact('f2', 'Backend Developer at Beta Corp, 2019-2023', 'employment'),
@@ -242,9 +249,13 @@ describe('verify — entity rule against the entry\'s own facts (spec §3.4, ADR
       ],
     });
     const r = verify(draft, facts);
-    expect(r.dropped.map((d) => d.path)).toEqual(['experience[1]']);
-    expect(r.accepted.experience).toHaveLength(1);
-    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'experience[1].period', reason: 'missing' }));
+    expect(r.dropped).toEqual([]);
+    expect(r.accepted.experience).toHaveLength(2);
+    expect(r.accepted.experience[1].period).toBe('2017-2019');
+    expect(r.questions).toContainEqual(
+      expect.objectContaining({ path: 'experience[1].period', reason: 'missing', priority: 1 }),
+    );
+    expect(r.questions.some((q) => q.path === 'experience[0].period')).toBe(false);
   });
 
   it('keeps a bullet whose parent entry cites the employer, with a bullet citing a different fact (one level of inheritance)', () => {
@@ -482,10 +493,12 @@ describe('verify — education is grounded against its own facts', () => {
     expect(r.dropped.map((d) => d.path)).toEqual(['education[0]']);
     expect(r.questions).toContainEqual(expect.objectContaining({ path: 'education[0].institution', reason: 'missing', priority: 1 }));
   });
-  it('drops an education entry with an invented period', () => {
-    const r = verify(base({ education: [{ institution: 'Warsaw University', period: '2001-2005', factIds: ['f1'] }] }), facts);
-    expect(r.accepted.education).toEqual([]);
-    expect(r.questions.map((q) => q.path)).toEqual(['education[0].period']);
+  it('keeps an education entry with an invented period, keeps the drafted period, and raises education[0].period (priority 1, ADR-022)', () => {
+    const edu = { institution: 'Warsaw University', period: '2001-2005', factIds: ['f1'] };
+    const r = verify(base({ education: [edu] }), facts);
+    expect(r.dropped).toEqual([]);
+    expect(r.accepted.education).toEqual([edu]);
+    expect(r.questions).toEqual([expect.objectContaining({ path: 'education[0].period', reason: 'missing', priority: 1 })]);
   });
   it('drops an education entry whose institution is in a fact it does not cite', () => {
     const twoFacts = [
@@ -495,6 +508,98 @@ describe('verify — education is grounded against its own facts', () => {
     const r = verify(base({ education: [{ institution: 'Warsaw University', period: '2010-2014', factIds: ['f2'] }] }), twoFacts);
     expect(r.accepted.education).toEqual([]);
     expect(r.questions).toContainEqual(expect.objectContaining({ path: 'education[0].institution', reason: 'missing', priority: 1 }));
+  });
+});
+
+describe('verify — ADR-022: derived quantities, strict contact, co-occurring education', () => {
+  it('keeps a summary that states a number no cited fact contains, and raises summary.text (derived quantity)', () => {
+    const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2019-2024')];
+    const summary = { text: 'Backend engineer with 5+ years of experience at Acme Ltd', factIds: ['f1'] };
+    const r = verify(base({ summary }), facts);
+    expect(r.accepted.summary).toEqual(summary);
+    expect(r.dropped).toEqual([]);
+    expect(r.questions).toEqual([expect.objectContaining({ path: 'summary.text', reason: 'unverifiable' })]);
+  });
+
+  it('keeps a summary whose names and numbers are all in its cited facts, with no question (negative control)', () => {
+    const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2019-2024')];
+    const summary = { text: 'Backend engineer at Acme Ltd, 2019-2024', factIds: ['f1'] };
+    const r = verify(base({ summary }), facts);
+    expect(r.accepted.summary).toEqual(summary);
+    expect(r.questions).toEqual([]);
+  });
+
+  it('keeps an education entry whose institution and period are in different cited facts, and asks about the period (ADR-022)', () => {
+    const twoFacts = [
+      fact('f1', 'BSc at Warsaw University', 'education'),
+      fact('f2', 'Studied 2010-2014 in Poland', 'education'),
+    ];
+    const edu = { institution: 'Warsaw University', degree: 'BSc', period: '2010-2014', factIds: ['f1', 'f2'] };
+    const r = verify(base({ education: [edu] }), twoFacts);
+    expect(r.dropped).toEqual([]);
+    expect(r.accepted.education).toEqual([edu]);
+    expect(r.questions).toEqual([expect.objectContaining({ path: 'education[0].period', reason: 'missing', priority: 1 })]);
+  });
+
+  describe('contact is verified strictly, per field, against that field\'s own cited facts', () => {
+    const contactFacts = [
+      fact('f1', 'Name: Jane Doe. Email: jane@example.com. Phone: +44 20 7946 0958. Based in Warsaw', 'contact'),
+      fact('f2', 'Based in Warsaw', 'contact'),
+    ];
+    const field = (value: string, factIds: string[]) => ({ value, factIds });
+
+    it('keeps each contact field its own cited facts state, with no question', () => {
+      const contact = {
+        fullName: field('Jane Doe', ['f1']),
+        email: field('jane@example.com', ['f1']),
+        phone: field('+44 20 7946 0958', ['f1']),
+        location: field('Warsaw', ['f2']),
+      };
+      const r = verify(base({ contact }), contactFacts);
+      expect(r.accepted.contact).toEqual(contact);
+      expect(r.dropped).toEqual([]);
+      expect(r.questions).toEqual([]);
+    });
+
+    it('drops an email the cited facts do not state, raises contact.email, and keeps the other contact fields', () => {
+      const contact = { fullName: field('Jane Doe', ['f1']), email: field('jane@example.org', ['f1']) };
+      const r = verify(base({ contact }), contactFacts);
+      expect(r.accepted.contact?.email).toBeUndefined();
+      expect(r.accepted.contact?.fullName).toEqual(field('Jane Doe', ['f1']));
+      expect(r.dropped.map((d) => d.path)).toEqual(['contact.email']);
+      expect(r.questions).toContainEqual(expect.objectContaining({ path: 'contact.email', reason: 'unverifiable' }));
+    });
+
+    it('rejects a near-miss email that is a substring of the real one (jane@example.co for jane@example.com)', () => {
+      const contact = { email: field('jane@example.co', ['f1']) };
+      const r = verify(base({ contact }), contactFacts);
+      expect(r.accepted.contact?.email).toBeUndefined();
+      expect(r.dropped.map((d) => d.path)).toEqual(['contact.email']);
+      expect(r.questions).toContainEqual(expect.objectContaining({ path: 'contact.email' }));
+    });
+
+    it('rejects a truncated phone number that is a prefix of the real one (+44 20 7946 095 for +44 20 7946 0958)', () => {
+      const contact = { phone: field('+44 20 7946 095', ['f1']) };
+      const r = verify(base({ contact }), contactFacts);
+      expect(r.accepted.contact?.phone).toBeUndefined();
+      expect(r.dropped.map((d) => d.path)).toEqual(['contact.phone']);
+      expect(r.questions).toContainEqual(expect.objectContaining({ path: 'contact.phone' }));
+    });
+
+    it('drops a contact field whose value sits in a fact the field does not cite', () => {
+      const contact = { email: field('jane@example.com', ['f2']) };
+      const r = verify(base({ contact }), contactFacts);
+      expect(r.accepted.contact?.email).toBeUndefined();
+      expect(r.questions).toContainEqual(expect.objectContaining({ path: 'contact.email', reason: 'unverifiable' }));
+    });
+
+    it('drops a contact field with no cited facts, with a missing-reason question on contact.email', () => {
+      const contact = { email: field('jane@example.com', []) };
+      const r = verify(base({ contact }), contactFacts);
+      expect(r.accepted.contact?.email).toBeUndefined();
+      expect(r.dropped.map((d) => d.path)).toEqual(['contact.email']);
+      expect(r.questions).toContainEqual(expect.objectContaining({ path: 'contact.email', reason: 'missing' }));
+    });
   });
 });
 
@@ -556,5 +661,78 @@ describe('verify — purity and contract', () => {
     expect(r.accepted).toEqual(clean);
     expect(r.dropped).toEqual([]);
     expect(r.questions).toEqual([]);
+  });
+});
+
+describe('verify — ADR-022 Amendment A: an invented entity drops the summary, a vague one does not', () => {
+  const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2019-2024'), fact('f2', 'Built payments APIs in Go')];
+  const dropsSummary = (text: string, detail: RegExp) => {
+    const r = verify(base({ summary: { text, factIds: ['f1', 'f2'] } }), facts);
+    expect(r.accepted.summary).toBeUndefined();
+    expect(r.dropped).toEqual([expect.objectContaining({ path: 'summary', reason: expect.stringMatching(detail) })]);
+    expect(r.questions).toEqual([expect.objectContaining({ path: 'summary.text', reason: 'unverifiable' })]);
+  };
+
+  it('drops a summary naming an organisation no cited fact holds', () => {
+    dropsSummary('Senior engineer with a decade at Google', /Google/);
+  });
+
+  it('drops a summary naming a legal-suffix organisation no cited fact holds', () => {
+    dropsSummary('Backend engineer formerly at Globex Corp', /Globex Corp/);
+  });
+
+  it('drops a summary naming a technology no cited fact holds', () => {
+    dropsSummary('Backend engineer who ships Kubernetes platforms', /Kubernetes/);
+  });
+
+  it('drops a summary stating a figure no cited fact holds', () => {
+    dropsSummary('Backend engineer who reached 99% accuracy', /99%/);
+  });
+
+  it('keeps a summary that is merely vague or woolly, with its question', () => {
+    const summary = { text: 'Dependable engineer who enjoys hard problems', factIds: ['f1'] };
+    const r = verify(base({ summary }), facts);
+    expect(r.accepted.summary).toEqual(summary);
+    expect(r.dropped).toEqual([]);
+    expect(r.questions).toEqual([]);
+  });
+
+  it('keeps a summary with no citation (missing, not an entity) and asks', () => {
+    const summary = { text: 'Dependable engineer', factIds: [] };
+    const r = verify(base({ summary }), facts);
+    expect(r.accepted.summary).toEqual(summary);
+    expect(r.questions).toEqual([expect.objectContaining({ path: 'summary.text', reason: 'missing' })]);
+  });
+
+  it('keeps a summary whose entities are all held by its cited facts (control)', () => {
+    const summary = { text: 'Backend engineer at Acme Ltd building payments APIs in Go', factIds: ['f1', 'f2'] };
+    const r = verify(base({ summary }), facts);
+    expect(r.accepted.summary).toEqual(summary);
+    expect(r.questions).toEqual([]);
+  });
+});
+
+describe('verify — KNOWN LIMIT, ADR-022 Amendment A: one fact holding two employers hides a mis-pairing', () => {
+  // This test documents a hole; it does not endorse it. Both "Acme Ltd" and "2015-2018" occur inside the single
+  // fact, so the co-occurrence rule (ADR-013) is satisfied and the swapped period passes with NO question.
+  // The fix is upstream: the extract stage emits one employment fact per employer (prompts/extract.ts, golden
+  // extract fixture extract-two-employers.json). A proximity heuristic inside one fact was rejected by the ADR.
+  // If someone closes this hole in the verifier, this test should flip to expecting a period question.
+  it('lets "Acme Ltd, 2015-2018" pass silently against one fact naming both employers (documented limit)', () => {
+    const one = [fact('f1', 'Acme Ltd 2019-2021 and Globex Corp 2015-2018', 'employment')];
+    const entry = { employer: 'Acme Ltd', role: 'Engineer', period: '2015-2018', relevance: 0.5, factIds: ['f1'], bullets: [] };
+    const r = verify(base({ experience: [entry] }), one);
+    expect(r.accepted.experience).toHaveLength(1);
+    expect(r.questions.filter((q) => q.path === 'experience[0].period')).toEqual([]);
+  });
+
+  it('DOES surface the same mis-pairing once extract keeps the employers in separate facts (the ADR fix)', () => {
+    const two = [
+      fact('f1', 'Acme Ltd 2019-2021', 'employment'),
+      fact('f2', 'Globex Corp 2015-2018', 'employment'),
+    ];
+    const entry = { employer: 'Acme Ltd', role: 'Engineer', period: '2015-2018', relevance: 0.5, factIds: ['f1'], bullets: [] };
+    const r = verify(base({ experience: [entry] }), two);
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'experience[0].period', reason: 'missing' }));
   });
 });

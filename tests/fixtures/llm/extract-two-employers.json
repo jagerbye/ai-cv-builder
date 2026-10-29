@@ -1,0 +1,16 @@
+{
+  "description": "ADR-022 Amendment A. One sentence names two employers with two periods. The expectation is two SEPARATE employment facts, one employer and one period each, so the verifier's co-occurrence rule can tell the pairs apart. A single merged fact would let 'Acme Ltd, 2015-2018' pass unquestioned.",
+  "source": "I worked at Acme Ltd from 2019 to 2021 and at Globex Corp from 2015 to 2018.",
+  "toolInput": {
+    "facts": [
+      { "kind": "employment", "text": "Worked at Acme Ltd from 2019 to 2021", "sourceQuote": "worked at Acme Ltd from 2019 to 2021" },
+      { "kind": "employment", "text": "Worked at Globex Corp from 2015 to 2018", "sourceQuote": "at Globex Corp from 2015 to 2018" }
+    ]
+  },
+  "expect": {
+    "employmentFacts": [
+      { "employer": "Acme Ltd", "period": "2019 to 2021" },
+      { "employer": "Globex Corp", "period": "2015 to 2018" }
+    ]
+  }
+}

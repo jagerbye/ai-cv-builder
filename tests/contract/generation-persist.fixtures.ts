@@ -101,6 +101,16 @@ export function draftFor(token: string): CvDraft {
   };
 }
 
+// ADR-022 Amendment A: a contact block whose every field cites its own fresh fact.
+export function contactFor(token: string): NonNullable<CvDraft['contact']> {
+  return {
+    fullName: { value: 'Ada Lovelace', factIds: [randomUUID()] },
+    email: { value: `ada-${token}@example.test`, factIds: [randomUUID()] },
+    phone: { value: '+44 20 7946 0000', factIds: [randomUUID()] },
+    location: { value: `London ${token}`, factIds: [randomUUID()] },
+  };
+}
+
 export function questionsFor(token: string): QuestionDraft[] {
   return [{ path: 'experience[1]', text: `Question ${token}: what was your role at Employer ${token} B?` }];
 }
@@ -110,6 +120,7 @@ export function questionsFor(token: string): QuestionDraft[] {
 // Every fact id a draft cites, once each.
 export function factIdsOf(draft: CvDraft): string[] {
   const ids = [
+    ...Object.values(draft.contact ?? {}).flatMap((field) => field?.factIds ?? []),
     ...(draft.summary?.factIds ?? []),
     ...draft.experience.flatMap((e) => [...e.factIds, ...e.bullets.flatMap((b) => b.factIds)]),
     ...draft.education.flatMap((e) => e.factIds),

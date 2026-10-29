@@ -2,7 +2,7 @@
 // no LLM, no clock, no randomness. Drafts and facts are never mutated.
 import type { CvDraft, DroppedItem, Fact, VerificationResult } from './types.js';
 import { planQuestions, type PlannedQuestion, type QuestionReason } from './questions.js';
-import { containsPeriod, containsText, unsupportedEntity } from './verify-entities.js';
+import { containsPeriod, containsText, containsToken, unsupportedEntity } from './verify-entities.js';
 
 interface Failure {
   reason: Exclude<QuestionReason, 'vague'>;
@@ -27,6 +27,13 @@ function checkCited(text: string, factIds: string[], byId: Map<string, Fact>, in
   const entity = unsupportedEntity(text, cited);
   if (entity !== null) return { reason: 'unverifiable', detail: `${entity} not in cited facts` };
   return null;
+}
+
+// "5+ years" is a quantity computed from dates, which ADR-022 point 3 keeps and asks about; it is derived, not an
+// invented entity. The compose prompt forbids it; the verifier does not drop the head of the CV over it. Any other
+// figure (a percentage, a headcount, a revenue) is an entity and is still checked.
+function withoutDerivedDurations(text: string): string {
+  return text.replace(/\b\d+\+?\s*(?:years?|yrs?|months?)\b/gi, ' ');
 }
 
 function questionText(path: string, reason: QuestionReason): string {
@@ -76,7 +83,32 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
     skills: [],
   };
 
-  // Education: institution and period must occur in the entry's OWN cited facts (ADR-013), else drop.
+  // Contact (ADR-022): strict, per field. A field its own cited facts do not establish is dropped and asked about.
+  if (draft.contact !== undefined) {
+    const contact: NonNullable<CvDraft['contact']> = {};
+    for (const key of ['fullName', 'email', 'phone', 'location'] as const) {
+      const field = draft.contact[key];
+      if (field === undefined) continue;
+      const path = `contact.${key}`;
+      const resolved = resolveCited(field.factIds, byId);
+      const failure: Failure | null =
+        !('facts' in resolved)
+          ? resolved
+          : someFactHolds(resolved.facts, (t) => containsToken(t, field.value))
+            ? null
+            : { reason: 'unverifiable', detail: `${key} "${field.value}" not in cited facts` };
+      if (failure === null) {
+        contact[key] = { value: field.value, factIds: [...field.factIds] };
+        continue;
+      }
+      dropped.push({ path, reason: failure.detail });
+      candidates.push({ path, text: questionText(path, failure.reason), reason: failure.reason, priority: 2 });
+    }
+    if (Object.keys(contact).length > 0) accepted.contact = contact;
+  }
+
+  // Education: the institution must be named by a cited fact, else drop. A period no cited fact pairs with it
+  // is kept and asked about (ADR-022).
   draft.education.forEach((edu, i) => {
     const p = `education[${i}]`;
     const resolved = resolveCited(edu.factIds, byId);
@@ -86,40 +118,43 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
       candidates.push({ path: qp, text: questionText(qp, resolved.reason), reason: resolved.reason, priority: 2 });
       return;
     }
-    const citedText = resolved.facts.map((f) => f.text).join('\n');
-    const fails: { path: string; detail: string }[] = [];
-    if (!containsText(citedText, edu.institution)) {
-      fails.push({ path: `${p}.institution`, detail: `institution "${edu.institution}" not in cited facts` });
-    }
-    if (!containsPeriod(citedText, edu.period)) {
-      fails.push({ path: `${p}.period`, detail: `period "${edu.period}" not in cited facts` });
-    }
-    if (fails.length === 0) {
-      const paired = someFactHolds(resolved.facts, (t) => containsText(t, edu.institution) && containsPeriod(t, edu.period));
-      if (paired) {
-        accepted.education.push({ ...edu, factIds: [...edu.factIds] });
-        return;
-      }
-      dropped.push({ path: p, reason: `no cited fact names both institution "${edu.institution}" and period "${edu.period}"` });
+    if (!someFactHolds(resolved.facts, (t) => containsText(t, edu.institution))) {
+      dropped.push({ path: p, reason: `institution "${edu.institution}" not in cited facts` });
       candidates.push({
         path: `${p}.institution`,
-        text: 'Which school or university did you attend, and in which years? The cited facts name them separately.',
+        text: 'Which school or university did you attend? The drafted name is not in the source.',
         reason: 'missing',
         priority: 1,
       });
       return;
     }
-    dropped.push({ path: p, reason: fails.map((f) => f.detail).join('; ') });
-    for (const f of fails) {
-      const text = f.path.endsWith('.institution')
-        ? 'Which school or university did you attend? The drafted name is not in the source.'
-        : 'What were the dates of this education? The drafted dates are not in the source.';
-      candidates.push({ path: f.path, text, reason: 'missing', priority: 1 });
+    if (!someFactHolds(resolved.facts, (t) => containsText(t, edu.institution) && containsPeriod(t, edu.period))) {
+      candidates.push({ path: `${p}.period`, text: 'What were the dates of this education? The drafted dates are not in the source.', reason: 'missing', priority: 1 });
     }
+    accepted.education.push({ ...edu, factIds: [...edu.factIds] });
   });
 
-  if (draft.summary !== undefined && checkItem('summary', draft.summary.text, draft.summary.factIds, [], 'summary.text')) {
-    accepted.summary = { text: draft.summary.text, factIds: [...draft.summary.factIds] };
+  // ADR-022 + Amendment A: a summary that fails is kept and flagged (one editable field, a CV needs a head)
+  // UNLESS what fails is an invented entity (an organisation, a figure, a named technology no cited fact holds):
+  // that is a lie, not a woolly phrase, and it is dropped with its question. The entity check is the one bullets use.
+  if (draft.summary !== undefined) {
+    const resolved = resolveCited(draft.summary.factIds, byId);
+    const cited = 'facts' in resolved ? resolved.facts.map((f) => f.text) : [];
+    const entity = 'facts' in resolved ? unsupportedEntity(withoutDerivedDurations(draft.summary.text), cited) : null;
+    if (entity !== null) {
+      dropped.push({ path: 'summary', reason: `${entity} not in cited facts` });
+      candidates.push({ path: 'summary.text', text: questionText('summary.text', 'unverifiable'), reason: 'unverifiable', priority: 2 });
+    } else {
+      const failure: Failure | null = !('facts' in resolved)
+        ? resolved
+        : unsupportedEntity(draft.summary.text, cited) !== null
+          ? { reason: 'unverifiable', detail: 'derived quantity' }
+          : null;
+      if (failure !== null) {
+        candidates.push({ path: 'summary.text', text: questionText('summary.text', failure.reason), reason: failure.reason, priority: 2 });
+      }
+      accepted.summary = { text: draft.summary.text, factIds: [...draft.summary.factIds] };
+    }
   }
 
   draft.experience.forEach((entry, i) => {
@@ -133,35 +168,20 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
       candidates.push({ path: qp, text: questionText(qp, resolved.reason), reason: resolved.reason, priority: 2 });
       return;
     }
-    const citedText = resolved.facts.map((f) => f.text).join('\n');
-
-    // Employer and period are the entry's own facts: missing either drops the whole entry (priority 1).
-    const entryFailures: { path: string; detail: string }[] = [];
-    if (!containsText(citedText, entry.employer)) {
-      entryFailures.push({ path: `${p}.employer`, detail: `employer "${entry.employer}" not in cited facts` });
-    }
-    if (!containsPeriod(citedText, entry.period)) {
-      entryFailures.push({ path: `${p}.period`, detail: `period "${entry.period}" not in cited facts` });
-    }
-    if (entryFailures.length > 0) {
-      dropped.push({ path: p, reason: entryFailures.map((f) => f.detail).join('; ') });
-      for (const f of entryFailures) {
-        candidates.push({ path: f.path, text: questionText(f.path, 'missing'), reason: 'missing', priority: 1 });
+    // The employer is strict: a cited fact must name it, else the entry is dropped (ADR-013, ADR-022).
+    if (!someFactHolds(resolved.facts, (t) => containsText(t, entry.employer))) {
+      dropped.push({ path: p, reason: `employer "${entry.employer}" not in cited facts` });
+      candidates.push({ path: `${p}.employer`, text: questionText(`${p}.employer`, 'missing'), reason: 'missing', priority: 1 });
+      if (!someFactHolds(resolved.facts, (t) => containsPeriod(t, entry.period))) {
+        candidates.push({ path: `${p}.period`, text: questionText(`${p}.period`, 'missing'), reason: 'missing', priority: 1 });
       }
       return;
     }
 
-    // Recombination: one cited fact must hold both the employer and the period (ADR-013). Two real facts about
-    // two different jobs fail here even though each field occurs somewhere in the citation.
+    // The period is lenient (ADR-022): one the employer's fact does not state keeps the entry and is asked about.
+    // This is where recombination (one employer's name, another fact's dates) surfaces: as a visible question.
     if (!someFactHolds(resolved.facts, (t) => containsText(t, entry.employer) && containsPeriod(t, entry.period))) {
-      dropped.push({ path: p, reason: `no cited fact names both employer "${entry.employer}" and period "${entry.period}"` });
-      candidates.push({
-        path: `${p}.employer`,
-        text: 'Which employer did this role happen at, and during which years? The cited facts name them separately.',
-        reason: 'missing',
-        priority: 1,
-      });
-      return;
+      candidates.push({ path: `${p}.period`, text: questionText(`${p}.period`, 'missing'), reason: 'missing', priority: 1 });
     }
 
     // The title must occur in a cited fact that also names the employer. Otherwise the entry is kept and the

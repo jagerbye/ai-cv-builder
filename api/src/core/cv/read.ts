@@ -17,7 +17,7 @@ import type {
 
 // C-006 read model. cv_items.data is written only by this codebase (intake, generation, PATCH),
 // so the per-kind shapes below are asserted, not re-validated here.
-interface ContactData { fullName?: string; email?: string; phone?: string; location?: string; links: string[] }
+interface ContactData { fullName?: string; email?: string; phone?: string; location?: string; links: string[]; citations?: CvContact['citations'] }
 interface TextData { text: string }
 interface ExperienceData { employer: string; role: string; period: string; location?: string }
 interface EducationData { institution: string; degree?: string; period: string }

@@ -10,6 +10,7 @@ import {
   seedUser,
   seedCv,
   draftFor,
+  contactFor,
   fakePipeline,
   questionsFor,
   factIdsOf,
@@ -462,5 +463,90 @@ describe('T-28 persist: the extracted facts are stored with the draft (C-006 fac
     expect((await itemsOf(cvId)).map((i) => i.kind)).toEqual(['contact']);
     expect(await prisma.fact.count({ where: { cvId } })).toBe(0);
     expect((await prisma.cv.findUnique({ where: { id: cvId }, select: { version: true } }))?.version).toBe(1);
+  });
+});
+
+describe('T-28 persist: the contact block is stored with its citations (ADR-022 Amendment A, F-004)', () => {
+  it('stores the drafted contact and C-006 returns every value with its own factIds', async () => {
+    const owner = await seedUser();
+    const cvId = await seedCv(owner.userId);
+    const contact = contactFor(TOKEN_A);
+    const draft = { ...draftFor(TOKEN_A), contact };
+    await runJob(fakePipeline(TOKEN_A, draft), await queueJob(owner, cvId));
+
+    const cv = (await getCv(app, owner.cookie, cvId)).json();
+    expect(cv.contact).toMatchObject({
+      fullName: 'Ada Lovelace',
+      email: contact.email!.value,
+      phone: '+44 20 7946 0000',
+      location: contact.location!.value,
+      links: [],
+      citations: {
+        fullName: contact.fullName!.factIds,
+        email: contact.email!.factIds,
+        phone: contact.phone!.factIds,
+        location: contact.location!.factIds,
+      },
+    });
+    // One contact row, its factIds the union of its fields', every one resolving to a stored fact.
+    const rows = (await itemsOf(cvId)).filter((r) => r.kind === 'contact');
+    expect(rows).toHaveLength(1);
+    expect([...rows[0].factIds].sort()).toEqual(Object.values(contact).flatMap((f) => f!.factIds).sort());
+    const stored = new Set(cv.facts.map((f: any) => f.id));
+    for (const id of rows[0].factIds) expect(stored.has(id)).toBe(true);
+  });
+
+  it('a draft with no contact leaves the intake contact alone', async () => {
+    const owner = await seedUser();
+    const cvId = await seedCv(owner.userId);
+    await runJob(fakePipeline(TOKEN_A), await queueJob(owner, cvId));
+    const cv = (await getCv(app, owner.cookie, cvId)).json();
+    expect(cv.contact).toEqual({ fullName: 'Ada Lovelace', links: [] });
+  });
+
+  it('a regeneration replaces an unedited generated contact: run B values, no run A citation survives', async () => {
+    const owner = await seedUser();
+    const cvId = await seedCv(owner.userId);
+    await runJob(fakePipeline(TOKEN_A, { ...draftFor(TOKEN_A), contact: contactFor(TOKEN_A) }), await queueJob(owner, cvId));
+
+    // Run B's verifier dropped the phone: it must not linger from run A, whose fact is gone.
+    const b = contactFor(TOKEN_B);
+    delete b.phone;
+    const res = await regenerate(app, owner.cookie, cvId);
+    await runJob(fakePipeline(TOKEN_B, { ...draftFor(TOKEN_B), contact: b }), res.json().jobId);
+
+    const cv = (await getCv(app, owner.cookie, cvId)).json();
+    expect(cv.contact.email).toBe(b.email!.value);
+    expect(cv.contact.phone).toBeUndefined();
+    expect(cv.contact.citations.email).toEqual(b.email!.factIds);
+    expect(JSON.stringify(cv.contact)).not.toContain(TOKEN_A);
+  });
+
+  it('a regeneration whose draft has no contact strips the previous run\'s cited fields and keeps intake data', async () => {
+    const owner = await seedUser();
+    const cvId = await seedCv(owner.userId);
+    await runJob(fakePipeline(TOKEN_A, { ...draftFor(TOKEN_A), contact: contactFor(TOKEN_A) }), await queueJob(owner, cvId));
+    const res = await regenerate(app, owner.cookie, cvId);
+    await runJob(fakePipeline(TOKEN_B), res.json().jobId);
+    const cv = (await getCv(app, owner.cookie, cvId)).json();
+    expect(cv.contact).toEqual({ links: [] });
+  });
+
+  it('a userEdited contact survives a regeneration verbatim, like any other edited item', async () => {
+    const owner = await seedUser();
+    const cvId = await seedCv(owner.userId);
+    await runJob(fakePipeline(TOKEN_A, { ...draftFor(TOKEN_A), contact: contactFor(TOKEN_A) }), await queueJob(owner, cvId));
+    const row = await prisma.cvItem.findUniqueOrThrow({ where: { cvId_path: { cvId, path: 'contact' } } });
+    await prisma.cvItem.update({
+      where: { id: row.id },
+      data: { userEdited: true, data: { fullName: 'Ada Hand', email: 'hand@example.test', links: [] }, factIds: [] },
+    });
+
+    const res = await regenerate(app, owner.cookie, cvId);
+    await runJob(fakePipeline(TOKEN_B, { ...draftFor(TOKEN_B), contact: contactFor(TOKEN_B) }), res.json().jobId);
+
+    const cv = (await getCv(app, owner.cookie, cvId)).json();
+    expect(cv.contact).toEqual({ fullName: 'Ada Hand', email: 'hand@example.test', links: [] });
+    expect((await prisma.cvItem.findUniqueOrThrow({ where: { cvId_path: { cvId, path: 'contact' } } })).id).toBe(row.id);
   });
 });

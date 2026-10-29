@@ -41,9 +41,10 @@ const validEntry = {
 const pathsOf = (r: { questions: { path: string }[] }): string[] => r.questions.map((q) => q.path);
 
 describe('verify — question paths name the field (QA-05, C-006 path grammar)', () => {
-  it('summary with unknown citations raises summary.text (unverifiable)', () => {
+  it('summary with unknown citations is kept and raises summary.text (unverifiable, ADR-022)', () => {
     const r = verify(base({ summary: { text: 'Backend engineer at Acme Ltd', factIds: ['f404'] } }), facts);
-    expect(r.dropped.map((d) => d.path)).toEqual(['summary']);
+    expect(r.dropped).toEqual([]);
+    expect(r.accepted.summary).toEqual({ text: 'Backend engineer at Acme Ltd', factIds: ['f404'] });
     expect(pathsOf(r)).toEqual(['summary.text']);
     expect(r.questions[0]).toMatchObject({ path: 'summary.text', reason: 'unverifiable' });
   });
@@ -67,10 +68,11 @@ describe('verify — question paths name the field (QA-05, C-006 path grammar)',
     expect(r.questions).toContainEqual(expect.objectContaining({ path: 'skills[3].name', reason: 'unverifiable' }));
   });
 
-  it('experience period that no cited fact holds raises experience[1].period (missing, priority 1)', () => {
+  it('experience period that no cited fact holds keeps experience[1] and raises experience[1].period (missing, priority 1, ADR-022)', () => {
     const entry1 = { ...validEntry, period: '2015-2016' };
     const r = verify(base({ experience: [validEntry, entry1] }), facts);
-    expect(r.dropped.map((d) => d.path)).toEqual(['experience[1]']);
+    expect(r.dropped).toEqual([]);
+    expect(r.accepted.experience.map((e) => e.period)).toEqual(['2019', '2015-2016']);
     expect(pathsOf(r)).toEqual(['experience[1].period']);
     expect(r.questions[0]).toMatchObject({ path: 'experience[1].period', reason: 'missing', priority: 1 });
   });
@@ -150,7 +152,7 @@ describe('verify — question paths name the field (QA-05, C-006 path grammar)',
     });
     const r = verify(draft, facts);
     const grammar =
-      /^(summary\.text|skills\[\d+\]\.name|experience\[\d+\]\.(employer|role|period)|experience\[\d+\]\.bullets\[\d+\]\.text|education\[\d+\]\.(institution|period))$/;
+      /^(summary\.text|contact\.(fullName|email|phone|location)|skills\[\d+\]\.name|experience\[\d+\]\.(employer|role|period)|experience\[\d+\]\.bullets\[\d+\]\.text|education\[\d+\]\.(institution|period))$/;
     expect(r.questions.length).toBeGreaterThan(0);
     for (const q of r.questions) {
       expect(q.path, `question path "${q.path}" must name a field`).toMatch(grammar);

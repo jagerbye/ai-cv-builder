@@ -79,3 +79,11 @@ export function unsupportedEntity(text: string, citedTexts: readonly string[]): 
 
   return null;
 }
+
+// Contact values are matched as whole tokens (ADR-022): "jane@example.co" is not in "jane@example.com" and a
+// truncated phone number is not in the full one. A trailing sentence period is allowed; ".com" is not.
+export const containsToken = (haystack: string, value: string): boolean => {
+  const v = normalize(value);
+  if (v.length === 0) return false;
+  return new RegExp(`(?<![\\w@])${escapeRegExp(v)}(?![\\w@]|\\.\\w)`).test(normalize(haystack));
+};

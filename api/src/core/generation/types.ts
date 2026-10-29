@@ -26,9 +26,19 @@ export interface Fact {
   source: 'document' | 'user';
 }
 
+// ADR-022: contact fields each cite the facts that establish them; verified strictly.
+export type CvDraftContactField = { value: string; factIds: string[] };
+export interface CvDraftContact {
+  fullName?: CvDraftContactField;
+  email?: CvDraftContactField;
+  phone?: CvDraftContactField;
+  location?: CvDraftContactField;
+}
+
 // Composed CV before verification. Every content item cites factIds.
 export interface CvDraft {
   targetRole: string;
+  contact?: CvDraftContact;
   summary?: { text: string; factIds: string[] };
   experience: {
     employer: string;

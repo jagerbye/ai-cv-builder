@@ -19,6 +19,43 @@ Format — newest on top, one block per decision:
 
 ---
 
+## ADR-023: The facts are the vocabulary — no list of known organisations (2026-10-29, accepted)
+
+- **Context:** the reviewer attacked ADR-022's new rule instead of reading it
+  and found that `unsupportedEntity` recognises an invented organisation by
+  consulting a **closed list of company names**. "Senior engineer with a decade
+  at Google" is dropped because Google is on the list; "…at Stripe" is kept
+  with no question at all, because Stripe is not. A product whose single claim
+  is *the AI cannot add a fact you did not give it* was enforcing that claim
+  only against companies somebody had thought to enumerate.
+- **Decision:** the check becomes closed-world over the evidence. The allowed
+  vocabulary of a generated section is **the text of its cited facts**, plus
+  the target role the user supplied. A capitalised name, an acronym or a figure
+  in the output that appears in neither is unsupported — whatever it is, and
+  whether or not anyone has heard of it. No list of organisations is
+  maintained, because any such list is a list of the inventions we happen to
+  catch.
+- **Alternatives rejected:** growing the list (the next unlisted company is
+  always one edit away, and the failure is silent); a named-entity model (a
+  second model's opinion is not evidence, and it would make the verifier
+  non-deterministic, which ADR-002 forbids); accepting the gap and documenting
+  it (the gap is the product).
+- **Consequences:** false positives are now possible — a word the model
+  capitalises that no fact contains raises a question on a field the user can
+  see, which is the failure direction this project has chosen everywhere else.
+  The stoplist that prevents the obvious ones (sentence-initial words, the
+  target role's own terms) is small, inspectable, and about English, not about
+  companies.
+- **Related, decided with it:** ADR-022 Amendment A said "a number no cited
+  fact holds" drops a summary. That is too blunt. A **duration** — "five
+  years", "a decade" — is derived from periods the facts do state, so it is
+  kept and questioned like any other derivation. A **quantified result** —
+  "99% accuracy", "200 engineers" — is a claim about the world and is dropped.
+  The line is the same one this project keeps drawing: an invented entity is a
+  lie, a derived phrase is a question.
+
+---
+
 ## ADR-022: A reformatted date is a question, not a deletion — and the CV has a head (2026-10-29, accepted)
 
 - **Context:** the first end-to-end run on a real model produced a CV with

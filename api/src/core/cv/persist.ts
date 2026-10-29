@@ -9,8 +9,9 @@ import { mergeRegenerated } from './merge.js';
 //
 // Merge (spec §3.6): userEdited items survive, through core/cv/merge.ts mergeRegenerated. A top-level
 // entry (summary, experience, education, skill) counts as edited when it or any of its bullets is, so a
-// hand-edited bullet is never orphaned by the replacement of its generated parent. The contact item is
-// intake data the draft does not carry, so it is never touched.
+// hand-edited bullet is never orphaned by the replacement of its generated parent. The contact item (ADR-022
+// Amendment A) is one row at path `contact`: data holds the values and, per field, the facts that establish
+// them (`citations`); factIds is their union. It is handled beside the merge, not through it.
 
 // The verifier's questions carry reason and priority (PlannedQuestion); a bare QuestionDraft gets defaults.
 export interface PersistableQuestion extends QuestionDraft {
@@ -34,10 +35,31 @@ function compact(obj: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
 }
 
+const CONTACT_KEYS = ['fullName', 'email', 'phone', 'location'] as const;
+
+// The draft's contact as stored: values by field, citations by field, and the union of cited ids.
+function contactData(draft: CvDraft): { data: Record<string, unknown>; citations: Record<string, string[]>; factIds: string[] } | null {
+  if (!draft.contact) return null;
+  const values: Record<string, string> = {};
+  const citations: Record<string, string[]> = {};
+  for (const key of CONTACT_KEYS) {
+    const field = draft.contact[key];
+    if (!field) continue;
+    values[key] = field.value;
+    citations[key] = [...field.factIds];
+  }
+  if (Object.keys(values).length === 0) return null;
+  return { data: { ...values, links: [], citations }, citations, factIds: [...new Set(Object.values(citations).flat())] };
+}
+
 // The generated item set for a draft, in the path scheme of C-006: summary, experience[i],
 // experience[i].bullets[j], education[i], skills[i]. Ids are fresh so children can point at parents.
 export function itemsFromDraft(draft: CvDraft): NewItem[] {
   const items: NewItem[] = [];
+  const contact = contactData(draft);
+  if (contact) {
+    items.push({ id: randomUUID(), kind: 'contact', parentId: null, path: 'contact', orderIndex: 0, data: contact.data, factIds: contact.factIds, relevance: null });
+  }
   if (draft.summary) {
     items.push({
       id: randomUUID(),
@@ -112,6 +134,33 @@ const SHELL_DATA: Record<string, Prisma.InputJsonValue> = {
   summary: { text: '' },
 };
 
+// Contact (ADR-022 Amendment A). A userEdited contact is the user's and is left whole. Otherwise the drafted
+// fields replace the stored ones; a field the draft lacks keeps its stored value only when that value is
+// uncited (intake data) — a cited value belongs to the previous run, whose facts are gone, so it goes too.
+async function persistContact(tx: Prisma.TransactionClient, cvId: string, draft: CvDraft, stored: CvItem | undefined): Promise<void> {
+  const generated = contactData(draft) ?? { data: {}, citations: {}, factIds: [] as string[] };
+  if (!stored) {
+    if (Object.keys(generated.data).length === 0) return;
+    await tx.cvItem.create({
+      data: { cvId, kind: 'contact', path: 'contact', orderIndex: 0, data: generated.data as Prisma.InputJsonValue, factIds: generated.factIds, relevance: null, userEdited: false },
+    });
+    return;
+  }
+  if (stored.userEdited) return;
+  const old = stored.data as { links?: string[]; citations?: Record<string, string[]> } & Record<string, unknown>;
+  const kept: Record<string, unknown> = {};
+  for (const key of CONTACT_KEYS) {
+    if (old[key] !== undefined && old.citations?.[key] === undefined) kept[key] = old[key];
+  }
+  await tx.cvItem.update({
+    where: { id: stored.id },
+    data: {
+      data: { ...kept, ...generated.data, links: old.links ?? [], ...(Object.keys(generated.citations).length > 0 ? { citations: generated.citations } : {}) } as Prisma.InputJsonValue,
+      factIds: generated.factIds,
+    },
+  });
+}
+
 // Writes a verified draft into the CV. Must run inside the caller's transaction: the caller's fenced job
 // update comes first, so a run that lost its lease rolls this whole write back.
 export async function persistDraft(
@@ -154,10 +203,11 @@ export async function persistDraft(
     list.push(item);
     childrenOf.set(item.parentId, list);
   }
+  await persistContact(tx, cvId, draft, stored.find((item) => item.kind === 'contact'));
   const storedTop = content.filter((item) => item.parentId === null);
   const storedIds = new Set(storedTop.map((item) => item.id));
 
-  const generated = itemsFromDraft(draft);
+  const generated = itemsFromDraft(draft).filter((item) => item.kind !== 'contact');
   const merged = mergeRegenerated(
     storedTop.map((item) => ({
       id: item.id,

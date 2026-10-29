@@ -1,0 +1,35 @@
+{
+  "name": "derived-quantity",
+  "description": "Compose wrote '5+ years of experience', a number no fact states; the model computed it from the dates. ADR-022: the summary is kept as one flagged field, and the derived number raises a summary.text question. The bullet's company is inherited from its parent entry (ADR-002).",
+  "source": "Backend engineer at Acme Ltd, 2019-2024. Built payments APIs.",
+  "facts": [
+    {"id": "f1", "kind": "employment", "text": "Backend engineer at Acme Ltd, 2019-2024", "sourceQuote": "Backend engineer at Acme Ltd, 2019-2024.", "source": "document"},
+    {"id": "f2", "kind": "achievement", "text": "Built payments APIs", "sourceQuote": "Built payments APIs.", "source": "document"}
+  ],
+  "draft": {
+    "targetRole": "Backend engineer",
+    "summary": {"text": "Backend engineer with 5+ years of experience at Acme Ltd", "factIds": ["f1"]},
+    "experience": [
+      {"employer": "Acme Ltd", "role": "Backend engineer", "period": "2019-2024", "relevance": 0.8, "factIds": ["f1"],
+       "bullets": [{"text": "Built payments APIs at Acme Ltd", "factIds": ["f2"]}]}
+    ],
+    "education": [],
+    "skills": []
+  },
+  "expect": {
+    "accepted": {
+      "targetRole": "Backend engineer",
+      "summary": {"text": "Backend engineer with 5+ years of experience at Acme Ltd", "factIds": ["f1"]},
+      "experience": [
+        {"employer": "Acme Ltd", "role": "Backend engineer", "period": "2019-2024", "relevance": 0.8, "factIds": ["f1"],
+         "bullets": [{"text": "Built payments APIs at Acme Ltd", "factIds": ["f2"]}]}
+      ],
+      "education": [],
+      "skills": []
+    },
+    "droppedPaths": [],
+    "questions": [
+      {"path": "summary.text", "reason": "unverifiable"}
+    ]
+  }
+}

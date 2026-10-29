@@ -236,3 +236,33 @@ describe('extract — facts are append-only (domain-model Fact)', () => {
     for (const f of b) expect(idsA.has(f.id)).toBe(false);
   });
 });
+
+describe('extract — one employment fact per employer (ADR-022 Amendment A)', () => {
+  interface TwoEmployers extends ExtractFixture {
+    expect: { employmentFacts: { employer: string; period: string }[] };
+  }
+  const fx = load('extract-two-employers.json') as TwoEmployers;
+
+  it('a sentence naming two employers and two periods yields two employment facts, one pair each', async () => {
+    const facts = await createExtractStage(fakeGateway(fx.toolInput).gateway).extract(fx.source);
+    const employment = facts.filter((f) => f.kind === 'employment');
+    expect(employment).toHaveLength(fx.expect.employmentFacts.length);
+    fx.expect.employmentFacts.forEach((want, i) => {
+      expect(employment[i].text).toContain(want.employer);
+      expect(employment[i].text).toContain(want.period);
+      for (const other of fx.expect.employmentFacts) {
+        if (other !== want) {
+          expect(employment[i].text).not.toContain(other.employer);
+          expect(employment[i].text).not.toContain(other.period);
+        }
+      }
+    });
+  });
+
+  it('the extract instructions tell the model to emit one employment fact per employer', async () => {
+    const { calls, gateway } = fakeGateway(fx.toolInput);
+    await createExtractStage(gateway).extract(fx.source);
+    expect(calls[0].description).toMatch(/one employment fact per employer/i);
+    expect(calls[0].description).toMatch(/never (put|join|merge)[^.]*two employers/i);
+  });
+});

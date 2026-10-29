@@ -107,7 +107,8 @@ Format:
   ```
   { id, title, targetRole, state: "generating"|"ready"|"failed",
     version: number, updatedAt,
-    contact: { fullName?, email?, phone?, location?, links: string[] },
+    contact: { fullName?, email?, phone?, location?, links: string[],
+               citations?: { <field>: string[] } },   // C-012 amendment, ADR-022
     summary?: { text, factIds: string[], userEdited: boolean },
     experience: [ { id, employer, role, period, location?, order,
                     relevance: number, userEdited: boolean,
@@ -236,4 +237,13 @@ type VerificationResult = { accepted: CvDraft; questions: QuestionDraft[]; dropp
   unexamined; both throw `LLM_BUDGET_EXCEEDED`. `max_tokens` is a separate setting
   (`ANTHROPIC_MAX_OUTPUT_TOKENS`) bounding one response; the budget is
   `ANTHROPIC_TOKEN_BUDGET_PER_JOB`. The change is additive.
+- **Contact block (amendment, ADR-022 and Amendment A).** `CvDraft` gains an optional
+  `contact?: { fullName?, email?, phone?, location? }`, each field `{ value: string, factIds: string[] }`.
+  `compose` produces it; `verify` checks each field **strictly** (the value must occur as a whole token in
+  a cited fact; a field that does not is dropped and asked about as `contact.<field>`), and `persist` stores it as the
+  CV's one `contact` item. C-006's `contact` gains an optional
+  `citations?: { fullName?, email?, phone?, location?: string[] }`, the facts behind each generated field; it is
+  absent on an intake or hand-edited contact. A `userEdited` contact is kept whole by a regeneration; an unedited
+  one is replaced field by field. The same ADR also changes `verify`'s summary rule: a summary naming an organisation,
+  figure or technology no cited fact holds is dropped; a merely vague one is kept with its question. The change is additive.
 - Status: **frozen (sprint 2)**

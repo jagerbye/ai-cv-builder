@@ -12,12 +12,25 @@ export const BULLET_MAX_CHARS = 240;
 
 const cited = { type: 'array', minItems: 1, items: { type: 'string', minLength: 1 } };
 
+const CONTACT_KEYS = ['fullName', 'email', 'phone', 'location'] as const;
+const contactField = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['value', 'factIds'],
+  properties: { value: { type: 'string', minLength: 1 }, factIds: cited },
+};
+
 // Closed objects only, so no field outside the draft shape can take effect.
 const COMPOSE_SCHEMA: Record<string, unknown> = {
   type: 'object',
   additionalProperties: false,
   required: ['summary', 'experience', 'education', 'skills'],
   properties: {
+    contact: {
+      type: 'object',
+      additionalProperties: false,
+      properties: Object.fromEntries(CONTACT_KEYS.map((k) => [k, contactField])),
+    },
     summary: {
       type: 'object',
       additionalProperties: false,
@@ -205,7 +218,21 @@ export function createComposeStage(gateway: AnthropicGateway): ComposeStage {
           };
         });
 
+        let contact: CvDraft['contact'];
+        if (obj.contact !== undefined) {
+          const rawContact = obj.contact as Record<string, { value?: unknown; factIds?: unknown } | undefined>;
+          if (rawContact === null || typeof rawContact !== 'object') throw new Error('compose contact must be an object');
+          contact = {};
+          for (const key of CONTACT_KEYS) {
+            const c = rawContact[key];
+            if (c === undefined) continue;
+            if (!c || !isStr(c.value) || c.value.trim().length === 0) throw new Error(`compose contact ${key} must have a value`);
+            contact[key] = { value: c.value, factIds: checkCitations(c.factIds, `contact ${key}`) };
+          }
+        }
+
         return {
+          ...(contact ? { contact } : {}),
           summary: { text: summary.text, factIds: summary.factIds as string[] },
           experience,
           education,
@@ -231,7 +258,7 @@ export function createComposeStage(gateway: AnthropicGateway): ComposeStage {
         return 0;
       });
 
-      return { targetRole, summary: raw.summary, experience, education: raw.education, skills: raw.skills };
+      return { targetRole, ...(raw.contact ? { contact: raw.contact } : {}), summary: raw.summary, experience, education: raw.education, skills: raw.skills };
     },
   };
 }

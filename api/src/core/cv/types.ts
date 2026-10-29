@@ -10,6 +10,8 @@ export interface CvContact {
   phone?: string;
   location?: string;
   links: string[];
+  // ADR-022 Amendment A: the facts that establish each generated field. Absent on intake and hand-edited contacts.
+  citations?: Partial<Record<'fullName' | 'email' | 'phone' | 'location', string[]>>;
 }
 
 export interface CvSummary {

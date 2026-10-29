@@ -1,0 +1,39 @@
+{
+  "name": "reformatted-dates",
+  "description": "The input the first real model run failed on. The source says 'Since 2019' and 'from 2016 to 2019'; compose wrote '2019 - Present' and '2016 - 2019'. Neither period is a substring of its cited fact. ADR-022: the employers are strict and hold, so both entries survive with their drafted periods and a period question each. The second role is stated in no cited fact, so it also raises a vague role question.",
+  "source": "Since 2019 I have been at Brightpath Payments as a backend engineer. From 2016 to 2019 I was at Ferro Systems, doing data pipelines in Python.",
+  "facts": [
+    {"id": "f1", "kind": "employment", "text": "Since 2019, works at Brightpath Payments as a backend engineer", "sourceQuote": "Since 2019 I have been at Brightpath Payments as a backend engineer", "source": "document"},
+    {"id": "f2", "kind": "employment", "text": "Worked at Ferro Systems from 2016 to 2019 doing data pipelines in Python", "sourceQuote": "From 2016 to 2019 I was at Ferro Systems, doing data pipelines in Python", "source": "document"}
+  ],
+  "draft": {
+    "targetRole": "Backend engineer",
+    "experience": [
+      {"employer": "Brightpath Payments", "role": "Backend engineer", "period": "2019 - Present", "relevance": 0.9, "factIds": ["f1"],
+       "bullets": [{"text": "Works as a backend engineer at Brightpath Payments", "factIds": ["f1"]}]},
+      {"employer": "Ferro Systems", "role": "Data pipeline engineer", "period": "2016 - 2019", "relevance": 0.5, "factIds": ["f2"],
+       "bullets": [{"text": "Built data pipelines in Python at Ferro Systems", "factIds": ["f2"]}]}
+    ],
+    "education": [],
+    "skills": []
+  },
+  "expect": {
+    "accepted": {
+      "targetRole": "Backend engineer",
+      "experience": [
+        {"employer": "Brightpath Payments", "role": "Backend engineer", "period": "2019 - Present", "relevance": 0.9, "factIds": ["f1"],
+         "bullets": [{"text": "Works as a backend engineer at Brightpath Payments", "factIds": ["f1"]}]},
+        {"employer": "Ferro Systems", "role": "Data pipeline engineer", "period": "2016 - 2019", "relevance": 0.5, "factIds": ["f2"],
+         "bullets": [{"text": "Built data pipelines in Python at Ferro Systems", "factIds": ["f2"]}]}
+      ],
+      "education": [],
+      "skills": []
+    },
+    "droppedPaths": [],
+    "questions": [
+      {"path": "experience[0].period", "reason": "missing"},
+      {"path": "experience[1].period", "reason": "missing"},
+      {"path": "experience[1].role", "reason": "vague"}
+    ]
+  }
+}

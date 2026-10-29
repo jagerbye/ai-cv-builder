@@ -204,3 +204,29 @@ entry.
   mechanical cause (E-002, E-004, E-006, E-007). None was randomness. The cost
   of calling one of them a flake was a day; the cost of chasing each was an
   hour.
+
+## E-009 first live run: a CV with no jobs, no degree, no contact and no summary  (2026-10-29)
+
+- **Symptom:** the first end-to-end run on a real model returned a CV with zero
+  experience, zero education, no contact block and no summary, from a source that
+  plainly stated two jobs, a degree, a name, an email, a phone and a city. Nothing
+  threw; every stage reported success. The question it raised was right ("What
+  were the exact dates of this role?") and the entry it asked about had been deleted.
+- **Cause:** four independent gaps that only a real model exposed. (1) The verifier
+  demanded that the drafted period be a substring of the cited fact, and the model
+  writes `2019 - Present` where the source says `Since 2019`: every reformatted date
+  deleted its whole job. (2) `compose` never produced a contact block at all.
+  (3) A summary that failed was dropped. (4) The model derived "5+ years" from dates.
+  The fixtures had been written in the verifier's own dialect, so no test could meet
+  any of these.
+- **Fix / rule (ADR-022):** drop only what is a lie, ask about what is merely
+  unconfirmed. An invented entity (organisation, figure, technology) is a lie and is
+  dropped; a reformatted date or a woolly phrase is not, and is kept with a question.
+  A rule that deletes data must be tested against the OUTPUT OF A REAL MODEL, not a
+  fixture written by the author of the rule: record one live run's output as a golden
+  fixture the day it exists. Review found three follow-ons: the fix let an invented
+  employer survive in the summary (Amendment A), the new contact block was never
+  stored (a producer and its persister must land in one change), and one fact
+  naming two employers hides a mis-pairing (fixed at extract, one fact per employer).
+- **Worth keeping:** "every stage succeeded" proves nothing about content. A
+  zero-item result from a non-empty source is itself a signal worth asserting.

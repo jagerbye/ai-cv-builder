@@ -37,7 +37,7 @@ describe('golden adversarial fixtures (F-004)', () => {
   it('has at least five adversarial fixtures covering the five named kinds', () => {
     expect(fixtures.length).toBeGreaterThanOrEqual(5);
     expect(fixtures.map((f) => f.name)).toEqual(
-      expect.arrayContaining(['almost-empty', 'date-gap', 'first-person', 'prompt-injection', 'ambiguous-role']),
+      expect.arrayContaining(['almost-empty', 'date-gap', 'first-person', 'prompt-injection', 'ambiguous-role', 'reformatted-dates', 'derived-quantity', 'contact-near-miss']),
     );
   });
 

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createComposeStage } from './compose.js';
+import { buildComposeDescription } from './prompts/compose.js';
 import type { AnthropicGateway, CvDraft, Fact, ToolCallRequest } from './types.js';
 
 // T-11 (CVB-11). Spec §3.4 (F-004), ADR-002 compose stage, C-012 (GenerationPipeline.compose).
@@ -241,5 +242,57 @@ describe('compose stage: entry-level factIds (T-11, ADR-013)', () => {
     const raw = clone();
     raw.education[0].institution = 'University of Porto';
     await expect(createComposeStage(fakeGateway(raw).gateway).compose(FACTS, ROLE)).rejects.toThrow();
+  });
+});
+
+// ADR-022. Compose emits the contact block with factIds per field; the prompt forbids derived quantities.
+describe('compose stage: contact and derived quantities (ADR-022)', () => {
+  const contactRaw = (): RawDraft & { contact: Record<string, { value: string; factIds: string[] }> } => ({
+    ...clone(),
+    contact: {
+      fullName: { value: 'Jane Doe', factIds: ['f-acme'] },
+      email: { value: 'jane@example.com', factIds: ['f-acme'] },
+    },
+  });
+
+  it('the request schema declares contact with a value and a factIds array on every field', async () => {
+    const { calls, gateway } = fakeGateway(fixture.toolInput);
+    await createComposeStage(gateway).compose(FACTS, ROLE);
+
+    const schema = calls[0].inputSchema as unknown as {
+      properties: { contact: { properties: Record<string, { required?: string[]; properties?: Record<string, unknown> }> } };
+    };
+    for (const key of ['fullName', 'email', 'phone', 'location']) {
+      expect(schema.properties.contact.properties[key].required).toEqual(['value', 'factIds']);
+      expect(schema.properties.contact.properties[key].properties?.factIds).toMatchObject({ type: 'array', minItems: 1 });
+    }
+  });
+
+  it('carries each contact field with the factIds it cites', async () => {
+    const draft = await createComposeStage(fakeGateway(contactRaw()).gateway).compose(FACTS, ROLE);
+    expect(draft.contact).toEqual({
+      fullName: { value: 'Jane Doe', factIds: ['f-acme'] },
+      email: { value: 'jane@example.com', factIds: ['f-acme'] },
+    });
+  });
+
+  it('rejects the whole output when a contact field cites no facts (gateway retries)', async () => {
+    const raw = contactRaw();
+    raw.contact.email.factIds = [];
+    const { calls, gateway } = fakeGateway(raw);
+    await expect(createComposeStage(gateway).compose(FACTS, ROLE)).rejects.toThrow();
+    expect(calls).toHaveLength(1);
+  });
+
+  it('a draft without contact composes with no contact (contact is not invented)', async () => {
+    const draft = await createComposeStage(fakeGateway(fixture.toolInput).gateway).compose(FACTS, ROLE);
+    expect(draft.contact).toBeUndefined();
+  });
+
+  it('the compose prompt forbids derived quantities and names the contact block', () => {
+    const text = buildComposeDescription(FACTS, ROLE);
+    expect(text).toMatch(/derive|compute|calculat/i);
+    expect(text).toMatch(/quantit/i);
+    expect(text).toMatch(/contact/i);
   });
 });

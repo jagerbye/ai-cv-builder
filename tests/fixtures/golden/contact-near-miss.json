@@ -1,0 +1,22 @@
+{
+  "name": "contact-near-miss",
+  "description": "Compose wrote a truncated email, jane@example.co, for the address in the source. Contact is verified strictly (ADR-022): the substring of a real address is not the address, so the field is dropped and questioned, and no contact key is emitted.",
+  "source": "Email: jane@example.com",
+  "facts": [
+    {"id": "f1", "kind": "contact", "text": "Email: jane@example.com", "sourceQuote": "Email: jane@example.com", "source": "document"}
+  ],
+  "draft": {
+    "targetRole": "Backend engineer",
+    "contact": {"email": {"value": "jane@example.co", "factIds": ["f1"]}},
+    "experience": [],
+    "education": [],
+    "skills": []
+  },
+  "expect": {
+    "accepted": {"targetRole": "Backend engineer", "experience": [], "education": [], "skills": []},
+    "droppedPaths": ["contact.email"],
+    "questions": [
+      {"path": "contact.email", "reason": "unverifiable"}
+    ]
+  }
+}

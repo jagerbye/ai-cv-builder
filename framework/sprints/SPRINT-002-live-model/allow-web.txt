@@ -1,6 +1,0 @@
-web/src/features/cv/*
-web/src/api/client*
-web/src/styles/*
-framework/docs/*
-framework/sprints/SPRINT-002-live-model/*
-.claude/*

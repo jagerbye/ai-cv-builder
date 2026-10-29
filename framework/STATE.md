@@ -1,40 +1,40 @@
 # STATE.md — the project's "now" (≤40 lines, hard cap)
 
 > **What this file is:** the Orchestrator's externalized working memory — the
-> only file besides CLAUDE.md a session needs to resume where the last stopped.
+> only file besides CLAUDE.md a session needs to resume.
 
 ## Now
 
-- **Sprints 01 and 02 both closed.** 01 built the product; 02 took it to a real
-  model and fixed what that proved wrong. Board: 42 issues, all Done.
-- **Green:** `gate.sh` ✓ — api 811 / 1 skipped, web 251, smoke 11. One gate run
-  at a time per database (E-008).
-- **Proven live four times**, on three source texts (ordinary, sparse, messy)
-  and once on the current build: register → free text → generation → grounded
-  draft with questions → answer → manual edit → A4 PDF.
+- **Sprints 01 and 02 closed**; board: 45 rows, all Done.
+- **Green:** api 826 / 1 skipped, web 251, smoke 11 / 1 skipped; lint,
+  typecheck, build clean. One gate run at a time per database (E-008).
+- **Proven live on four source texts** (ordinary, sparse, messy, ADR-030
+  regression): register → free text → generation → grounded draft with
+  questions → answer → manual edit → A4 PDF.
+- **Post-close review pass (2026-10-29), five items, all done:** ADR-030 / E-014
+  (a required contact field the model never drafted is now a question); E-015
+  (the prompt was sent twice per call); an unused dependency dropped; runner
+  scripts, lane logs and QA screenshots deleted (framework/: 2.9 MB / 156 files
+  → 724 KB / 60); README and SUMMARY re-checked against the commands they cite.
 - **Nothing is in flight.**
 
 ## Waiting on
 
-Nothing blocking. The route and the retry budget are configuration
-(`ANTHROPIC_MODEL`, `ANTHROPIC_RETRY_BUDGET_SECONDS`): one proxy refused
-tool-use at roughly two in three, so the environment moved, not the defaults.
+Nothing blocking. Route and retry budget are configuration.
 
 ## Next 3 actions
 
-1. An automated browser test of the real flow — manual QA found four blockers
-   no suite could see, and nothing yet drives the actual screens.
-2. More live source texts. Each of three found something; one run is an
-   existence proof, not a sample.
-3. B-024's two notes for the next project: a test-engineer `blockedOn: code`
-   has no rung on the ladder; a blocked task lands in two lists.
+1. An automated browser test of the real flow: manual QA found four blockers no
+   suite could see, and nothing yet drives the actual screens.
+2. More live sources, and the shapes never tried: two-column PDF, non-English.
+3. Generalise the ADR-030 completeness rule beyond the two contact fields.
 
-## The guarantee (ADR-002, 013, 022-028)
+## The guarantee (ADR-002, 013, 022-028, 030)
 
 A structured claim — employer, institution, skill, contact field — is
 established by a whole word in one of its own cited facts, or it is removed and
-its absence asked about at priority 1. Prose is flagged where the user sees it
-and never deleted. The verifier is pure. A question binds to the item it is
-about, so it is never shown against a line it was not written for. The limits
-are in ADR-024, ADR-025 and ADR-028, not implied away. Skill aliases ("JS" vs
-"JavaScript") drop with a question; no alias dictionary is coming.
+asked about at priority 1; a REQUIRED contact field the draft never carried is
+asked about too. Prose is flagged where the user sees it, never deleted. The
+verifier is pure, and a question binds to the item it is about. Limits are in
+ADR-024, ADR-025 and ADR-028, not implied away: skill aliases ("JS" vs
+"JavaScript") drop with a question, and no alias dictionary is coming.

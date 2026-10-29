@@ -35,6 +35,11 @@
   key); keyboard-only and screen-reader passes; 768×1024; measured colour contrast;
   the trash-icon delete confirm flow.
 
+> **The screenshots are not in the repository.** The pass produced 55 of them,
+> 1.8 MB, and they were dropped so a reviewer is not wading through a sprint's
+> image folder to reach the product. Each finding below still names the shot it
+> was taken from, by filename; the finding itself is the record.
+
 ## Re-check pass — 2026-10-29
 
 - **Env/URL:** the rebuilt stack, driven **through the real app on
@@ -107,13 +112,13 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
   "Something went wrong. Please try again." and can never sign in.
 - Note: the seed step's "QA URL … (HTTP 200)" check is not evidence the screen
   works — 5273 answers 200 with the SPA shell for *any* path, `/api/*` included.
-- Evidence: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/03-login-fails-on-shipped-stack-5273.jpg`
+- Evidence: `03-login-fails-on-shipped-stack-5273.jpg`
 - Status: **fixed** 2026-10-29 (re-check). `web/vite.config.ts` now sets
   `server.proxy` and `preview.proxy`. `curl -i http://127.0.0.1:5273/api/health`
   returns `200 application/json {"ok":true,"db":true}`, and the whole pass below
   was driven against the real app on **5273** — no throwaway proxy, nothing
   forced me off it. Sign-in, list, editor, PATCH, answer and intake all work
-  same-origin. After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA01-app-works-on-5273-desktop.jpg`
+  same-origin. After: `after-QA01-app-works-on-5273-desktop.jpg`
 
 ### QA-02 The front door is a 404 — there is no way into the product — severity: blocker
 - Where: `http://127.0.0.1:5273/` and `/` via the proxy @ 1440×900 and 375×812
@@ -124,12 +129,12 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
   `web/src/app/routes.ts` registers `/auth/*`, `/cvs/new`, `/jobs/:jobId`,
   `/cvs/*` and nothing for `/`, so `resolveRoute` returns undefined and
   `App.tsx` renders `NotFound`. A visitor who types the hostname is stuck.
-- Evidence: `…/qa-screenshots/01-root-404-desktop.jpg`, `…/02-root-404-mobile.jpg`
+- Evidence: `01-root-404-desktop.jpg`, `…/02-root-404-mobile.jpg`
 - Status: **fixed** 2026-10-29 (re-check). Signed out, `/` → `/auth/login`;
   signed in, `/` → `/cvs`. Verified at both viewports.
-  After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA02-root-signed-out-to-signin-desktop.jpg`,
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA02-QA03-QA07-root-redirects-to-list-desktop.jpg`,
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA02-QA03-QA07-list-and-header-mobile.jpg`
+  After: `after-QA02-root-signed-out-to-signin-desktop.jpg`,
+  `after-QA02-QA03-QA07-root-redirects-to-list-desktop.jpg`,
+  `after-QA02-QA03-QA07-list-and-header-mobile.jpg`
 
 ### QA-03 The CV list always says "You have no CVs yet", so a signed-in user can never reach their CV — severity: blocker
 - Where: `/cvs` @ 1440×900 and 375×812
@@ -145,7 +150,7 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
   the product**: the editor is reachable only by pasting a CV id into the address
   bar. Two of the three stored CVs are also untitled and stuck in state
   `generating` (see QA-10), so a real list has rows to design for.
-- Evidence: `…/qa-screenshots/06-cv-list-says-none-desktop.jpg`, `…/05-header-overlap-and-empty-list-mobile.jpg`
+- Evidence: `06-cv-list-says-none-desktop.jpg`, `…/05-header-overlap-and-empty-list-mobile.jpg`
 - Status: **fixed** 2026-10-29 (re-check). `/cvs` calls `GET /api/cvs` and
   renders a row per CV — title (falling back to "Untitled CV"), target role,
   state and updated date — each linking to `/cvs/<id>`; hrefs confirmed in the
@@ -155,9 +160,9 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
   *Residual (not filed separately):* that failure message is the app's generic
   string and carries no retry control, where every other error screen in this
   product is specific and actionable — worth a line whenever QA-08 is picked up.
-  After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA02-QA03-QA07-root-redirects-to-list-desktop.jpg`,
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA03-failed-list-load-says-so-desktop.jpg`,
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA02-QA03-QA07-list-and-header-mobile.jpg`
+  After: `after-QA02-QA03-QA07-root-redirects-to-list-desktop.jpg`,
+  `after-QA03-failed-list-load-says-so-desktop.jpg`,
+  `after-QA02-QA03-QA07-list-and-header-mobile.jpg`
 
 ### QA-04 A failed question answer silently desyncs the version and blocks every later save — severity: blocker
 - Where: `/cvs/:id` @ 1440×900
@@ -177,7 +182,7 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
   sets `blockedRef` and **stops sending every subsequent save**, and the only
   offered recovery ("Reload latest") throws the user's edits away. Without an API
   key this is the state after *any* answer; with one, after any LLM outage.
-- Evidence: `…/qa-screenshots/10-answer-recompose-failed-message.jpg`, `…/11-false-version-conflict-after-503.jpg`
+- Evidence: `10-answer-recompose-failed-message.jpg`, `…/11-false-version-conflict-after-503.jpg`
 - Status: **fixed** 2026-10-29 (re-check). Re-ran the exact repro: answered
   "Period" → `503`, card showed "Your answer is saved, but we could not update
   the draft. Reload the CV to see where it stands." with a **Reload the CV**
@@ -185,8 +190,8 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
   blurred: **no 409, no conflict banner**, server version went 2 → 3 and
   `GET /api/cvs/:id` returns `experience[1].location = "Leeds, UK"`. The editor
   is no longer blocked, and the recovery no longer costs the user their edits.
-  After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA04-answer-503-message-desktop.jpg`,
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA04-next-save-succeeds-no-false-409-desktop.jpg`
+  After: `after-QA04-answer-503-message-desktop.jpg`,
+  `after-QA04-next-save-succeeds-no-false-409-desktop.jpg`
 
 ### QA-05 Two of the three question kinds never sit beside their field — the product's one visual idea — severity: major
 - Where: `/cvs/:id` @ 1440×900 and 375×812
@@ -208,7 +213,7 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
     they ask about.
   - Both cards' eyebrow degrades to the fallback **"Question about this field"**
     instead of "Question about Summary" / "Question about Skill".
-- Evidence (broken): `…/qa-screenshots/07-questions-mismatched-paths-beside-contact-desktop.jpg`
+- Evidence (broken): `07-questions-mismatched-paths-beside-contact-desktop.jpg`
   — (working, for contrast): `…/08-question-beside-its-field-desktop.jpg`, `…/09-question-under-its-field-mobile.jpg`
 - Status: **fixed** 2026-10-29 (second re-check) — *as written*; see **QA-15**
   for what is left. The seed was the last thing writing the old grammar; it now
@@ -227,9 +232,9 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
   - **Desktop (1440px): 2 of 3 placed.** Summary (field 690 / card 703) and
     Skill (4498 / 4511) sit level with their fields, exactly as intended. The
     *Role* card does not — it is filed as **QA-15**.
-  After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA05-summary-question-beside-summary-desktop.jpg`,
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA05-skill-question-beside-skill-desktop.jpg`,
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA05-role-question-under-role-field-mobile-375.jpg`
+  After: `recheck2-QA05-summary-question-beside-summary-desktop.jpg`,
+  `recheck2-QA05-skill-question-beside-skill-desktop.jpg`,
+  `recheck2-QA05-role-question-under-role-field-mobile-375.jpg`
 
 ### QA-06 Long content is clipped mid-line in every multiline field — severity: major
 - Where: `/cvs/:id` @ 1440×900 and 375×812
@@ -241,12 +246,12 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
   glyphs** — half a row of letter-tops below two full lines. At 375px every one
   of the six bullets and the summary is clipped this way, because two rows hold
   far less text. The user cannot see their own sentence without selecting into it.
-- Evidence: `…/qa-screenshots/14-long-bullet-clipped-desktop-zoom.png`, `…/15-long-bullets-clipped-mobile.jpg`
+- Evidence: `14-long-bullet-clipped-desktop-zoom.png`, `…/15-long-bullets-clipped-mobile.jpg`
 - Status: **fixed** 2026-10-29 (re-check). Every `textarea` now auto-grows:
   measured `scrollHeight === clientHeight` on all of them at both viewports
   (0 clipped). The 300-character bullet renders at 112px on desktop and 256px
   at 375px, fully legible, no mid-glyph slice.
-  After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA06-QA11-textareas-grow-delete-is-a-word-desktop.jpg`
+  After: `after-QA06-QA11-textareas-grow-delete-is-a-word-desktop.jpg`
 
 ### QA-07 The "Log out" button overlaps the product name in the header — severity: visual
 - Where: every signed-in screen @ 1440×900 and 375×812
@@ -257,13 +262,13 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
   "Log out" is painted hard against — and visibly on top of — the last letters of
   "AI CV Builder". It is worse at 375px, where the brand is clipped to
   "AI CV Builde". Present on every protected screen in the product.
-- Evidence: `…/qa-screenshots/04-header-logout-overlaps-brand-zoom.png`, `…/05-header-overlap-and-empty-list-mobile.jpg`
+- Evidence: `04-header-logout-overlaps-brand-zoom.png`, `…/05-header-overlap-and-empty-list-mobile.jpg`
 - Status: **fixed** 2026-10-29 (re-check). `.shell-header` is now
   `justify-content: space-between; gap: 16px`. Desktop: brand right edge 119px,
   button left edge 1392px. At 375×812: 103px vs 271px, and the brand is no
   longer truncated (`scrollWidth === clientWidth`). No overlap on any signed-in
-  screen. After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA02-QA03-QA07-root-redirects-to-list-desktop.jpg`,
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA02-QA03-QA07-list-and-header-mobile.jpg`
+  screen. After: `after-QA02-QA03-QA07-root-redirects-to-list-desktop.jpg`,
+  `after-QA02-QA03-QA07-list-and-header-mobile.jpg`
 
 ### QA-08 Unstyled native controls escape the design system — severity: visual
 - Where: `/cvs` empty state, `/jobs/:id` failed state, `/cvs/new` @ both viewports
@@ -278,7 +283,7 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
   - the PDF chooser is a raw `<input type="file">`, so it renders the browser's
     own control and the browser's locale (here Russian, "Выберите файл") inside an
     otherwise English product.
-- Evidence: `…/qa-screenshots/06-cv-list-says-none-desktop.jpg`, `…/20-generation-failed-honest.jpg`, `…/18-intake-non-pdf-rejected.jpg`
+- Evidence: `06-cv-list-says-none-desktop.jpg`, `…/20-generation-failed-honest.jpg`, `…/18-intake-non-pdf-rejected.jpg`
 - Status: **fixed** 2026-10-29 (second re-check). Both remaining halves land.
   - *PDF chooser:* now a styled control. The native input is
     `.file-picker-input`, visually hidden the correct way (1×1, `clip-path:
@@ -299,10 +304,10 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
     "Choose file" and the editor's "Move up"/"Delete"), not the browser default.
   - *The "Create your first CV" link* was again not reachable — the seeded
     account owns CVs. Still unverified, carried as a known gap.
-  After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA08-styled-pdf-chooser-mobile-375.jpg`,
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA08-choose-file-keyboard-focus-ring-desktop.png`,
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA08-chosen-file-name-shown-desktop.png`,
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA08-jobs-regenerate-styled-desktop.jpg`
+  After: `recheck2-QA08-styled-pdf-chooser-mobile-375.jpg`,
+  `recheck2-QA08-choose-file-keyboard-focus-ring-desktop.png`,
+  `recheck2-QA08-chosen-file-name-shown-desktop.png`,
+  `recheck2-QA08-jobs-regenerate-styled-desktop.jpg`
 
 ### QA-09 Sign-in forgets where you were going, and `/auth` stays reachable while signed in — severity: minor
 - Where: `/auth/login`, `/cvs/:id` @ 1440×900
@@ -311,15 +316,15 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
   `/cvs`, which (QA-03) claims there are no CVs — so the requested CV is now
   unreachable. Separately, visiting `/auth` while signed in renders the full
   "Log in" form *and* a "Log out" button in the header at the same time.
-- Evidence: `…/qa-screenshots/23-auth-desktop.jpg`, `…/24-auth-mobile.jpg`
+- Evidence: `23-auth-desktop.jpg`, `…/24-auth-mobile.jpg`
 - Status: **fixed** 2026-10-29 (re-check). Signed out, opening
   `/cvs/07930f51-…` bounces to
   `/auth/login?next=%2Fcvs%2F07930f51-d4da-422a-9d6c-2ce434f53f1f`, and
   signing in lands **on that CV**, not on `/cvs`. Visiting `/auth` while signed
   in redirects to `/cvs` — the form-plus-Log-out state is gone. Both confirmed
   at 375×812 as well.
-  After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA09a-deeplink-survives-signin-desktop.jpg`,
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA09b-auth-redirects-when-signed-in-desktop.jpg`
+  After: `after-QA09a-deeplink-survives-signin-desktop.jpg`,
+  `after-QA09b-auth-redirects-when-signed-in-desktop.jpg`
 
 ### QA-10 A failed generation leaves the CV untitled and in state `generating` forever — severity: minor
 - Where: data, visible through `GET /api/cvs` @ n/a
@@ -342,8 +347,8 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
   configuration problem, not as "something went wrong on our side", and the
   `ANTHROPIC_API_KEY` env-var name is no longer shown to the user.
   *See QA-14* for the pre-existing rows the fix does not reach.
-  After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA10-config-failure-regenerate-desktop.jpg`,
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA10-failed-cv-editor-banner-and-empty-h1-desktop.jpg`
+  After: `after-QA10-config-failure-regenerate-desktop.jpg`,
+  `after-QA10-failed-cv-editor-banner-and-empty-h1-desktop.jpg`
 
 ### QA-11 The trash icon is used for skills only; the same action is a word everywhere else — severity: visual
 - Where: `/cvs/:id` Skills vs Experience/Education/bullets @ 375×812
@@ -353,7 +358,7 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
   while Experience entries, Education entries and bullets all spell out
   "Delete" / "Delete bullet". Same destructive action, two different affordances
   on one screen. The icon button also has no visible text label.
-- Evidence: `…/qa-screenshots/22-skills-trash-icon-mobile.jpg`
+- Evidence: `22-skills-trash-icon-mobile.jpg`
 - Status: **fixed** 2026-10-29 (re-check). `document.querySelectorAll('svg')`
   returns **0** on the editor at both viewports and there are no label-less
   buttons. Skills rows now read "Delete", matching Experience, Education and
@@ -361,8 +366,8 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
   *Note for the design doc:* the product now ships **no** icons at all, so
   `framework/docs/design/README.md`'s "exactly one icon, trash" no longer
   describes the build — `docs-sync` applies.
-  After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA11-delete-is-a-word-in-skills-mobile.jpg`,
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA06-QA11-textareas-grow-delete-is-a-word-desktop.jpg`
+  After: `after-QA11-delete-is-a-word-in-skills-mobile.jpg`,
+  `after-QA06-QA11-textareas-grow-delete-is-a-word-desktop.jpg`
 
 ### QA-12 Two different page containers ship side by side — severity: visual
 - Where: `/auth/*` and `/cvs/new` vs `/cvs` and `/cvs/:id` @ 1440-class and 375×812
@@ -375,7 +380,7 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
 - **Not a regression:** the left-hugging screens look the same in the first
   pass's `…/23-auth-desktop.jpg`; it simply was not filed then, and the new
   centred list screen now puts the two conventions one click apart.
-- Evidence: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA02-root-signed-out-to-signin-desktop.jpg`
+- Evidence: `after-QA02-root-signed-out-to-signin-desktop.jpg`
   (left-hugging) vs `…/after-QA02-QA03-QA07-root-redirects-to-list-desktop.jpg` (centred)
 - Status: **fixed** 2026-10-29 (second re-check). There is now one `.page`
   container and every screen sits in it, centred, with a real gutter. Measured
@@ -387,7 +392,7 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
   forms, wide for the two data screens, mid for message screens — all the same
   primitive, all centred. At 375px all four headings start at x=16 and
   `scrollWidth === 375` on every one.
-  After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA12-intake-centred-desktop.jpg`
+  After: `recheck2-QA12-intake-centred-desktop.jpg`
 
 ### QA-13 An untitled CV renders an empty `<h1>` in the editor — severity: minor
 - Where: `/cvs/:id` for any CV whose `title` is `""` @ 1440-class and 375×812
@@ -398,14 +403,14 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
   heading slot. The list screen gets this right; the editor does not, so the two
   disagree about the same CV. Introduced with the new failed/untitled states —
   before this wave a failed CV was unreachable (old QA-03), so no screen showed it.
-- Evidence: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA10-failed-cv-editor-banner-and-empty-h1-desktop.jpg`
+- Evidence: `after-QA10-failed-cv-editor-banner-and-empty-h1-desktop.jpg`
 - Status: **fixed** 2026-10-29 (second re-check). Opening any untitled CV —
   `/cvs/425ef9cc-…` and `/cvs/6c2967f3-…` — renders `<h1>Untitled CV</h1>`, the
   same fallback the list shows for the same row. The blank heading slot is gone
   and the two screens now agree about the same CV. Confirmed at 1440 and at
   375px.
-  After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA13-QA14-untitled-heading-reconciled-ghost-desktop.jpg`,
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA13-QA14-untitled-cv-heading-and-retry-mobile-375.jpg`
+  After: `recheck2-QA13-QA14-untitled-heading-reconciled-ghost-desktop.jpg`,
+  `recheck2-QA13-QA14-untitled-cv-heading-and-retry-mobile-375.jpg`
 
 ### QA-14 The QA-10 fix is forward-only: old CVs are still stuck in `generating` — severity: minor
 - Where: `/cvs` @ 1440-class and 375×812
@@ -417,7 +422,7 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
   and offer the user nothing to do. Before this wave they were invisible (old
   QA-03); the list screen is what makes them a user-facing defect. Needs a
   migration, or a UI rule that treats a long-stale `generating` as failed.
-- Evidence: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA02-QA03-QA07-list-and-header-mobile.jpg`
+- Evidence: `after-QA02-QA03-QA07-list-and-header-mobile.jpg`
 - Status: **fixed** 2026-10-29 (second re-check). **Which way: failed, with a
   message and a retry** — not absent. The api reconciles stale `generating` rows
   at startup, and after the restart `GET /api/cvs` returns **no `generating`
@@ -429,8 +434,8 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
   can act on. The message names the interruption rather than blaming the user,
   and it is distinct from the `CONFIG_MISSING` wording on the key-less CV —
   two different causes, two different sentences.
-  After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA14-no-generating-ghosts-left-desktop.jpg`,
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA13-QA14-untitled-heading-reconciled-ghost-desktop.jpg`
+  After: `recheck2-QA14-no-generating-ghosts-left-desktop.jpg`,
+  `recheck2-QA13-QA14-untitled-heading-reconciled-ghost-desktop.jpg`
 
 ### QA-15 On desktop the question column places cards in API order, so the third card is stranded 2,957px below its field — severity: major
 
@@ -460,9 +465,9 @@ remaining symptom on desktop. Smoke clean; ordering deterministic.**
   3 of 3 cards find their field, and on mobile 3 of 3 are placed correctly.
   This is a different, newer cause with the same user-visible shape on desktop,
   so it is filed separately rather than reopening QA-05.
-- Evidence: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA05-role-field-marked-but-column-empty-desktop.jpg`
+- Evidence: `recheck2-QA05-role-field-marked-but-column-empty-desktop.jpg`
   (the marked field with nothing beside it),
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA05-role-card-stranded-below-skills-desktop.jpg`
+  `recheck2-QA05-role-card-stranded-below-skills-desktop.jpg`
   (the card, two screens later, under the Skill card and past the sheet)
 
 ## Regression smoke — 2026-10-29 (second re-check)

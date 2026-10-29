@@ -1,6 +1,0 @@
-api/src/core/cv/patch*
-api/src/core/cv/types.ts
-tests/contract/cvs-patch*
-framework/docs/*
-framework/sprints/SPRINT-002-live-model/*
-.claude/*

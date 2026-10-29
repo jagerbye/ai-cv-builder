@@ -1,14 +1,11 @@
-# .claude/workflows/ — the runners that drove this build
+# .claude/workflows/ — the sprint runner
 
-Every file here is a Workflow script: a deterministic program that calls
-agents with role files, briefs and a result schema, so the loop in
+A Workflow script is a deterministic program that calls agents with role
+files, briefs and a result schema, so the loop in
 `framework/process/sprint-playbook.md` §3 runs mechanically instead of being
-re-decided by a model each time. One of them is the reusable runner; the rest
-are the actual runs, kept as the record of how the work was really driven.
+re-decided by a model each time.
 
-## The reusable runner
-
-- `sprint.js` — the template's sprint runner, current as of the end of the
+- `sprint.js` — the template's sprint runner, current as of the end of this
   build. Empty tables (`BASE`, `LANES`, `TASKS`, `CHAINS`) to fill from a
   plan; validates them before `wave.sh start`; per task test-engineer →
   developer → reviewer → fix cycle; blocks routed by `blockedOn` kind; a
@@ -16,23 +13,17 @@ are the actual runs, kept as the record of how the work was really driven.
   throws. Each of those behaviours is a finding in
   `framework/knowledge/framework-feedback.md` (FF-01, FF-10, FF-11, FF-12).
 
-## The record — in the order they ran
+## The 52 one-off runners that drove this build are gone
 
-Read these as evidence, not as code to reuse: the briefs are the real briefs,
-the decisions in them are the real decisions, and the shape of each script
-shows what the previous one left open.
+Each wave, fix pass, QA round and harvest ran from its own script, and all 52
+of them hard-coded commit hashes, task ids and file paths from this
+repository: a record of how the work was driven, not code anyone can run
+again. They were removed so the repository reads as a product rather than as
+a session log. What they did survives where it is useful:
 
-| Script | What it was |
-|---|---|
-| `wave-a.js` | SPRINT-001 wave A: seven disjoint lanes against frozen contracts C-000..C-013, with the web lane fanning out into three screens. This is the file the sprint plan calls `sprint.js`; it was renamed when the reusable runner took that name. It is the version FF-01 and FF-11 were found in. |
-| `finish-t12.js`, `finish-wave-a.js` | The tasks wave A left open: the verifier once ADR-013 was decided, three allowlist-only re-reviews, the Node 24 rebuild. |
-| `wave-b.js`, `finish-wave-b.js`, `wave-b-close.js`, `wave-b-flake.js`, `integrate-wave-b.js` | Wave B (answer / regenerate, hardening, the editor), the four `blockedOn: decision` stops it ended on and their resolutions, the persist flake, and the union run. |
-| `t28-fix.js`, `lane-f-fix.js`, `ratelimit-leak.js`, `leak-guard.js` | Review fix-lists and test-suite leaks found at integration. |
-| `qa-wave-b.js`, `qa-fix.js`, `qa-fix-2.js`, `close-qa.js`, `qa-recheck.js`, `hotfix-qa.js`, `hotfix-qa15.js`, `qa-final.js` | Stage 4.5: the manual QA pass that found the missing web→api route (FF-15), the fix lanes, re-checks and hotfixes down to the close verdict. |
-| `close-sprint-fixes.js`, `close-sprint.js`, `final-three.js`, `tail-fixes.js` | The last review items, the suite's own database (ADR-019), the report, HISTORY entry and retro. |
-| `budget.js`, `budget-fix.js`, `base-url.js`, `readme-truth.js` | Post-close: spend bounds on every model-calling path, the configurable endpoint, the README made true. |
-| `b024-harvest.js`, `b024-pass2.js`, `b024-pass3.js` | B-024: porting the findings back into the template, and the two passes the harvest's own reviewer sent it back for. |
-| `sync-method.js` | The run that brought the method vendored here back in line with the template those passes produced. |
+- the briefs and decisions, in `framework/sprints/SPRINT-00*/plan.md`;
+- the outcomes, in each sprint's `report.md` and in `framework/sprints/HISTORY.md`;
+- what each run taught the method, in `framework/knowledge/framework-feedback.md`;
+- the task-by-task state, in `framework/sprints/board.md`.
 
-Scripts other than `sprint.js` hard-code commit hashes, task ids and file
-paths from this repository; they are not meant to run again.
+`git log` still has them; nothing here needs them.

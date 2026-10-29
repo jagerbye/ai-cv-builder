@@ -1,9 +1,0 @@
-web/src/*
-web/src/app/*
-web/src/features/*
-web/src/styles/*
-web/src/api/*
-framework/sprints/SPRINT-001-skeleton-auth/*
-framework/docs/*
-framework/knowledge/*
-.claude/*

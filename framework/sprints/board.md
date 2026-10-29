@@ -82,7 +82,17 @@ Added during the wave, not in the original plan:
 | CVB-15b | T-22 | 09 | CV editor: every field, add/delete/reorder, version | To Do | 3h |
 | CVB-30 | T-27 | 09 | Questions beside the fields they ask about | To Do | 2h |
 | CVB-20 | T-23 | 10 | README and clean-clone verification | To Do | 2h |
-| CVB-28 | T-25 | 11 | Job-queue test helper and its guard test (ADR-014) | To Do | 1h |
+| CVB-28 | T-25 | 11 | Job-queue test helper and its guard test (ADR-014) | Ready for test | 1h |
+| CVB-31 | T-28 | 12 | The worker persists what it generates, and the app starts it | To Do | 3h |
+
+**CVB-31 is scope nobody wrote down.** `core/jobs/worker.ts` runs extract →
+compose → verify and then writes only the job row; its own comment says "the
+verified result is persisted by core/cv", and no such write exists. Nothing
+starts the worker either. So generation has never produced a stored CV — the
+hole was invisible until T-26's regenerate test asserted that the old employer
+was gone after the worker ran, and it was not. The README already says
+generation does not run end to end; this is the task that makes that sentence
+false.
 
 **C-010 regenerate was frozen in sprint 3's contracts and implemented by no
 wave-A lane** — `core/cv/merge.ts` exists for it, the route does not. It joins

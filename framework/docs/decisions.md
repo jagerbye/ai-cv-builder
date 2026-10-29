@@ -19,6 +19,30 @@ Format — newest on top, one block per decision:
 
 ---
 
+## ADR-015: Answering a question bumps the CV's version (2026-10-29, accepted)
+
+- **Context:** C-009 says the answer response is the full C-006 shape and that
+  "only the section owning the question's path may differ; everything else is
+  unchanged". The implementation bumps the top-level `version`, and the
+  reviewer stopped the lane to ask whether that violates a frozen contract.
+- **Decision:** it bumps, and C-009 now says so. `version` is not content — it
+  is the optimistic-concurrency token of C-008. A CV whose section changed
+  while its version stayed still is a CV an editor can overwrite with stale
+  data: the browser holding version N would PATCH that same section and get
+  200 instead of the 409 C-008 exists to produce. The contract's "unchanged"
+  is about what the user wrote and what the generator wrote, not about the
+  token that protects them. The same holds for regenerate (C-010).
+- **Alternatives rejected:** leaving the version still (re-introduces exactly
+  the lost update C-008 prevents, and silently); returning a separate
+  `answerVersion` (two tokens for one document, and every client has to learn
+  which one PATCH checks).
+- **Consequences:** a contract test pins the bump, so the next implementation
+  cannot quietly drop it; the web editor must take the version from the answer
+  response, which T-27 already does by replacing the section from the server
+  copy.
+
+---
+
 ## ADR-014: The job-queue suite lock becomes a helper, not a convention (2026-10-28, accepted)
 
 - **Context:** `claimNext` is global by design (ADR-004: one queue table,

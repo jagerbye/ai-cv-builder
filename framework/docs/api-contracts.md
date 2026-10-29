@@ -142,7 +142,10 @@ Format:
 - Request: `{ answer: string(1..2000) }`
 - Response `200`: the full C-006 shape. Only the section owning the question's
   `path` may differ; everything else, and every `userEdited` field anywhere,
-  is unchanged — this is asserted by a contract test.
+  is unchanged — this is asserted by a contract test. The top-level `version`
+  is the exception and **bumps**: it is C-008's concurrency token, not content,
+  and a section that changed under a still version is a section an open editor
+  would silently overwrite (ADR-015).
 - Errors: `404 NOT_FOUND`; `409 CONFLICT` (already answered);
   `503 LLM_UNAVAILABLE` (the targeted recompose failed; the answer is still
   stored as a fact and the question stays answered)

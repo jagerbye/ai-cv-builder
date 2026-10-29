@@ -9,3 +9,4 @@ framework/knowledge/*
 .claude/*
 .gitignore
 framework/sprints/SPRINT-001-skeleton-auth/allow/*
+tests/contract/cvs-create.test.ts

@@ -112,7 +112,11 @@ transition, which is this project's own rule. The owner confirmed CVB-2, CVB-3
 and CVB-4 by hand on 2026-10-29 and they are `Done`. CVB-12 stays open on
 purpose: it is the groundedness guarantee, and ADR-022 is rewriting it right
 now — confirming a guarantee while it is being changed would mean nothing.
-The live-key block (CVB-39…44) waits for the end-to-end re-run.
+The live-key block (CVB-39…44) is `Done`: the full flow ran on a real model on
+2026-10-29, from registration to the A4 PDF, with the transcript in
+`SPRINT-002-live-model/report.md`. CVB-12 — the groundedness guarantee — is the
+one issue still held, and it is the owner's call: ADR-022 through ADR-025
+rewrote it, and it has not been confirmed by hand since.
 
 **Labeled `critical`** (need the owner's explicit yes before their final
 transition): CVB-2 (migrations), CVB-3, CVB-4 (auth and authorization),
@@ -165,12 +169,12 @@ visible once the previous fix let the pipeline run one stage further.
 
 | Issue | Summary | Severity | Status |
 |---|---|---|---|
-| CVB-39 | ADR-020 the answer path reported a missing key as "try again later" | major | Ready for test |
-| CVB-40 | The gateway hard-coded the endpoint, so no key could be pointed at it | blocker | Ready for test |
-| CVB-41 | ADR-021 one number served as both the output cap and the spend budget, and compose crossed it on every real CV | blocker | Ready for test |
-| CVB-42 | ADR-021 Amendment A — "optional ledger" left the answer path with no spend bound at all | major | Ready for test |
-| CVB-43 | The vendored method was older than the template its own findings were harvested into | major | Ready for test |
-| CVB-44 | ADR-022 the verifier deleted the jobs it had just asked about; contact was never composed | blocker | In Progress |
+| CVB-39 | ADR-020 the answer path reported a missing key as "try again later" | major | Done |
+| CVB-40 | The gateway hard-coded the endpoint, so no key could be pointed at it | blocker | Done |
+| CVB-41 | ADR-021 one number served as both the output cap and the spend budget, and compose crossed it on every real CV | blocker | Done |
+| CVB-42 | ADR-021 Amendment A — "optional ledger" left the answer path with no spend bound at all | major | Done |
+| CVB-43 | The vendored method was older than the template its own findings were harvested into | major | Done |
+| CVB-44 | ADR-022 the verifier deleted the jobs it had just asked about; contact was never composed | blocker | Done |
 
 **CVB-44 is the most expensive thing a mock could never have told us.** The
 first full run produced a CV with zero experience, zero education, no contact

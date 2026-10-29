@@ -97,13 +97,18 @@ assertion whose subject could be removed with the suite staying green, and two
 tests that were pinning a defect rather than preventing it.
 → `.claude/rules/testing.md`, and the reviewer reports in the lane logs.
 
-**The first real model call failed, and the failure was ours.** The whole
-pipeline had been proven against a mocked seam. On first contact the extract
-stage returned fifteen facts with verbatim source quotes and the compose stage
-failed — because one configuration number was being used both as the output cap
-and as the spend bound, and a real CV crosses it. The model had behaved
-correctly; the code reported `LLM_INVALID_OUTPUT`.
-→ `framework/docs/decisions.md` ADR-021.
+**Five defects in a chain, each hidden behind the one before it.** The whole
+pipeline had been proven against a mocked seam. The first real call failed and
+the failure was ours — one setting serving as both the output cap and the spend
+bound. Fixing it let the flow run one stage further, where it produced a CV
+with no experience, no education and no contact at all: the verifier had
+deleted real jobs because the model wrote `2019 - Present` where the source
+says `Since 2019`. Fixing that exposed that invented organisations were being
+caught by a hard-coded list of famous company names. Three adversarial rounds
+later the answer was to change the promise rather than patch the mechanism
+again — prose asks, structure drops — and the checker lost 130 of its 226
+lines. A mocked seam cannot be walked past.
+→ ADR-020 through ADR-025, and `framework/sprints/SPRINT-002-live-model/report.md`.
 
 ## The method, and the part that is unusual
 

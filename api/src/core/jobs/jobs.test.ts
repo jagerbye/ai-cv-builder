@@ -401,7 +401,7 @@ describe('C-005 / ADR-003: stages, inputs and classified errors', () => {
     worker.stop();
   });
 
-  it('a pipeline error with a known code is recorded as that code and its message', async () => {
+  it('a pipeline error with a known code is recorded as that code and its fixed safe message, never its own text', async () => {
     const seed = await seedCv();
     const jobId = await seedJob(seed);
     const { pipeline } = fakePipeline({
@@ -416,7 +416,7 @@ describe('C-005 / ADR-003: stages, inputs and classified errors', () => {
     const job = await row(jobId);
     expect(job.status).toBe('failed');
     expect(job.errorCode).toBe('LLM_UNAVAILABLE');
-    expect(job.errorMessage).toBe('model unreachable');
+    expect(job.errorMessage).toBe('The generation service is unavailable. Try again later.');
     expect(job.finishedAt).not.toBeNull();
     worker.stop();
   });

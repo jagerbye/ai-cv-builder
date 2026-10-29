@@ -1,0 +1,14 @@
+web/src/api/client*
+web/src/features/intake/submit*
+web/src/features/cv/*
+web/src/app/*
+web/src/features/cv/*
+web/src/styles/*
+framework/sprints/SPRINT-001-skeleton-auth/lanes/*
+framework/sprints/SPRINT-001-skeleton-auth/plan.md
+framework/sprints/SPRINT-001-skeleton-auth/qa-report.md
+framework/sprints/SPRINT-001-skeleton-auth/allow/*
+framework/docs/*
+framework/knowledge/*
+.claude/*
+.gitignore

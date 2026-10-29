@@ -72,12 +72,12 @@ interface ClaimRow {
   started_at: Date | null;
 }
 
-// A thrown error carries its C-000 code only when that code is in the closed enum; its message is
-// kept only then, because a known code is written by code that owns a safe message. Anything else is INTERNAL.
+// A thrown error carries its C-000 code only when that code is in the closed enum. Its own message is
+// never kept (C-000): the row gets the code's fixed safe message. Anything else is INTERNAL.
 function classify(err: unknown): { code: ErrorCode; message: string } {
   const code = (err as { code?: unknown } | null)?.code;
   if (typeof code === 'string' && (ERROR_CODES as readonly string[]).includes(code)) {
-    return { code: code as ErrorCode, message: (err as Error).message };
+    return { code: code as ErrorCode, message: safeMessage(code as ErrorCode) };
   }
   return { code: 'INTERNAL', message: GENERATION_FAILED_MESSAGE };
 }

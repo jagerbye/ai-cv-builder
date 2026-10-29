@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { ApiError, GENERIC_MESSAGE, apiFetch } from '../../api/client';
 import { Field } from './fields';
 import { EducationList, ExperienceList, SkillList } from './entries';
@@ -173,6 +174,7 @@ export function CvEditor({ cv, onReload }: { cv: CvDto; onReload: () => void }) 
             {status}
           </p>
         </header>
+        {cv.state === 'failed' && <FailedBanner cv={cv} />}
         {conflict && (
           <div role="alert" className="cv-callout">
             <p>
@@ -288,6 +290,28 @@ function SectionFooter({ error, onRetry }: { error: SectionError | undefined; on
         <button type="button" className="cv-button" onClick={onRetry}>
           Retry
         </button>
+      )}
+    </div>
+  );
+}
+
+// C-006, ADR-017: the server's own message for why generation failed, and the
+// retry the user has, which is regenerate (C-010). The message is shown as sent,
+// whatever the code, so a code this client has never seen still reads truthfully.
+function FailedBanner({ cv }: { cv: CvDto }) {
+  const regenerate = useMutation({
+    mutationFn: () => apiFetch<{ jobId: string }>(`/cvs/${encodeURIComponent(cv.id)}/regenerate`, { method: 'POST' }),
+    onSuccess: (r) => window.location.assign(`/jobs/${encodeURIComponent(r.jobId)}`),
+  });
+  const reason = cv.lastError?.message ?? GENERIC_MESSAGE;
+  return (
+    <div role="alert" className="cv-callout">
+      <p>Generation failed. {reason}</p>
+      <button type="button" className="cv-button" onClick={() => regenerate.mutate()} disabled={regenerate.isPending}>
+        Regenerate
+      </button>
+      {regenerate.isError && (
+        <p>{regenerate.error instanceof ApiError ? regenerate.error.message : GENERIC_MESSAGE}</p>
       )}
     </div>
   );

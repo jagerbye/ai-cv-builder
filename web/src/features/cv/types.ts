@@ -64,6 +64,8 @@ export interface CvDto {
   skills: CvSkill[];
   questions: CvQuestion[];
   facts: unknown[];
+  // C-006, ADR-017: present only when state is 'failed'.
+  lastError?: { code: string; message: string };
 }
 
 export type Section = 'contact' | 'summary' | 'experience' | 'education' | 'skills';

@@ -105,7 +105,7 @@ describe('QA-10: a classified failure on a first generation moves the CV to fail
     const cv = (await getCv(app, owner.cookie, cvId)).json();
     expect(cv.state).toBe('failed');
     const job = (await getJob(app, owner.cookie, jobId)).json();
-    expect(job).toMatchObject({ status: 'failed', error: { code: 'LLM_UNAVAILABLE', message: 'model unreachable' } });
+    expect(job).toMatchObject({ status: 'failed', error: { code: 'LLM_UNAVAILABLE', message: 'The generation service is unavailable. Try again later.' } });
   });
 
   it('keeps the intake contact: a failed first run stores no draft and does not wipe the source-derived contact', async () => {
@@ -117,6 +117,35 @@ describe('QA-10: a classified failure on a first generation moves the CV to fail
 
     expect((await snapshotItems(cvId)).map((i) => i.kind)).toEqual(['contact']);
     expect((await getCv(app, owner.cookie, cvId)).json().contact.fullName).toBe('Ada Lovelace');
+  });
+});
+
+describe('C-000: a thrown error text never reaches the job row, C-005 or the CV lastError', () => {
+  it('an enum-coded error carrying a secret-looking message is written as safeMessage(code) everywhere', async () => {
+    const secret = 'sk-live-SECRET-0123456789 postgres://u:pw@db.internal:5432/x';
+    const owner = await seedUser();
+    const cvId = await seedCv(owner.userId);
+    const jobId = await enqueueFresh(owner, cvId);
+    const leaky: GenerationPipeline = {
+      ...fakePipeline(TOKEN_A),
+      extract: async (): Promise<Fact[]> => {
+        throw Object.assign(new Error(secret), { code: 'LLM_AUTH_FAILED' });
+      },
+    };
+
+    expect(await runOne(leaky)).toBe(jobId);
+
+    const safe = 'The generation service rejected the configured API key.';
+    const rowJob = await prisma.generationJob.findUniqueOrThrow({ where: { id: jobId } });
+    expect(rowJob.errorCode).toBe('LLM_AUTH_FAILED');
+    expect(rowJob.errorMessage).toBe(safe);
+    const job = await getJob(app, owner.cookie, jobId);
+    expect(job.json().error).toEqual({ code: 'LLM_AUTH_FAILED', message: safe });
+    const cv = await getCv(app, owner.cookie, cvId);
+    expect(cv.json().lastError).toEqual({ code: 'LLM_AUTH_FAILED', message: safe });
+    for (const text of [job.body, cv.body, JSON.stringify(rowJob)]) expect(text).not.toContain('SECRET');
+    const cvRow = await prisma.cv.findUniqueOrThrow({ where: { id: cvId }, select: { lastErrorMessage: true } });
+    expect(cvRow.lastErrorMessage).toBe(safe);
   });
 });
 

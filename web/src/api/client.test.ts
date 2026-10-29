@@ -136,15 +136,30 @@ describe('typed API client — PATCH and version conflicts (C-008, T-22)', () =>
     expect(e.message).toBe('Stale version: reload the CV.');
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+});
 
-  it('maps a code outside the closed enum to INTERNAL with the generic message (negative case)', async () => {
+describe('envelope codes (ADR-018, C-000)', () => {
+  it('ERROR_CODES lists both provider failures', async () => {
+    const { ERROR_CODES } = await import('./client');
+    expect(ERROR_CODES).toContain('LLM_AUTH_FAILED');
+    expect(ERROR_CODES).toContain('LLM_INVALID_REQUEST');
+  });
+
+  it('keeps the code and message of an unknown code instead of downgrading to INTERNAL', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => jsonResponse(409, { error: { code: 'STALE_VERSION', message: 'raw internal text' } })),
+      vi.fn(async () => jsonResponse(500, { error: { code: 'SOMETHING_NEW', message: 'Said by the server.' } })),
     );
-    const e = (await apiFetch('/cvs/cv-1', { method: 'PATCH', body: {} }).catch((x: unknown) => x)) as ApiError;
-    expect(e).toBeInstanceOf(ApiError);
-    expect(e.code).toBe('INTERNAL');
-    expect(e.message).not.toContain('raw internal text');
+    const err = (await apiFetch('/x').catch((e) => e)) as ApiError;
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err.code).toBe('SOMETHING_NEW');
+    expect(err.message).toBe('Said by the server.');
+  });
+
+  it('still downgrades a body that is not an envelope', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(500, { error: { code: 'X' } })));
+    const err = (await apiFetch('/x').catch((e) => e)) as ApiError;
+    expect(err.code).toBe('INTERNAL');
+    expect(err.message).toBe('Something went wrong. Please try again.');
   });
 });

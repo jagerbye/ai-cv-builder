@@ -2,7 +2,7 @@
 // the progress view. Pasted text goes through the shared client; the PDF body
 // is multipart, which the shared client does not send yet (see the lane report).
 
-import { ApiError, ERROR_CODES, apiFetch } from '../../api/client';
+import { ApiError, apiFetch, toApiError } from '../../api/client';
 
 export interface CreatedCv {
   cvId: string;
@@ -10,7 +10,6 @@ export interface CreatedCv {
 }
 
 const NETWORK_MESSAGE = 'We could not reach the server. Check your connection and try again.';
-const GENERIC_MESSAGE = 'Something went wrong. Please try again.';
 
 export function createFromText(sourceText: string, targetRole: string): Promise<CreatedCv> {
   return apiFetch<CreatedCv>('/cvs', { method: 'POST', body: { sourceText, targetRole } });
@@ -38,28 +37,6 @@ async function postMultipart(body: FormData): Promise<CreatedCv> {
   } catch {
     throw new ApiError(0, 'INTERNAL', NETWORK_MESSAGE);
   }
-  if (!res.ok) throw await envelopeError(res);
+  if (!res.ok) throw await toApiError(res);
   return (await res.json()) as CreatedCv;
-}
-
-// Same C-000 envelope rules as web/src/api/client.ts: anything that is not the
-// envelope becomes a generic message, and the raw body is never shown.
-async function envelopeError(res: Response): Promise<ApiError> {
-  let body: unknown;
-  try {
-    body = await res.json();
-  } catch {
-    return new ApiError(res.status, 'INTERNAL', GENERIC_MESSAGE);
-  }
-  const error = (body as { error?: { code?: unknown; message?: unknown; details?: unknown } } | null)?.error;
-  if (!error || typeof error.message !== 'string' || !(ERROR_CODES as readonly unknown[]).includes(error.code)) {
-    return new ApiError(res.status, 'INTERNAL', GENERIC_MESSAGE);
-  }
-  const details = Array.isArray(error.details)
-    ? error.details.filter(
-        (d): d is { path: string; message: string } =>
-          !!d && typeof d.path === 'string' && typeof d.message === 'string',
-      )
-    : undefined;
-  return new ApiError(res.status, error.code as ApiError['code'], error.message, details);
 }

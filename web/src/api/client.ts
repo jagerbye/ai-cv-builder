@@ -14,12 +14,20 @@ export const ERROR_CODES = [
   'RATE_LIMITED',
   'LLM_UNAVAILABLE',
   'LLM_INVALID_OUTPUT',
+  'LLM_AUTH_FAILED',
+  'LLM_INVALID_REQUEST',
   'JOB_TIMEOUT',
   'CONFIG_MISSING',
   'INTERNAL',
 ] as const;
 
-export type ErrorCode = (typeof ERROR_CODES)[number];
+export type KnownErrorCode = (typeof ERROR_CODES)[number];
+// The enum is closed on the server but open for a client (C-000, ADR-018): a code
+// added later still arrives with its own message, which is shown as it is. The
+// list above is only for autocomplete and for code that special-cases a code;
+// nothing is rejected for being absent from it. api/src/http/errors.ts is the
+// source, and error-codes-sync.test.ts fails when the two lists drift.
+export type ErrorCode = KnownErrorCode | (string & {});
 
 export interface ErrorDetail {
   path: string;
@@ -47,10 +55,6 @@ export interface ApiInit {
   body?: unknown;
 }
 
-function isErrorCode(value: unknown): value is ErrorCode {
-  return typeof value === 'string' && (ERROR_CODES as readonly string[]).includes(value);
-}
-
 function parseDetails(value: unknown): ErrorDetail[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const out: ErrorDetail[] = [];
@@ -67,7 +71,8 @@ function parseDetails(value: unknown): ErrorDetail[] | undefined {
   return out;
 }
 
-async function toApiError(res: Response): Promise<ApiError> {
+// Shared by every request that reads a C-000 envelope, JSON or multipart.
+export async function toApiError(res: Response): Promise<ApiError> {
   let body: unknown;
   try {
     body = await res.json();
@@ -77,7 +82,7 @@ async function toApiError(res: Response): Promise<ApiError> {
   const error = (body as { error?: unknown } | null)?.error as
     | { code?: unknown; message?: unknown; details?: unknown }
     | undefined;
-  if (!error || !isErrorCode(error.code) || typeof error.message !== 'string') {
+  if (!error || typeof error.code !== 'string' || error.code === '' || typeof error.message !== 'string') {
     return new ApiError(res.status, 'INTERNAL', GENERIC_MESSAGE);
   }
   return new ApiError(res.status, error.code, error.message, parseDetails(error.details));

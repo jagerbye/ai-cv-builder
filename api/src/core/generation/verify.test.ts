@@ -32,7 +32,7 @@ const base = (over: Partial<CvDraft> = {}): CvDraft => ({
 
 describe('verify — citation rule (ADR-002)', () => {
   it('drops a bullet with empty factIds and raises a missing-reason question on its path', () => {
-    const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2019')];
+    const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2019, built APIs')];
     const draft = base({
       experience: [
         {
@@ -196,7 +196,7 @@ describe('verify — entity rule against the entry\'s own facts (spec §3.4, ADR
   });
 
   it('drops an entry whose employer occurs in no fact and asks for the employer', () => {
-    const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2019')];
+    const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2019, built APIs')];
     const draft = base({
       experience: [
         {
@@ -604,7 +604,7 @@ describe('verify — ADR-022: derived quantities, strict contact, co-occurring e
 });
 
 describe('verify — purity and contract', () => {
-  const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2019')];
+  const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2019, built APIs')];
   const draft = base({
     experience: [
       {

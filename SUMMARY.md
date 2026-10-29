@@ -7,7 +7,7 @@
 
 ## The short version
 
-One engineer orchestrating; no product code written by hand. An agent team
+Two sprints. One engineer orchestrating; no product code written by hand. An agent team
 worked from a specification, in parallel lanes, against a single mechanical
 definition of "green". The method lives in `framework/`, vendored into this
 repository so it can be read — and it was amended **from this build's own
@@ -18,7 +18,7 @@ failures** before the project closed.
 | | | Where it comes from |
 |---|---|---|
 | Working time | **≈6 h** across two sessions | `git log`: 15.3 h calendar span minus a 9.1 h overnight gap. The brief budgets 10 human hours |
-| Commits | 53 | `git log --oneline \| wc -l` |
+| Commits | 60 | `git log --oneline \| wc -l` |
 | Product + test code | ~21 400 lines TS/TSX | `find api/src web/src tests scripts -name '*.ts*' \| xargs wc -l` |
 | Specification and process docs | ~7 950 lines | `find framework -name '*.md' \| xargs wc -l` |
 | Test files | 86 | `find . -name '*.test.ts*' -not -path '*/node_modules/*'` |

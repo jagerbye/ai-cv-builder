@@ -11,7 +11,7 @@
   },
   "scripts": {
     "typecheck": "npm run -s typecheck --workspaces --if-present",
-    "lint": "npm run -s lint --workspaces --if-present",
+    "lint": "npm run -s lint --workspaces --if-present && eslint tests --max-warnings 0",
     "test": "npm run -s test --workspaces --if-present",
     "build": "npm run -s build --workspaces --if-present"
   },

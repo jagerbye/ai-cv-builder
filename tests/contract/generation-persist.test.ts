@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
-import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { openJobTestSuite, JOB_SUITE_LOCK_WAIT_MS, type JobTestSuite } from '../../api/src/core/jobs/test-lock.js';
 import { createJobWorker } from '../../api/src/core/jobs/worker.js';

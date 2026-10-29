@@ -25,7 +25,7 @@ const base = (over: Partial<CvDraft> = {}): CvDraft => ({
 });
 
 const facts = [
-  fact('f1', 'Backend engineer at Acme Ltd, 2019'),
+  fact('f1', 'Backend engineer at Acme Ltd, 2019, built APIs'),
   fact('f2', 'BSc at Warsaw University, 2010-2014', 'education'),
 ];
 

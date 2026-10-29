@@ -2,7 +2,7 @@
 // no LLM, no clock, no randomness. Drafts and facts are never mutated.
 import type { CvDraft, DroppedItem, Fact, VerificationResult } from './types.js';
 import { planQuestions, type PlannedQuestion, type QuestionReason } from './questions.js';
-import { containsPeriod, containsText, containsToken, unsupportedEntity } from './verify-entities.js';
+import { containsPeriod, containsText, containsToken, hasDerivedDuration, unsupportedEntity } from './verify-entities.js';
 
 interface Failure {
   reason: Exclude<QuestionReason, 'vague'>;
@@ -20,20 +20,13 @@ function resolveCited(factIds: string[], byId: Map<string, Fact>): { facts: Fact
 // Citation rule for bullets, summary and skills: every item cites facts, each id must exist, and the
 // item's entities must occur in its own cited facts plus the inherited facts of its parent entry
 // (ADR-002 amendment, one level of parent to child only).
-function checkCited(text: string, factIds: string[], byId: Map<string, Fact>, inherited: readonly Fact[] = []): Failure | null {
+function checkCited(text: string, factIds: string[], byId: Map<string, Fact>, inherited: readonly Fact[] = [], role = ''): Failure | null {
   const resolved = resolveCited(factIds, byId);
   if (!('facts' in resolved)) return resolved;
   const cited = [...resolved.facts, ...inherited].map((f) => f.text);
-  const entity = unsupportedEntity(text, cited);
+  const entity = unsupportedEntity(text, cited, [role]);
   if (entity !== null) return { reason: 'unverifiable', detail: `${entity} not in cited facts` };
   return null;
-}
-
-// "5+ years" is a quantity computed from dates, which ADR-022 point 3 keeps and asks about; it is derived, not an
-// invented entity. The compose prompt forbids it; the verifier does not drop the head of the CV over it. Any other
-// figure (a percentage, a headcount, a revenue) is an entity and is still checked.
-function withoutDerivedDurations(text: string): string {
-  return text.replace(/\b\d+\+?\s*(?:years?|yrs?|months?)\b/gi, ' ');
 }
 
 function questionText(path: string, reason: QuestionReason): string {
@@ -69,7 +62,7 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
     inherited: readonly Fact[] = [],
     questionPath: string = path,
   ): boolean => {
-    const f = checkCited(text, factIds, byId, inherited);
+    const f = checkCited(text, factIds, byId, inherited, draft.targetRole);
     if (f === null) return true;
     dropped.push({ path, reason: f.detail });
     candidates.push({ path: questionPath, text: questionText(questionPath, f.reason), reason: f.reason, priority: 2 });
@@ -140,14 +133,15 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
   if (draft.summary !== undefined) {
     const resolved = resolveCited(draft.summary.factIds, byId);
     const cited = 'facts' in resolved ? resolved.facts.map((f) => f.text) : [];
-    const entity = 'facts' in resolved ? unsupportedEntity(withoutDerivedDurations(draft.summary.text), cited) : null;
+    const entity = 'facts' in resolved ? unsupportedEntity(draft.summary.text, cited, [draft.targetRole]) : null;
     if (entity !== null) {
       dropped.push({ path: 'summary', reason: `${entity} not in cited facts` });
       candidates.push({ path: 'summary.text', text: questionText('summary.text', 'unverifiable'), reason: 'unverifiable', priority: 2 });
     } else {
+      // A duration derived from stated periods (ADR-023) is kept and asked about, like any derivation.
       const failure: Failure | null = !('facts' in resolved)
         ? resolved
-        : unsupportedEntity(draft.summary.text, cited) !== null
+        : hasDerivedDuration(draft.summary.text, cited)
           ? { reason: 'unverifiable', detail: 'derived quantity' }
           : null;
       if (failure !== null) {

@@ -152,12 +152,16 @@ mock fetch, so nobody ever opened the product. Two rounds of re-check later all
 fifteen findings are fixed, the gate has a sixth step that loads the real app
 over HTTP, and the gate passes **10 of 10 consecutive serial runs**.
 
-## After the sprint closed — the live key
+## Sprint 002 — live-model (2026-10-29)
 
-The owner supplied a key for an Anthropic-compatible endpoint, so the one thing
-this build had never done became possible: calling a real model. Everything
-below was found by doing it, and nothing below could have been found any other
-way — every item is a defect the mocked seam cannot express.
+Plan: `framework/sprints/SPRINT-002-live-model/plan.md`.
+
+Sprint 01 shipped a product whose every model call went through a mocked seam,
+and the README said so. The owner supplied a key, which turned the one untested
+path into a testable one. Everything below was found by walking it, and nothing
+below could have been found any other way — every item is a defect a mock
+cannot express. The lanes ran sequentially because each defect only became
+visible once the previous fix let the pipeline run one stage further.
 
 | Issue | Summary | Severity | Status |
 |---|---|---|---|

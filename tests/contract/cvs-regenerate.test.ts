@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';

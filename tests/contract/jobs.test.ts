@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { openJobTestSuite, JOB_SUITE_LOCK_WAIT_MS, type JobTestSuite } from '../../api/src/core/jobs/test-lock.js';
+import { openJobTestSuite, JOB_SUITE_LOCK_WAIT_MS } from '../../api/src/core/jobs/test-lock.js';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';

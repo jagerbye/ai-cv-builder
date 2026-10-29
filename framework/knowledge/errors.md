@@ -205,7 +205,7 @@ entry.
   of calling one of them a flake was a day; the cost of chasing each was an
   hour.
 
-## E-009 first live run: a CV with no jobs, no degree, no contact and no summary  (2026-10-29)
+## E-011 first live run: a CV with no jobs, no degree, no contact and no summary  (2026-10-29)
 
 - **Symptom:** the first end-to-end run on a real model returned a CV with zero
   experience, zero education, no contact block and no summary, from a source that

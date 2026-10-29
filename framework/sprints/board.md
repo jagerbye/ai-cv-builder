@@ -37,7 +37,7 @@
 | CVB-9 | T-09 | 04 | Anthropic gateway, schema validation, retries | Done | 2h |
 | CVB-10 | T-10 | 04 | Extract stage, verbatim quotes | Done | 2h |
 | CVB-11 | T-11 | 04 | Compose stage, facts only | Done | 2h |
-| CVB-12 | T-12 | 07 | Verifier, questions, golden fixtures | Ready for test | 3h |
+| CVB-12 | T-12 | 07 | Verifier, questions, golden fixtures | Done | 3h |
 | CVB-7 | T-15 | 05 | Intake: PDF and free text, all rejections | Done | 3h |
 | CVB-8 | T-16 | 05 | Durable jobs, lease, reclaim, timeout | Done | 3h |
 | CVB-15 | T-17 | 06 | CV read, list, delete | Done | 2h |
@@ -108,10 +108,21 @@ that re-runs generation while `userEdited` fields survive, and it lives in
 
 **Statuses as of 2026-10-29:** everything the sprint built is `Done` — merged,
 covered by the gate, and re-checked by the QA pass. The four `critical` issues needed the owner's explicit yes before their final
-transition, which is this project's own rule. The owner confirmed CVB-2, CVB-3
-and CVB-4 by hand on 2026-10-29 and they are `Done`. CVB-12 stays open on
-purpose: it is the groundedness guarantee, and ADR-022 is rewriting it right
-now — confirming a guarantee while it is being changed would mean nothing.
+transition, which is this project's own rule. CVB-2, CVB-3 and CVB-4 were
+confirmed by hand on 2026-10-29. CVB-12 — the groundedness guarantee — was held
+open while ADR-022 through ADR-029 rewrote it, and closed on the owner's word
+once the gate was green and the confirmation pass stopped breaking it.
+
+**What CVB-12 now certifies, in the words the confirmation pass used.** A
+structured claim — an employer, an institution, a skill, a contact field — is
+established by a whole word in one of its own cited facts, or it is removed and
+its absence raised as a priority-1 question. Prose is flagged where the user
+will see it and never deleted. The verifier is a pure function: no clock, no
+randomness, no network. Questions bind to the item they are about, so one is
+never shown against a line it was not written for. The limits are written in
+ADR-024, ADR-025 and ADR-028 rather than implied away, and the pass that signed
+this off had broken the same guarantee three times before it stopped finding
+breaks.
 The live-key block (CVB-39…44) is `Done`: the full flow ran on a real model on
 2026-10-29, from registration to the A4 PDF, with the transcript in
 `SPRINT-002-live-model/report.md`. CVB-12 — the groundedness guarantee — is the

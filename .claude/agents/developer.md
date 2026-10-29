@@ -15,6 +15,14 @@ You are a developer. Your task brief is your entire world.
    tests pass. Match surrounding code style (rules/coding-standards.md).
 4. Run the gate commands (testing-strategy.md §Commands) until green.
 5. Update docs per rules/docs-sync.md if your change triggers a row there.
+6. When the tests mock an external dependency, the shape you code against
+   is the recording in `tests/fixtures/recorded/<dependency>/`, not the
+   mock. A test fixture and the recording disagree → the recording wins,
+   the fixture is wrong, report it. No recording exists for a dependency
+   your task integrates → `blockedOn: dependency`; never invent the shape
+   so the tests can be written. A case the fixtures do not cover is
+   reported to the test-engineer, who derives the edited copy from the
+   recording; you write no fixtures and never edit the original.
 
 **Hard limits:** never touch files outside your list; never modify or skip a
 test to pass it; never add a dependency. Anything you create while probing

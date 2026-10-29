@@ -33,6 +33,7 @@ as of the end of the build, plus everything this project filled in.
 - `scripts/gate.sh` — the one definition of green. The Stop hook, CI, the reviewer and the Integrator all run this script and nothing else. Steps come from `scripts/gate.config.sh`: database up + migrated, typecheck, lint, test, build, and a smoke suite (`tests/smoke/`) that reaches the API through the browser's origin over real HTTP.
 - `scripts/wave.sh start|status|end` — while parallel lanes share one tree the union is red by design, so a wave marker makes the gate lane-scoped (lint + that lane's own tests, `GATE_LANE_TEST`); `end` removes it and forces the full gate. The runner brackets every wave with it.
 - `scripts/check-lane.sh <base> '<glob>'...` — a lane's changed *and untracked* files must match its allowlist; a violation fails the lane before merge.
+- `scripts/record.sh <dependency> <case>` — captures one real exchange with an external dependency as the reference fixture under `tests/fixtures/recorded/` (secrets stripped, credential-shaped output refused, request kept in a sidecar); `--scan <files>` is the reviewer's credential check on any recorded file.
 - `../.claude/settings.json` hooks — `hook-postedit.sh` (fast per-file check after every edit), `hook-stop.sh` (a turn cannot end on a red gate), `hook-pretool.sh` (during a wave, `git add -A` / `commit -a` are refused so one task's commit cannot sweep other lanes' work).
 - `../.github/workflows/ci.yml` — runs the same `gate.sh`, always in full mode.
 

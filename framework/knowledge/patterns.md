@@ -176,3 +176,40 @@ Format:
   test files as off-limits". The other cost is latency: a blocked lane stalls
   until the next workflow pass rather than moving to its next independent task,
   which FF-11 proposed and the runner does not yet do.
+
+## P-008 Spike before deciding anything the world gets a vote on  (2026-10-29)
+
+- **Pattern:** split decisions by who supplies the inputs. If this repository
+  supplies them, argue and record. If something outside does — a provider, a
+  model, real text, a library's real semantics — run a timeboxed experiment
+  against the real thing FIRST and attach its output to the record.
+- **Why:** an argument can be internally perfect and about a world that does
+  not exist. Every expensive correction in this project's second sprint was of
+  that shape, and each one was cheap to measure and costly to assume.
+- **How to tell you are in it:** the decision contains the words "should",
+  "typically" or "we expect" about something you have never run.
+- **Cost:** a spike is minutes to hours. A guess discovered in front of a user
+  costs a round, and sometimes the guess has already shaped three other
+  decisions by then.
+
+## P-009 Adversarial review needs a stopping rule, because nothing else stops it  (2026-10-29)
+
+- **Pattern:** adversarial review is the highest-yield role in this process and
+  the only one with no termination condition. Give it one: when a SECOND round
+  on the same component returns findings at least half as numerous as the
+  first, and none of them is a regression of a first-round fix, stop. The
+  component is re-scoped or its guarantee narrowed to what the implementation
+  can keep, and the residue is written down as a stated limit. A third round is
+  an explicit decision somebody signs, not the default.
+- **Why the threshold and not a count:** a second round that finds one thing is
+  a component converging. A second round that finds a comparable crop is
+  evidence about the MECHANISM — it is not that more effort is needed, it is
+  that this approach cannot close.
+- **Worked example:** three rounds on one checker here. Each fixed the previous
+  round's holes and opened new ones. The fourth round was not run; the promise
+  was changed instead, and the component lost more than half its code.
+- **The inverse, equally important:** a bounded problem must NOT be stopped
+  early. When the reviewer could enumerate the whole space — every separator a
+  name can contain — the right move was to finish the list, not to invoke this
+  rule. The test is whether the space can be written down.
+

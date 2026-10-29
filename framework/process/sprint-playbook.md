@@ -23,55 +23,110 @@ folder copied from `framework/sprints/SPRINT-000-template/`.
   the criteria mention. A list derived from the criteria omits the files the
   task obviously has to make, and the lane fails its own isolation check for
   work it was told to do.
-- **Bootstrap task (whenever a wave has more than two lanes):** the first,
-  blocking task of the wave does two things, and it is not done until both
-  hold.
+- **Bootstrap task (first, blocking, before any feature lane):** two
+  halves, done only when both hold. Mandatory in a product's first sprint
+  and in any sprint whose plan adds a process, a network boundary or an
+  external dependency; the first half alone whenever a wave has more than
+  two lanes.
   *The shared files, empty:* it creates every file two or more lanes would
   otherwise touch — the service registry, the client router, the frozen
   interface modules, the migration — and ships them **empty**. After it, each
-  lane owns exactly one leaf module and adds one line to a registry it does
-  not own only through the frozen contract. This is what makes disjoint lanes
-  real rather than aspirational, and what lets `check-lane.sh` enforce them
-  mechanically: without it the shared files are edited by everyone and the
-  plan's isolation is a promise.
-  *The runtime seam, proved:* it composes the stack the way it will run —
-  the served client, the server behind it, whatever the client calls
-  reaching the service **through the origin a user would use** — starts it,
-  and reaches the front door; it fills the smoke variables in
-  `gate.config.sh` so the smoke step (here `tests/smoke/`) has a target from
-  this point on. Unit and
-  integration suites never instantiate that seam (server suites call
-  handlers in-process, client suites mock the transport), so a wave that
-  skips this step builds on an assumption nobody has tested. In the first
-  real build nothing opened the product until manual QA, and the missing
-  seam had by then survived two waves, sixty-six reviews and two
-  integrations. The bootstrap is where that is caught at the cost of one
-  task instead of a sprint.
+  lane owns one leaf module and adds one line to a registry it does not own
+  only through the frozen contract. Without it the shared files are edited
+  by everyone, the plan's isolation is a promise, and `check-lane.sh` has
+  nothing mechanical to enforce.
+  *The seams, proved — acceptance criteria, not advice:*
+  1. The stack is started **the way it will run** (the compose file, process
+     manager or start script the runbook names), not as modules imported
+     into one test process.
+  2. **One request travels end to end** — entered at the origin a user would
+     use, through every process and network boundary `architecture.md`
+     names, and back — and the lane log pastes the evidence: command,
+     status, response body or screen.
+  3. **One real call is made to every external dependency the design rests
+     on**, with the real credentials from the real config, and the response
+     is validated against the schema the contract freezes; the log names
+     the config values the call consumed. A mock proves the client was
+     written; only the real call proves the contract is one the dependency
+     obeys. That call is the dependency's first recording
+     (`framework/scripts/record.sh`; rules/testing.md).
+  4. The smoke variables in `gate.config.sh` are filled from what was just
+     reached, so the smoke step (here `tests/smoke/`) has a target from this
+     point on.
+  No unit or integration suite instantiates these seams (handlers are called
+  in-process, transports mocked, providers replayed from fixtures), so a
+  wave that skips this task builds on untested assumptions, and a missing
+  seam is found when the product is first opened — after every lane built
+  on it has been paid for. In this project's first build the missing seam
+  survived two waves, 66 review passes and two integrations before manual
+  QA opened the product (SPRINT-001 report). Here it costs one task. A
+  criterion that cannot be met is a `dependency` or `decision` block raised
+  before the feature lanes start, which is the point.
 - **The wave marker:** a wave with parallel lanes runs under
   `framework/scripts/wave.sh start` (Orchestrator, before the first lane's
   first brief goes out). While the marker is up the gate judges a lane by
   lint plus its own tests; the union belongs to the Integrator, who ends the
   wave (§4). Plan.md records that the wave was started; a wave whose plan
   does not say so was not.
+- **Order by uncertainty, then by dependency.** Dependency order says what
+  *can* run first, not what *should*. For every task the plan names the
+  assumption it rests on that might be wrong (the client reaches the server
+  from where it is served; the real provider returns the shape the contract
+  freezes; the matching rule survives text we did not write) and the
+  cheapest check that would falsify it — usually one command or one real
+  call. The highest-uncertainty rows are scheduled **first, even when
+  nothing depends on them**: a late dependency delays work, a false
+  assumption invalidates everything built on it, and an assumption tested
+  last is found false only after that has happened. A cheap check not yet
+  run goes before any task that builds on it; an assumption with no cheap
+  check goes to `Risks`, where the Architect decides whether it is a
+  `spike`-kind decision (architect.md) — the Teamlead then schedules the
+  spike, with its numeric timebox, before the lane that depends on it.
 - Write `plan.md` + one `lanes/lane-NN.md` per lane. The plan records the
-  sprint's **base ref** and the **status board** (task × lane × depends-on ×
-  status) — the board is the sprint's live state; lane files stay the log.
+  sprint's **base ref**, the **status board** (task × lane × depends-on ×
+  status) and the **Assumptions table** (rank × task × assumes × check ×
+  checked?) — the board is the sprint's live state; lane files stay the log.
 - Architect checks: no two lanes touch the same files; every cross-lane
   dependency goes through a frozen contract; **`architecture.md` names how the
   parts reach each other at runtime** (which origin the client calls, who
   proxies, who starts the worker) — a seam no lane owns is one every lane
   assumes another has built. Overlap unavoidable → that lane pair runs
   sequentially (merge-policy.md, Mode B).
+- **The brief check (one agent, cheapest tier, before the lane starts):**
+  nothing else reads the Orchestrator's briefs, and a defective brief fails
+  every attempt at the task identically, stronger models included — a
+  criterion no lane can meet while its siblings are in flight costs the
+  wave, not the lane. So every lane brief (§2) is read, against `spec.md`
+  and the lane allowlist, by a brief-checker that answers exactly three
+  questions:
+  1. *Does every acceptance criterion trace to a sentence the spec says?*
+     No spec line behind it → quoted back with "no source": it is an
+     invented requirement or a sentence inverted in the dangerous direction.
+  2. *Does the allowlist cover every file the task must touch to be done?*
+     Walk the deliverable, not the criteria: the entry point, the registry
+     line, the fixture, the lane log, the status row.
+  3. *Is "green" achievable while sibling lanes are in flight?* The test
+     command is lane-scoped, the gate is under the wave marker, no criterion
+     depends on a sibling's unfinished work.
+  Result: `ok`, or the failing questions with the offending line quoted —
+  ≤15 lines, no prose. A failed brief is rewritten and re-checked before it
+  goes out; the fix is never "the dev will work it out". The plan's task
+  block records the verdict (`Brief check:`), and the brief carries it.
 
 ## 2. Lane brief template (what a dev/test agent receives)
 
 ```
 Task <id>: <goal, one sentence>
-Acceptance criteria: <copied, not referenced>
+Acceptance criteria: <copied, not referenced — each with its spec line>
+Assumes: <this task's row of plan.md §Assumptions — what might be wrong and
+  its cheapest check; "—" only when that row is Checked: yes>
 Files you may touch: <exact list, from the deliverable>
   — plus, always: this task's lane log, plan.md (your status row), and any
   file the criteria require you to create. These are part of every allowlist;
   a brief that omits them fails its own task.
+Fixtures: <the recording under tests/fixtures/recorded/<dependency>/ this
+  task codes against, or "none yet — the capture is the test-engineer's first
+  deliverable (framework/scripts/record.sh)"; omit when no external is mocked>
 Read first: <paths + doc §§, max ~5 items>
 Test command for THIS lane: <exact lane-scoped command — never the bare
   union runner while other lanes are in flight; see framework/knowledge/errors.md E-001>
@@ -88,6 +143,7 @@ If you cannot proceed: set blockedOn (code | brief | decision | dependency),
   your allowlist or this brief cannot settle: a defect in a file you own,
   including your own test files, is your task (patterns.md P-007).
 Report to: framework/sprints/<sprint>/lanes/lane-NN.md (append your task block).
+Brief check: ok by <agent> at <time>  — a brief goes out only with this line.
 ```
 
 ## 3. Execution — the TDD loop (per task)
@@ -173,7 +229,8 @@ see `framework/process/task-lifecycle.md`.
   major/minor/visual → `/hotfix` (cheap loop: one Haiku dev per batch,
   gates still green, QA re-checks only the fixed screens).
 - This stage is not the first time the product is opened: the bootstrap
-  task (§1) ends with the stack started and its front door reached, and the
+  task (§1) starts the stack as it will run, drives one request through
+  every boundary and makes one real call per external dependency, and the
   smoke step (§4) runs in every full gate. QA at 4.5 is the last net, not
   the only one — see qa-playbook.md on why.
 - Projects with no UI skip this stage and say so in the report.

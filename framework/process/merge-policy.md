@@ -26,9 +26,9 @@ For tasks that **must** touch the same areas (e.g. a refactor + a feature).
 - What Mode B therefore is: the overlapping lanes run **one after the other**
   on the sprint branch, each on its own short-lived `lane/NN-<name>` branch,
   and the second starts from the first's merged result. Parallelism is bought
-  elsewhere — by moving the shared files into a bootstrap task that ships
-  them empty (sprint-playbook §1), which usually turns a Mode-B pair back
-  into Mode A.
+  elsewhere — by the bootstrap task's first half, the shared files shipped
+  empty (sprint-playbook §1), which usually turns a Mode-B pair back into
+  Mode A.
 - Both lanes code against the **frozen contracts** (api-contracts.md); the
   contract, not the code, is the coordination point.
 - The **Integrator (Fable 5)** merges: smaller/riskier branch first, union

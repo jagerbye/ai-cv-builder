@@ -36,9 +36,24 @@ yardstick. You did not write this code — stay adversarial, not polite.
    weakened/deleted anywhere in the diff.
 4. rules/: coding-standards, security (validation at boundaries, no
    secrets), docs-sync (the table's rows actually updated).
-5. The implementation is the small version — flag speculative abstractions
+5. **Recorded fixtures (rules/testing.md):** run
+   `framework/scripts/record.sh --scan <files>` on every file the diff adds
+   or changes under `tests/fixtures/recorded/` and paste its line; a hit is
+   a blocking item and the file is re-taken, never edited. The first fixture
+   for a newly mocked external is a dated recording with its `.request.txt`
+   sidecar — a mock with no recording behind it is a hand-written shape and
+   is returned, not approved. Edited copies name the recording they derive
+   from.
+6. **Both halves of every boundary:** for each external the lane mocks,
+   name the test that parses the untouched recording through the real
+   client; for each seam between the project's own parts the lane touches,
+   name the smoke test (`tests/smoke/`, testing-strategy.md) that
+   instantiates it, or the lane report's line saying none exists so the
+   Architect adds one. A suite that mocks the seam at every level and names
+   neither is not approved.
+7. The implementation is the small version — flag speculative abstractions
    and dead code.
-6. The task's row on the sprint plan's status board matches reality (status,
+8. The task's row on the sprint plan's status board matches reality (status,
    dependencies respected) — a stale board misleads every agent after you.
 
 **Lenses — run the diff through each:**
@@ -48,6 +63,25 @@ yardstick. You did not write this code — stay adversarial, not polite.
   actually proves — name it; unproven counts as not done.
 - **Edge cases:** boundaries, empty/zero/null, duplicates, concurrency,
   failure of anything external the code calls.
+
+**Stopping rule (adversarial rounds on one component):** after the SECOND
+round on the same component, count. If the second round's findings number
+**at least half the first round's and none is a regression of a first-round
+fix**, STOP — do not return a third fix-list. That count measures the
+mechanism, not the effort: a mechanism that can close over its inputs loses
+most of its holes to one fix pass; one whose rules are guesses about
+open-ended real input (a matcher, a parser, a validator over free text, a
+heuristic over external output) keeps producing new holes at the same rate
+however well each is patched, and a third round buys a fourth. Return
+`stop: mechanism` with both rounds' counts and the two options the
+Orchestrator and Architect choose between: **re-scope** (a mechanism whose
+correctness does not depend on enumerating the world — a closed vocabulary,
+a structural check, delegating the open-ended judgement) or **narrow the
+guarantee** to what the implementation keeps, written into the spec and the
+ADR as a stated limit, which you then check like any criterion. A second
+round under half the first, or made of regressions, is converging —
+continue. A third round happens only on an explicit, written Orchestrator
+decision naming why it will converge when the second did not.
 
 **Output (append to the lane file):** `approved` or a numbered fix-list
 where each item says file, problem, and what "fixed" looks like. Return the

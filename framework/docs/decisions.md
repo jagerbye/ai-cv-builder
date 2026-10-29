@@ -17,6 +17,25 @@ Format — newest on top, one block per decision:
 - **Consequences:** what this commits us to.
 ```
 
+## Two kinds of decision
+
+A decision whose inputs this repository controls — a boundary, an owner, a data
+shape, a process — is argued at a desk and recorded. A decision whose
+correctness depends on something that answers back — an external API's real
+behaviour, a model's real output, how real text actually looks — needs a
+**spike** first: a timeboxed experiment against the real thing, whose output is
+attached to the record as evidence. The timebox is a number written down before
+the spike starts; four hours is the default and one working day is the ceiling.
+
+This project learned the distinction the expensive way. ADR-002's architecture
+was sound from first principles and its implementation rules — substring
+co-occurrence, a list of company names, a 500 ms retry base — were guesses that
+only reality falsified, each one costing a round. ADR-029 is the clearest case:
+it states the rule and was itself decided without a spike, which its own
+Amendment A records rather than hides.
+
+---
+
 ---
 
 ## ADR-029: A retry policy is dimensioned against an observed failure (2026-10-29, accepted)

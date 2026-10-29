@@ -21,10 +21,11 @@ pass found it in minutes. **That is the case for this stage.**
 It is also the case against relying on it: the defect entered in the first
 wave and was found at stage 4.5 of the second. Everything built in between
 assumed a seam that did not exist. So the product is opened earlier as well,
-by rule: the bootstrap task (sprint-playbook.md §1) ends with the stack
-composed as it will run, started, and its front door reached through the
-origin a user would use — and with the smoke variables filled so the gate
-can repeat that check; the full gate carries that smoke step, which drives
+by rule: the bootstrap task (sprint-playbook.md §1 — first and blocking)
+starts the stack as it will run, drives one request end to end through
+every boundary `architecture.md` names, makes one real call to every
+external dependency, and fills the smoke variables so the gate can repeat
+the check; the full gate carries that smoke step, which drives
 the composed stack over the real transport (it never runs under the wave
 marker, so it runs at `wave.sh end` and in CI); and `architecture.md` names
 who owns the seam. QA is the last net, not the only one.

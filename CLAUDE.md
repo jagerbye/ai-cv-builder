@@ -78,6 +78,9 @@ overwrite STATE.md, so any session can be compacted or restarted losslessly.
   the brief's exported `GATE_LANE_TEST`); Integrator runs `end` after the last
   merge (marker removed, FULL gate forced). Forgotten `start` = every lane
   red on its neighbours' work; forgotten `end` = the weak gate forever.
+- `framework/scripts/record.sh <dependency> <case>` — captures ONE real
+  exchange as the reference fixture under `tests/fixtures/recorded/` before
+  any mock of it exists; `--scan <files>` is the reviewer's credential check.
 - Hooks in `.claude/settings.json`: fast check after every edit, full gate
   before a turn may end, and — while a wave is in flight — `git add -A` /
   `commit -a` refused (`hook-pretool.sh`). CI (`.github/workflows/ci.yml`)

@@ -97,3 +97,18 @@ Any test that commits a **non-terminal** `generation_jobs` row goes through
 the job-queue helper, which takes the suite lock for you (ADR-014, E-002).
 The queue is global by design, so a committed queued row is visible to every
 other file's worker.
+
+## Fixtures for an external dependency
+
+The first fixture for anything outside this repository — a provider response, a
+webhook body, a third-party file — is a **recording of one real exchange**,
+captured with `framework/scripts/record.sh`, secrets stripped at capture time,
+committed under `tests/fixtures/recorded/` and dated. Later fixtures may be
+edited copies of it; that is how the truncated, malformed and adversarial cases
+are built. The original stays as the reference, and a hand-invented shape is
+never the first one.
+
+This project is the argument. The whole provider integration — the client, the
+retry policy, the schema validation, the token budget — was built against
+fixtures somebody wrote from imagination. They were plausible, they were
+consistent, every test passed, and the first real call failed.

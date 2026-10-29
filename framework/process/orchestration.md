@@ -35,6 +35,22 @@
   to read (not contents), the one or two docs sections that matter, what NOT
   to do, and where to write the report. An agent must never need to "look
   around" the repo.
+- **Your brief is checked before it goes out.** The brief is the one
+  artifact in the sprint nobody else reads, and its defects are the most
+  expensive kind, because every attempt at the task — every model tier —
+  fails on them identically: a "green" criterion no parallel lane can meet
+  by construction, an allowlist missing a file the task has to touch, a
+  decision restated with the sentence inverted. So each lane brief goes
+  first to a brief-checker (cheapest tier, sprint-playbook.md §1 "The brief
+  check") with three questions — criteria trace to the spec, allowlist
+  covers the deliverable, green is achievable in flight — and goes to a
+  lane only on `ok`. A failed check is your fix, not the lane's; re-brief
+  and re-check. When a task later blocks on `brief`, the first question is
+  which of the three the checker was not asked.
+- **Sequence by what you do not know.** Among tasks the board allows, start
+  the one whose assumption is least tested (the plan's Assumptions table),
+  not the one closest to a feature: a failed task delays the work that
+  depends on it, a false assumption invalidates every task built on it.
 - **Reports replace raw output.** You read lane reports and test summaries,
   never diffs or file dumps. If a report is unclear, send a follow-up
   message to the same agent instead of reading the code yourself.

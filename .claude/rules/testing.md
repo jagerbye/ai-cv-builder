@@ -10,6 +10,25 @@
   via reviewer sign-off + an errors.md entry, nothing less.
 - Never mock what you can run: prefer real modules in-process; mock only
   true externals (network, clock, payments).
+- **A fixture for an external dependency is recorded, not written.** The
+  first fixture for any external — a provider response, a webhook body, a
+  third-party file — is a capture of ONE real exchange, taken once with
+  `framework/scripts/record.sh`, secrets stripped at capture time, committed
+  under `tests/fixtures/recorded/` and dated. Later fixtures may be edited
+  copies of it (that is how the truncated, malformed and adversarial cases
+  are built), but the original stays as the reference and a hand-invented
+  shape is never the first one. A plausible, consistent, imagined fixture
+  passes every test and fails the first real call. A recording never
+  contains a credential; the reviewer scans it (`record.sh --scan`) before
+  it lands.
+- **A mock proves our side of the boundary, never the boundary's.** A test
+  against a mock shows what the code does when the dependency answers thus;
+  it says nothing about whether the dependency answers thus. Each half of
+  every boundary needs one test that touches the real thing: the recording
+  above for an external's side, a smoke test (`tests/smoke/`) that
+  instantiates the seam (not a mock of it) for a seam between our own parts.
+  A suite in which every level mocks its neighbour can be fully green while
+  nothing connects.
 - A bug fix starts with a test that reproduces the bug.
 - **The stub test is performed, not judged:** every test asserts concrete
   values/behavior, including at least one error case per criterion. The

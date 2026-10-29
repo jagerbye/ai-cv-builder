@@ -44,3 +44,12 @@ as of the end of the build, plus everything this project filled in.
 4. `knowledge/framework-feedback.md` — the fifteen places where the method failed this project and what changed in it as a result; every entry names the file in this directory that now carries the fix.
 
 The Russian-language `cycle-uml.md` is the same loop as a diagram, for the owner.
+
+## Where the work was decomposed
+
+`sprints/backlog.md` is what the brief was cut into; `sprints/board.md` is the
+issue tracker with every task's lane, estimate and status — this project has no
+Atlassian instance, so the tracker is a file (ADR-009) and the Orchestrator
+moves the statuses. `sprints/SPRINT-001-skeleton-auth/plan.md` is the plan the
+parallel lanes were built from: task, lane, what it depends on, and the status
+row each agent flips as it goes. `sprints/HISTORY.md` is the sprint log.

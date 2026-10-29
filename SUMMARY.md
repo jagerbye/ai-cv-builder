@@ -43,13 +43,19 @@ git log --oneline                    # one commit per finished task, messages sa
 Then read, in this order — each is one page and each answers a question a
 reviewer actually has:
 
-1. `framework/docs/decisions.md` — **22 ADRs**, every one with the alternatives
+1. `framework/sprints/board.md` — **the decomposition and its state**: 45
+   issues, each with its lane, its estimate and its status, from the first
+   scaffold task to the defects the live model found. `backlog.md` holds the
+   items it was cut from, and
+   `framework/sprints/SPRINT-001-skeleton-auth/plan.md` holds the dependency
+   graph the parallel lanes were planned against.
+2. `framework/docs/decisions.md` — **22 ADRs**, every one with the alternatives
    it rejected and why. This is where the design arguments are.
-2. `framework/sprints/SPRINT-001-skeleton-auth/qa-report.md` — **15 findings**
+3. `framework/sprints/SPRINT-001-skeleton-auth/qa-report.md` — **15 findings**
    from a real browser, with 55 screenshots, severities and the status of each.
-3. `framework/knowledge/errors.md` — **10 entries**: symptom, cause, and the
+4. `framework/knowledge/errors.md` — **10 entries**: symptom, cause, and the
    rule that came out of it.
-4. `framework/knowledge/framework-feedback.md` — **16 entries**: what the method
+5. `framework/knowledge/framework-feedback.md` — **16 entries**: what the method
    itself got wrong on its first real use.
 
 ## What a reviewer should actually look at

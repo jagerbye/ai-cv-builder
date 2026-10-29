@@ -71,6 +71,11 @@ Thin or unproven:
 Sprint 2 and 3 backlog: `framework/sprints/backlog.md`. Current position:
 `framework/STATE.md`.
 
+> **Where the work was decomposed:** `framework/sprints/board.md` is the issue
+> tracker — 45 issues with lane, estimate and status. `framework/sprints/backlog.md`
+> is what the brief was cut into, and `SUMMARY.md` is the route through the rest
+> for a reviewer.
+
 ## Running it
 
 Needs Docker with Compose v2. Node 24 is only needed to run the tests outside

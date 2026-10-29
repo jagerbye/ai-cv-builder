@@ -9,7 +9,7 @@
 // internal capital ("eBay"), names in uncased scripts, lowercase technologies, numerals written as words and
 // possessives can pass unflagged; legitimate wording ("Python 3" against "Python 3.11") can be flagged. Both are
 // acceptable BECAUSE the outcome is only ever a question. The strong guarantee lives in structured fields
-// (experience, education, skills, contact), which verify.ts grounds with containsText/containsPeriod/containsToken.
+// (experience, education, skills, contact), which verify.ts grounds with containsWord/containsEmployer/containsPeriod/containsToken.
 
 const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -87,10 +87,52 @@ export function unsupportedPhrase(text: string, citedTexts: readonly string[], a
   return unstated === undefined ? null : `duration "${unstated}"`;
 }
 
+// ADR-028: the ONE rule for where a name ends. A name continues into a letter, digit or underscore, and through a
+// hyphen, slash or U+2212 (single or doubled) that is followed by a letter or digit ("Acme-Labs", "Acme--Labs",
+// "C-level", "Jane Doe-Smith"), and into & + # ("Acme&Co", "C++", "C#"). A hyphen or slash followed by a space or the
+// end ("Acme - Labs", "Acme/") ends it. The apostrophe is deliberately NOT a continuation (possessive "Acme's"). Shared by containsToken,
+// containsWord and containsEmployer so the three cannot drift apart.
+const CONTINUES = '(?:[-/\\u2212]+[\\p{L}\\p{N}_]|[&+#])';
+const NAME_END = `(?![\\p{L}\\p{N}_]|${CONTINUES}|\\.[\\p{L}\\p{N}])`;
+
 // Contact values are matched as whole tokens (ADR-022): "jane@example.co" is not in "jane@example.com" and a
 // truncated phone number is not in the full one. A trailing sentence period is allowed; ".com" is not.
 export const containsToken = (haystack: string, value: string): boolean => {
   const v = normalize(value);
   if (v.length === 0) return false;
-  return new RegExp(`(?<![\\w@])${escapeRegExp(v)}(?![\\w@]|\\.\\w)`).test(normalize(haystack));
+  return new RegExp(`(?<![\\w@])${escapeRegExp(v)}(?![\\w@]|${CONTINUES}|\\.\\w)`, 'u').test(normalize(haystack));
+};
+
+// ADR-027: "a cited fact must name it" means a WORD. Unicode-aware boundaries (a Cyrillic name is not a substring of a
+// longer word), and a name that continues into ".js" / ".com" is a different name.
+const keepCase = (s: string): string => s.replace(/[\u2010-\u2015]/g, '-').replace(/\s+/g, ' ').trim();
+
+export const containsWord = (haystack: string, needle: string): boolean => {
+  const n = keepCase(needle);
+  if (n.length === 0) return false;
+  return new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(n)}${NAME_END}`, 'iu').test(keepCase(haystack));
+};
+
+const COMPANY_SUFFIX: ReadonlySet<string> = new Set([
+  'ltd', 'limited', 'inc', 'llc', 'llp', 'plc', 'corp', 'corporation', 'co', 'gmbh', 'ag', 'sa', 'bv', 'oy', 'ab', 'as', 'sp', 'srl', 'spa',
+]);
+
+// An employer is named by a cited fact only when the fact's name is that whole name: "Amazon" is a whole word in
+// "Deployed on Amazon Web Services" but there it is the first word of a longer capitalised name, which is another
+// company. A company suffix ("Acme" in "Acme Ltd") continues the same name; a following lowercase word, punctuation or
+// the end of the fact ends it.
+export const containsEmployer = (haystack: string, employer: string): boolean => {
+  const n = keepCase(employer);
+  if (n.length === 0) return false;
+  const h = keepCase(haystack);
+  const re = new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(n)}${NAME_END}`, 'giu');
+  for (const m of h.matchAll(re)) {
+    const rest = h.slice((m.index ?? 0) + m[0].length);
+    const next = /^ ([\p{L}\p{N}&]+)/u.exec(rest);
+    if (next === null) return true;
+    const word = next[1];
+    if (COMPANY_SUFFIX.has(word.toLowerCase())) return true;
+    if (!/^\p{Lu}/u.test(word)) return true;
+  }
+  return false;
 };

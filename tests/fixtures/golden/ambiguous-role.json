@@ -1,6 +1,6 @@
 {
   "name": "ambiguous-role",
-  "description": "The source gives two possible titles. The employer and period are grounded, so the entry is kept; its role is not in any cited fact, so the verifier keeps it and asks a vague question on the role path.",
+  "description": "The source gives two possible titles. The employer and period are grounded, so the entry is kept; its role is not in any cited fact, so the verifier keeps it and asks an unverifiable question on the role path.",
   "source": "Platform team at Nimbus, 2020-2022. Title was Engineer II or Lead, depending on the quarter. Ran the Kubernetes migration.",
   "facts": [
     {"id": "f1", "kind": "employment", "text": "Worked on the platform team at Nimbus, 2020-2022", "sourceQuote": "Platform team at Nimbus, 2020-2022.", "source": "document"},
@@ -34,7 +34,7 @@
     },
     "droppedPaths": [],
     "questions": [
-      {"path": "experience[0].role", "reason": "vague"}
+      {"path": "experience[0].role", "reason": "unverifiable"}
     ]
   }
 }

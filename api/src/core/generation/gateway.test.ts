@@ -132,9 +132,15 @@ describe('AnthropicGateway request shape (C-012, ADR-006)', () => {
   });
 
   it('leaves the SDK default endpoint untouched when no base URL is set', async () => {
-    const t = scriptedFetch([fixture('tool-ok.json')]);
-    await createAnthropicGateway(CONFIG, { fetch: t.fetch, sleep }).callTool(makeRequest());
-    expect(t.calls[0].url).toBe('https://api.anthropic.com/v1/messages');
+    // The premise is "unset", so unset it: the SDK reads ANTHROPIC_BASE_URL itself, and a developer's .env sets it.
+    vi.stubEnv('ANTHROPIC_BASE_URL', undefined);
+    try {
+      const t = scriptedFetch([fixture('tool-ok.json')]);
+      await createAnthropicGateway(CONFIG, { fetch: t.fetch, sleep }).callTool(makeRequest());
+      expect(t.calls[0].url).toBe('https://api.anthropic.com/v1/messages');
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it('returns the parsed tool input on a valid result', async () => {

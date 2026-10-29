@@ -69,6 +69,8 @@ Concretely: the groundedness tests must include at least one fixture where the
 *correct* behaviour is to **drop** content and raise a question — a verifier
 that returns `accepted = draft` unchanged must fail the suite.
 
+**A test whose premise is an absent environment variable must UNSET it** (`vi.stubEnv(NAME, undefined)` plus `vi.unstubAllEnvs()`), never rely on the machine agreeing: a developer's `.env` sets it, and the SDK and loaders read it (ADR-019's isolation rule, for variables).
+
 ## Commands
 
 The single source of "green" is `framework/scripts/gate.config.sh` (run via

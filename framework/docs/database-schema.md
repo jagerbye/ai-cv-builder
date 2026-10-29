@@ -113,6 +113,7 @@ business meaning.
 - Columns: `id uuid pk`, `cv_id uuid fk→cvs on delete cascade`,
   `path text not null`, `text text not null`, `reason text not null`,
   `status text not null check in ('open','answered','dismissed')`,
+  `item_id uuid fk→cv_items on delete set null` (ADR-027: the item the question is about; null for a section-level, summary or contact question; a trigger on cv_items deletion also rewrites `path` to the bare section),
   `answer text`, `answered_at`, `follow_up_of_id uuid fk→questions`,
   `priority int not null default 100`, `created_at`.
 - Indexes: `(cv_id, status, priority)` — "open questions for this CV, most

@@ -17,6 +17,15 @@ import { mergeRegenerated } from './merge.js';
 export interface PersistableQuestion extends QuestionDraft {
   reason?: string;
   priority?: number;
+  // ADR-027: the question's path against the ACCEPTED arrays (verify's boundPath), or the bare section when the item
+  // it was about was dropped. Absent: `path` is taken to be against what is stored.
+  boundPath?: string;
+}
+
+// An item path is everything up to the last `]` ("experience[1].bullets[0]"); the rest is the field.
+export function splitQuestionPath(path: string): { itemPath: string; field: string } | null {
+  const end = path.lastIndexOf(']');
+  return end < 0 ? null : { itemPath: path.slice(0, end + 1), field: path.slice(end + 1) };
 }
 
 interface NewItem {
@@ -299,15 +308,24 @@ export async function persistDraft(
   // Open questions are the last run's; answered and dismissed ones are the user's record and stay.
   await tx.question.deleteMany({ where: { cvId, status: 'open' } });
   if (questions.length > 0) {
+    // ADR-027: bind each question to the item now stored at the path it names. A question about an item that no
+    // longer exists (dropped) keeps the section name only.
+    const itemIdByPath = new Map((await tx.cvItem.findMany({ where: { cvId }, select: { id: true, path: true } })).map((i) => [i.path, i.id]));
     await tx.question.createMany({
-      data: questions.map((q) => ({
-        cvId,
-        path: q.path,
-        text: q.text,
-        reason: q.reason ?? 'vague',
-        status: 'open',
-        priority: q.priority ?? 100,
-      })),
+      data: questions.map((q) => {
+        const path = q.boundPath ?? q.path;
+        const split = splitQuestionPath(path);
+        const itemId = split ? itemIdByPath.get(split.itemPath) : undefined;
+        return {
+          cvId,
+          path: q.boundPath !== undefined && split && itemId === undefined ? path.slice(0, path.indexOf('[')) : path,
+          itemId: itemId ?? null,
+          text: q.text,
+          reason: q.reason ?? 'vague',
+          status: 'open',
+          priority: q.priority ?? 100,
+        };
+      }),
     });
   }
 

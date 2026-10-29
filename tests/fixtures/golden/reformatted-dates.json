@@ -1,6 +1,6 @@
 {
   "name": "reformatted-dates",
-  "description": "The input the first real model run failed on. The source says 'Since 2019' and 'from 2016 to 2019'; compose wrote '2019 - Present' and '2016 - 2019'. Neither period is a substring of its cited fact. ADR-022: the employers are strict and hold, so both entries survive with their drafted periods and a period question each. The second role is stated in no cited fact, so it also raises a vague role question.",
+  "description": "The input the first real model run failed on. The source says 'Since 2019' and 'from 2016 to 2019'; compose wrote '2019 - Present' and '2016 - 2019'. Neither period is a substring of its cited fact. ADR-022: the employers are strict and hold, so both entries survive with their drafted periods and a period question each. The second role is stated in no cited fact, so it also raises an unverifiable role question.",
   "source": "Since 2019 I have been at Brightpath Payments as a backend engineer. From 2016 to 2019 I was at Ferro Systems, doing data pipelines in Python.",
   "facts": [
     {"id": "f1", "kind": "employment", "text": "Since 2019, works at Brightpath Payments as a backend engineer", "sourceQuote": "Since 2019 I have been at Brightpath Payments as a backend engineer", "source": "document"},
@@ -33,7 +33,7 @@
     "questions": [
       {"path": "experience[0].period", "reason": "missing"},
       {"path": "experience[1].period", "reason": "missing"},
-      {"path": "experience[1].role", "reason": "vague"}
+      {"path": "experience[1].role", "reason": "unverifiable"}
     ]
   }
 }

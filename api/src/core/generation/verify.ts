@@ -5,7 +5,7 @@
 // flagged with a question and the text is kept.
 import type { CvDraft, DroppedItem, Fact, VerificationResult } from './types.js';
 import { planQuestions, priorityFor, type QuestionImpact, type PlannedQuestion, type QuestionReason } from './questions.js';
-import { containsPeriod, containsText, containsToken, unsupportedPhrase } from './verify-entities.js';
+import { containsEmployer, containsPeriod, containsToken, containsWord, unsupportedPhrase } from './verify-entities.js';
 
 interface Failure {
   reason: Exclude<QuestionReason, 'vague'>;
@@ -37,8 +37,27 @@ const someFactHolds = (facts: readonly Fact[], test: (text: string) => boolean):
   facts.some((f) => test(f.text));
 
 // questions carry reason and priority (PlannedQuestion), a narrowing of the frozen QuestionDraft[].
+// ADR-027: `path` is the DRAFTED position, as the verifier numbered it. `boundPath` is the same question against the
+// ACCEPTED arrays (what persist stores): the field of the item that survived, or just the section ("experience")
+// when the item it is about was dropped, since a dropped item has no position.
+export interface BoundQuestion extends PlannedQuestion {
+  boundPath: string;
+}
+
 export interface PlannedVerification extends VerificationResult {
-  questions: PlannedQuestion[];
+  questions: BoundQuestion[];
+}
+
+const INDEXED = /^(experience|education|skills)\[(\d+)\](.*)$/;
+
+function bindToAccepted(path: string, dropped: readonly DroppedItem[]): string {
+  const m = INDEXED.exec(path);
+  if (m === null) return path;
+  const [, section, index, rest] = m;
+  const i = Number(index);
+  const droppedHere = dropped.filter((d) => d.path.startsWith(`${section}[`)).map((d) => Number(/\[(\d+)\]/.exec(d.path)![1]));
+  if (droppedHere.includes(i)) return section;
+  return `${section}[${i - droppedHere.filter((d) => d < i).length}]${rest}`;
 }
 
 export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerification {
@@ -83,7 +102,7 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
     const resolved = resolveCited(factIds, byId);
     const failure: Failure | null = !('facts' in resolved)
       ? resolved
-      : someFactHolds(resolved.facts, (t) => containsText(t, name))
+      : someFactHolds(resolved.facts, (t) => containsWord(t, name))
         ? null
         : { reason: 'unverifiable', detail: `skill "${name}" not in cited facts` };
     if (failure === null) return true;
@@ -134,7 +153,7 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
       ask({ path: qp, text: questionText(qp, resolved.reason), reason: resolved.reason, impact: 'missing' });
       return;
     }
-    if (!someFactHolds(resolved.facts, (t) => containsText(t, edu.institution))) {
+    if (!someFactHolds(resolved.facts, (t) => containsWord(t, edu.institution))) {
       dropped.push({ path: p, reason: `institution "${edu.institution}" not in cited facts` });
       ask({
         path: `${p}.institution`,
@@ -144,7 +163,7 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
       });
       return;
     }
-    if (!someFactHolds(resolved.facts, (t) => containsText(t, edu.institution) && containsPeriod(t, edu.period))) {
+    if (!someFactHolds(resolved.facts, (t) => containsWord(t, edu.institution) && containsPeriod(t, edu.period))) {
       ask({ path: `${p}.period`, text: 'What were the dates of this education? The drafted dates are not in the source.', reason: 'missing', impact: 'unsupported' });
     }
     accepted.education.push({ ...edu, factIds: [...edu.factIds] });
@@ -171,7 +190,7 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
       return;
     }
     // The employer is strict: a cited fact must name it, else the entry is dropped (ADR-013, ADR-022).
-    if (!someFactHolds(resolved.facts, (t) => containsText(t, entry.employer))) {
+    if (!someFactHolds(resolved.facts, (t) => containsEmployer(t, entry.employer))) {
       dropped.push({ path: p, reason: `employer "${entry.employer}" not in cited facts` });
       ask({ path: `${p}.employer`, text: questionText(`${p}.employer`, 'missing'), reason: 'missing', impact: 'missing' });
       if (!someFactHolds(resolved.facts, (t) => containsPeriod(t, entry.period))) {
@@ -182,15 +201,15 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
 
     // The period is lenient (ADR-022): one the employer's fact does not state keeps the entry and is asked about.
     // This is where recombination (one employer's name, another fact's dates) surfaces: as a visible question.
-    if (!someFactHolds(resolved.facts, (t) => containsText(t, entry.employer) && containsPeriod(t, entry.period))) {
+    if (!someFactHolds(resolved.facts, (t) => containsEmployer(t, entry.employer) && containsPeriod(t, entry.period))) {
       ask({ path: `${p}.period`, text: questionText(`${p}.period`, 'missing'), reason: 'missing', impact: 'unsupported' });
     }
 
     // The title must occur in a cited fact that also names the employer (ADR-026). One no cited fact holds is
     // unsupported content (priority 2); one held only by facts that do not name the employer is vague (priority 3):
     // a source often puts employer and title in separate sentences. The entry is kept either way.
-    if (!someFactHolds(resolved.facts, (t) => containsText(t, entry.role) && containsText(t, entry.employer))) {
-      if (someFactHolds(resolved.facts, (t) => containsText(t, entry.role))) {
+    if (!someFactHolds(resolved.facts, (t) => containsWord(t, entry.role) && containsEmployer(t, entry.employer))) {
+      if (someFactHolds(resolved.facts, (t) => containsWord(t, entry.role))) {
         ask({ path: `${p}.role`, text: questionText(`${p}.role`, 'vague'), reason: 'vague', impact: 'vague' });
       } else {
         ask({ path: `${p}.role`, text: questionText(`${p}.role`, 'unverifiable'), reason: 'unverifiable', impact: 'unsupported' });
@@ -209,5 +228,6 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
     .filter((s, i) => checkSkill(i, s.name, s.factIds))
     .map((s) => ({ ...s, factIds: [...s.factIds] }));
 
-  return { accepted, questions: planQuestions(candidates), dropped };
+  const questions = planQuestions(candidates).map((q) => ({ ...q, boundPath: bindToAccepted(q.path, dropped) }));
+  return { accepted, questions, dropped };
 }

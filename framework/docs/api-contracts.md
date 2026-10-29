@@ -131,12 +131,19 @@ Format:
   Examples: `summary.text`, `skills[3].name`, `experience[1].period`,
   `experience[0].bullets[2].text`, `education[0].period`. A whole entry that is
   dropped (no citation, or an unknown citation) is questioned on its identifying
-  field: `experience[i].employer` and `education[i].institution`. Whole items
-  (an entry, a skill, the summary) never appear as a question path. Indices are
-  positions in the drafted arrays, as the verifier emitted them.
-  `questions[].path` is the only place this grammar applies; the dropped-item
-  paths reported by the verifier keep their item-level spelling (`experience[0]`,
-  `skills[3]`, `summary`) and are not part of this response.
+  field in the verifier's own output (`experience[i].employer`), but see below:
+  whole items (an entry, a skill, the summary) never appear as a question path.
+  **How `path` is produced (ADR-027).** A stored question binds to the **item id**
+  it is about; the response `path` is derived at read time from the position that
+  item holds in THIS response (`experience[i]` in the order the response lists
+  experience, `skills[i]`, `experience[i].bullets[j]`) plus the stored field, so
+  a drop, a regeneration or a reorder can never leave a question beside another
+  item. A question whose item was dropped or has since been deleted binds to no
+  item and its `path` is the bare section (`experience`, `education`, `skills`),
+  never an index. `summary.text` and `contact.*` have one item each and keep
+  their spelling. `questions[].path` is the only place this grammar applies; the
+  dropped-item paths reported by the verifier keep their item-level spelling
+  (`experience[0]`, `skills[3]`, `summary`) and are not part of this response.
 - **Question `priority` (ADR-026).** Questions come back ordered by it, lower
   first, and it means what ignoring the question costs: `1` content is missing
   from the CV (a dropped entry, education, skill or contact field); `2` content

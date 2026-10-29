@@ -2,6 +2,7 @@ import type { PrismaClient } from '@prisma/client';
 import type { ErrorCode } from '../../http/errors.js';
 import { assertOwnership } from '../auth/ownership.js';
 import { orderExperience } from './order.js';
+import { splitQuestionPath } from './persist.js';
 import type {
   CvBullet,
   CvContact,
@@ -101,9 +102,23 @@ export async function getCv(prisma: PrismaClient, userId: string, cvId: string):
     return { id: item.id, name: data.name, group: data.group, factIds: item.factIds, userEdited: item.userEdited };
   });
 
+  // ADR-027: a question bound to an item is addressed by where that item sits in THIS response, so the editor's
+  // positional alignment is always right. One bound to no item keeps its stored path (a section, summary, contact).
+  const positionOf = new Map<string, string>();
+  experience.forEach((e, i) => {
+    positionOf.set(e.id, `experience[${i}]`);
+    e.bullets.forEach((b, j) => positionOf.set(b.id, `experience[${i}].bullets[${j}]`));
+  });
+  education.forEach((e, i) => positionOf.set(e.id, `education[${i}]`));
+  skills.forEach((s, i) => positionOf.set(s.id, `skills[${i}]`));
+  const questionPath = (q: { path: string; itemId: string | null }): string => {
+    const position = q.itemId === null ? undefined : positionOf.get(q.itemId);
+    const split = splitQuestionPath(q.path);
+    return position !== undefined && split ? `${position}${split.field}` : q.path;
+  };
   const questions: CvQuestion[] = cv.questions.map((q) => ({
     id: q.id,
-    path: q.path,
+    path: questionPath(q),
     text: q.text,
     status: q.status as CvQuestion['status'],
   }));

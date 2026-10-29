@@ -19,6 +19,34 @@ Format — newest on top, one block per decision:
 
 ---
 
+## ADR-028: One name-end rule, a strict job title, and the limit written down (2026-10-29, accepted)
+
+- **Context:** the reviewer attacked ADR-027's word boundary. Hyphen and slash leaked through it: employer `Acme`
+  was grounded by "Acme-Labs" and "Acme/Labs", `MIT` by "MIT-IBM Watson AI Lab", skill `C` by "C-level", `Go` by
+  "Go-Live", contact `Jane Doe` by "Jane Doe-Smith", location `Paris` by "Paris-Saclay". The role still used the
+  substring test, so `Engineer` was grounded by "Engineering Manager".
+- **Decision 1:** a name continues through a letter, digit or underscore, and through a `-` or `/` that is followed by a
+  letter or digit. One definition (`CONTINUES`/`NAME_END` in verify-entities.ts) serves containsWord,
+  containsEmployer and containsToken. "Acme - Labs" and "Acme/ " still end the name.
+- **Decision 2:** the role is matched as a whole phrase (containsWord), not a substring. Only the lookahead was
+  tightened; "Engineer" inside "Backend engineer" is still named.
+- **Decision 3:** a test whose premise is an unset variable unsets it (testing-strategy.md).
+- **Known limit, stated rather than hidden (alongside ADR-024 and ADR-025):** an employer that is only the first word
+  of a longer capitalised name is dropped and asked about. `Acme` against "Acme Warsaw" drops, by the same rule that
+  correctly drops `Amazon` against "Amazon Web Services"; no deterministic test can tell a branch office from a
+  different company. The strict direction is the right one: the entry drops and the user is asked. Likewise a name
+  preceded by a hyphen ("Ex-Acme") is not checked on the left; only the right edge is. This component is closed.
+- **Separator residue (closing probe, 2026-10-29), as it stands after the fix:** the name edge was probed against each
+  separator. Continue the name (a different name, so not grounded): a letter, digit, `_`, `-`, `/`, U+2212 minus and
+  a doubled `--` or `/-` before a letter or digit, `.` before a letter or digit, en and em dash, U+2010 to U+2015, and
+  `&`, `+`, `#` ("Acme&Co" is not `Acme`; "C++" and "C#" are not skill `C`). Ends the name, correctly: `,`, `:`, `\`,
+  `·`, U+2019, a spaced dash. Written limit, deliberately NOT fixed: `'` stays a boundary, so "Acme's" grounds `Acme`
+  (a legitimate possessive of a cited name) and "D'Angelo" grounds skill `D`. The second is the smaller cost; do not
+  "fix" it, that would break every possessive. The list is closed. Golden fixtures hold no name joined by a separator
+  (only periods like "2020-2022", which containsPeriod owns).
+
+---
+
 ## ADR-027: A question binds to the item it is about, and "named" means a word (2026-10-29, accepted)
 
 - **Context:** the owner was about to sign off the groundedness guarantee, so

@@ -99,6 +99,7 @@ model CvItem {
   cv       Cv        @relation(fields: [cvId], references: [id], onDelete: Cascade)
   parent   CvItem?   @relation("CvItemTree", fields: [parentId], references: [id], onDelete: Cascade)
   children CvItem[]  @relation("CvItemTree")
+  questions Question[]
 
   @@unique([cvId, path])
   @@index([cvId, kind, orderIndex])
@@ -116,13 +117,16 @@ model Question {
   answer        String?
   answeredAt    DateTime? @map("answered_at") @db.Timestamptz(6)
   followUpOfId  String?   @map("follow_up_of_id") @db.Uuid
+  itemId        String?   @map("item_id") @db.Uuid
   priority      Int       @default(100)
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   cv         Cv         @relation(fields: [cvId], references: [id], onDelete: Cascade)
   followUpOf Question?  @relation("FollowUp", fields: [followUpOfId], references: [id])
   followUps  Question[] @relation("FollowUp")
+  item       CvItem?    @relation(fields: [itemId], references: [id], onDelete: SetNull)
 
+  @@index([itemId])
   @@index([cvId, status, priority])
   @@index([followUpOfId])
   @@map("questions")

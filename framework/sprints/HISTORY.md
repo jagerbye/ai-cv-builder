@@ -58,3 +58,31 @@ Format — newest on top:
 - **Final state:** gate green on 10 of 10 consecutive serial runs —
   api 587 passed / 5 skipped, web 220, smoke 11.
 - **Detail:** framework/sprints/SPRINT-001-skeleton-auth/
+
+## Sprint 02 — live-model  (2026-10-29 → 2026-10-29)
+
+**Shipped.** The whole flow on a real model: register → free text → job →
+grounded draft with questions → answer → manual edit → A4 PDF with a text
+layer. Six issues, five ADRs, three amendments.
+
+**Bugs and findings.** Five defects, each hidden behind the previous one. A
+hard-coded endpoint; one number serving as both the response cap and the spend
+bound; a ledger called "optional" that left one path unbounded; a verifier that
+deleted real jobs because the model reformatted a date; and invented
+organisations being caught by a list of famous company names.
+
+**What went well.** The adversarial reviewer found four of the five, twice by
+probing the running stack rather than reading the diff — including a 200 OK
+that silently deleted a user's phone number. A developer refused to rewrite a
+red prompt-injection fixture without sign-off, which is the difference between
+tests that are green and tests that mean something.
+
+**What went badly.** Three rounds on one component before the orchestrator
+re-scoped instead of patching. The stopping rule exists now because of it. And
+the framework's planning stages — analyst, owner, manager, teamlead — produced
+a sound specification that could not have caught any of this: every defect
+lived at runtime or in a seam, and the only cure is to run the thing early.
+
+**Final state.** Gate green including the smoke step. The full flow verified on
+a live model, end to end, with the evidence in the sprint report.
+

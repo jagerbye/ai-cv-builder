@@ -1,0 +1,95 @@
+# Sprint 02 — live-model · report  (2026-10-29)
+
+> **What this file is:** what the key bought. Sprint 01 shipped a product whose
+> every model call went through a mocked seam and said so in the README. This
+> sprint walked that seam and fixed what walking it revealed.
+
+## The flow, on a real model
+
+Seven steps, run against the composed stack with a real provider key and no
+mocks anywhere in the path. Script: the orchestrator's, reproducible.
+
+| # | Step | Result |
+|---|---|---|
+| 1 | register | 201, session cookie set |
+| 2 | intake — free text + target role | 201 |
+| 3 | generation (real model) | job `succeeded` |
+| 4 | the stored CV | 2 experience entries, 1 education, full contact, summary, 15 facts |
+| 5 | answer a question (C-009) | 200, version 2 → 3, user fact stored |
+| 6 | manual edit (C-008) | 200, persisted; stale version → 409 |
+| 7 | PDF export (C-011) | 200, `%PDF-1.3`, real text layer, 2 pages |
+
+What step 4 produced, which is the product's whole purpose:
+
+```
+0.95  Brightpath Payments | Backend Engineer     | Since 2019   (2 bullets)
+0.70  Ferro Systems       | Data Pipelines Engineer | 2016 to 2019 (2 bullets)
+15 facts, every one with a verbatim quote
+every quote occurs verbatim in the source
+every cited factId resolves
+1 open question: experience[1].role —
+  "Which job title did you hold? The drafted title is not in the cited source."
+```
+
+That question is the design working. The source says *"doing data pipelines in
+Python"*; the model drafted the title *Data Pipelines Engineer*. The title is
+not in the evidence, so the entry is kept and the user is asked. Nothing was
+invented and nothing was deleted.
+
+## What the key found
+
+Five defects, in the order they surfaced. Each was hidden behind the previous
+one — a mocked seam cannot be walked past, which is this sprint's real finding.
+
+1. **The endpoint was hard-coded.** The gateway built its client with a key and
+   nothing else, so no key could be pointed anywhere. One missing option stood
+   between the project and the evidence it lacked.
+2. **The first call failed, and the failure was ours.** Extract returned fifteen
+   facts with verbatim quotes; compose failed and the parser was never even
+   called. One configuration number served as both the response cap and the
+   spend bound, and a real CV crosses it every time (ADR-021).
+3. **The fix had a hole.** Calling the new ledger "optional" left the answer
+   path bounded by nothing, where it had been bounded before. A test had been
+   written that pinned the unbounded behaviour; by this project's rule the test
+   was wrong, not the code (ADR-021 A).
+4. **The flow then ran — and produced an empty CV.** Zero experience, zero
+   education, no contact, no summary, from a source stating two jobs, a degree
+   and full contact details. The verifier had applied ADR-013 literally: the
+   model wrote `2019 - Present` where the source says `Since 2019`, the strings
+   did not match, and a real job was deleted — immediately after the verifier
+   had raised the right question about it (ADR-022).
+5. **Attacking the fix found the deeper defect, three times.** Invented
+   organisations were caught by a hard-coded list of famous companies; the
+   closed-world replacement leaked on names with an internal capital, uncased
+   scripts and numerals written as words, while deleting "Strong Communication
+   skills" and "Python 3". Three adversarial rounds, each fixing the last and
+   opening more (ADR-023, ADR-024).
+
+## The decision that ended it
+
+ADR-025 stopped the loop by changing what is promised rather than patching the
+mechanism again: **prose asks, structure drops.** A structured claim — an
+employer, an institution, a skill, a contact field — is grounded in a cited
+fact or it is gone. Prose is flagged where the user will see it and never
+deleted. `verify-entities.ts` went from 226 lines to 96.
+
+It is also what the brief asked for in the first place: *"anything missing or
+vague becomes a question to the user"*. We had read that as licence to delete.
+
+## Cost, and what it bought
+
+Five ADRs and three amendments. Three of the five defects were invisible to 822
+passing tests, and the other two were defects in decisions this project had
+already made and reviewed. The adversarial reviewer found four of the five.
+
+The stopping rule that ADR-025 applies is now in the framework template as a
+threshold rather than a feeling, together with the five other process changes
+this sprint paid for.
+
+## Open, and deliberately not fixed
+
+- Prose carries the weaker guarantee by design, and the known limits are listed
+  in ADR-024 and ADR-025 rather than hidden.
+- A skill written as an alias of a cited fact ("JS" against "JavaScript") is
+  dropped with a question. No alias dictionary: this sprint cost three rounds
+  learning what closed lists cost.

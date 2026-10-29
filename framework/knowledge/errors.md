@@ -100,3 +100,23 @@ entry.
   to a lease. Cleanup of non-terminal rows is scoped to the suite's own collected user ids (E-005); a
   cleanup that needs the whole queue empty goes through `suite.clearOpenJobs()`, which takes the suite lock.
 - **Prevention:** three consecutive green lane-gate runs are the acceptance bar for a timing-sensitive test.
+
+## E-007 a QA fixture outlived the contract it encoded  (2026-10-29)
+
+- **Symptom:** the re-QA pass reported QA-05 as not fixed — "the API still
+  emits bare paths `skills[5]`, `summary`" — on a day the verifier had been
+  changed to field-level paths and twelve exact-string tests proved it.
+- **Cause:** the CV under test came from `scripts/seed-qa.ts`, which writes its
+  questions by hand with the pre-ADR-016 spellings. The API was returning
+  exactly what was stored. The fixture was the only thing left in the repo
+  still speaking the old grammar, and because QA drives real stored data, the
+  fixture's dialect looked like the API's.
+- **Fix / rule:** fixture data that encodes a contract is a second source of
+  truth and will drift. Generate it through the production code path — the
+  seed already borrows `itemsFromDraft` from `persist.ts` for items, and the
+  questions should likewise come from `verify()` rather than from a literal.
+  Where a literal is unavoidable, assert it against the contract in a test.
+- **Worth keeping:** the UI degraded honestly rather than crashing — an
+  unresolvable path parks the card after the sheet with a generic eyebrow.
+  That fallback is what turned a contract drift into a visible oddity instead
+  of a blank screen.

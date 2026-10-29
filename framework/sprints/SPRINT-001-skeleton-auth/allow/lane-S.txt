@@ -1,0 +1,8 @@
+scripts/*
+api/src/core/jobs/*
+api/src/core/cv/*
+tests/contract/generation-persist*
+framework/sprints/SPRINT-001-skeleton-auth/*
+framework/docs/*
+framework/knowledge/*
+.claude/*

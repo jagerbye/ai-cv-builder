@@ -6,42 +6,41 @@
 
 ## Now
 
-- **Phase:** sprint 01 — waves 0, A and B all complete and integrated.
-- **Green:** `bash framework/scripts/gate.sh` ✓ on three consecutive full runs
-  (api 534 passed / 5 skipped, web 157 passed). No wave marker in the tree.
-- **Current focus:** manual QA, then the sprint close.
-
-## In flight
-
-- One lane fixing the rate-limit suite's leaked queued jobs (E-004's root
-  cause; the persist suite is already immune).
+- **Phase:** sprint 01 closed. Waves 0, A and B built, integrated and QA'd;
+  all 15 QA findings fixed; B-024 harvested back into the template.
+- **Green:** `bash framework/scripts/gate.sh` ✓ on 10 of 10 consecutive serial
+  runs — api 591 passed / 5 skipped, web 220, smoke 11. One gate run at a time
+  per database (E-008).
+- **Nothing is in flight.** The next session starts from the backlog.
 
 ## Waiting on
 
-- **Owner:** `ANTHROPIC_API_KEY` in `.env` — the suite needs none, a real
-  end-to-end generation does.
+- **Owner:** `ANTHROPIC_API_KEY` in `.env`. The suite needs none and never
+  will — every Anthropic call goes through the C-012 seam, mocked everywhere.
+  A real generation has therefore never run; that is the one unproven claim
+  in the README and it is written there as such.
 
 ## Next 3 actions
 
-1. QA per `framework/process/qa-playbook.md`: real browser, functional +
-   visual, 1440×900 and 375×812, screenshots into `qa-report.md`.
-2. Sprint report + `framework/sprints/HISTORY.md` + `/retro`.
-3. LAST: B-024 / CVB-26 — port `framework/knowledge/framework-feedback.md`
-   (FF-01…FF-13) into `~/Desktop/www/ai-dev-framework` in ONE pass.
+1. With a key: run one real generation end to end and record what the live
+   model does to the golden fixtures' assumptions.
+2. B-021…B-023 if the owner wants them (SSE progress, source-quote popover,
+   session sweep) — all parked with reasons on the board.
+3. The two notes B-024 left for the next project: a test-engineer failure
+   with `blockedOn: code` has no rung on the escalation ladder, and a blocked
+   task appears in both `blocked` and `needsAttention`.
 
 ## Recent decisions (this week only)
 
-- ADR-002/013 — groundedness = extract → compose(facts only) → deterministic
-  verify; entries cite their own facts, employer and period must co-occur
-- ADR-004 — Postgres `SKIP LOCKED` is the queue; no Redis, no broker
-- ADR-009 — Jira is virtual (`framework/sprints/board.md`, key CVB)
+- ADR-002/013/016 — groundedness: extract → compose(facts only) → deterministic
+  verify; entries cite their own facts; a question's path names a FIELD
 - ADR-011 — lanes are disjoint file sets; worktrees unavailable per lane
-- ADR-012 — Node 24 LTS, argon2id from the standard library
-- ADR-014 — the job-queue suite lock is a helper with a guard test
-- ADR-015 — answering a question bumps the CV's version (C-008's token)
+- ADR-014/019 — the job-queue lock is a helper with a guard; the suite has its
+  own database, because four incidents had one cause
+- ADR-015/017/018/020 — version bumps on an answer; a failed CV carries
+  lastError; the two provider failures keep their own codes, on both paths
 
-## Open, owned by nobody yet
+## Known, owned by nobody
 
 - 5 container tests skipped until the api image is built
-  (`tests/contract/auth-session-container.test.ts`)
-- Facts are stored but no UI shows them yet (B-022, parked)
+- Facts are stored and served but no UI shows them (B-022, parked)

@@ -114,7 +114,7 @@ CVB-12 (the groundedness guarantee).
 
 | Issue | Backlog | Summary | Status | Est |
 |---|---|---|---|---|
-| CVB-26 | B-024 | Harvest this build into the ai-dev-framework template | To Do — runs now, single pass | 2h |
+| CVB-26 | B-024 | Harvest this build into the ai-dev-framework template | Done — 2026-10-29, three passes, 39 files | 2h |
 
 Nine findings are already logged with evidence in
 `framework/knowledge/framework-feedback.md` (FF-01…FF-06): the runner ignoring

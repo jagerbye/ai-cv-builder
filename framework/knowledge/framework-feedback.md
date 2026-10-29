@@ -26,10 +26,25 @@ Format:
 - What it cost here: <what actually went wrong, concretely>
 - Why it recurs: <why every project built from this template hits it>
 - Proposed fix: <the change to the template>
-- Status: open | fixed in template (date)
+- Status: APPLIED to the template 2026-10-29 (B-024) | fixed in template (date)
 ```
 
 ---
+
+> **B-024 ran on 2026-10-29 and all fifteen findings are applied.** The
+> template is at `~/Desktop/www/ai-dev-framework`, now under git: `3efc0ee` is
+> the state before this harvest and `a9f68f7` the state after — 39 files, +1313
+> −280. Three passes were needed, and the second and third are the interesting
+> ones: the first changed every document describing the runner without changing
+> the runner, and the second fixed `check-lane.sh` and then left its old usage
+> in the two files an agent reads first. A fix is not applied until the thing it
+> fixes stops happening inside the fix.
+>
+> Entries below keep their evidence, because the evidence is what makes the
+> template's new rules arguable rather than arbitrary. Two notes for the next
+> project rather than for the template: a test-engineer failure with
+> `blockedOn: code` still has no rung on the ladder, and a blocked task appears
+> in both `blocked` and `needsAttention`.
 
 ## FF-01 The sprint runner ignores a reviewer's fix-list (found 2026-10-28, severity: bug)
 
@@ -48,7 +63,7 @@ Format:
   one developer pass on the next model tier with the fix-list in the prompt,
   then a re-review that checks the list item by item. Implemented in this
   project's copy of `sprint.js`; port it back.
-- Status: open
+- Status: APPLIED to the template 2026-10-29 (B-024)
 
 ## FF-02 FAST_CHECK blocks the first agent of every new project (found 2026-10-28, severity: bug)
 
@@ -65,7 +80,7 @@ Format:
   present — `[ -x node_modules/.bin/tsc ] || return 0` — and say in the
   comment that a fast check must degrade silently, never block, when the
   project is not yet installable.
-- Status: open
+- Status: APPLIED to the template 2026-10-29 (B-024)
 
 ## FF-03 design.json ships as a filled-in example of a different product (found 2026-10-28, severity: bug)
 
@@ -81,7 +96,7 @@ Format:
 - Proposed fix: ship a token **skeleton** with the same shape but empty
   values and `meta.type: "REPLACE ME — run /design"`, and have the design
   playbook assert the file was replaced before a web lane may read it.
-- Status: open
+- Status: APPLIED to the template 2026-10-29 (B-024)
 
 ## FF-04 The dependency list does not cover the toolchain (found 2026-10-28, severity: gap)
 
@@ -104,7 +119,7 @@ Format:
   bundler, type packages, install-script policy), and `architect.md` gains a
   completeness check: "could a developer run every gate step with only this
   list installed?"
-- Status: open
+- Status: APPLIED to the template 2026-10-29 (B-024)
 
 ## FF-05 Mode B (worktrees per team) is not implementable as written (found 2026-10-28, severity: drift)
 
@@ -124,7 +139,7 @@ Format:
   lane created and torn down *around* the lane by the orchestrator/runner —
   or, until that exists, Mode A with disjoint paths is the only supported
   mode and the playbook should say so.
-- Status: open
+- Status: APPLIED to the template 2026-10-29 (B-024)
 
 ## FF-06 PATTERN: a bootstrap task that owns every shared file (found 2026-10-28, severity: gap)
 
@@ -141,7 +156,7 @@ is nowhere in the playbook.
   two lanes, the first task of the blocking prologue creates every file two or
   more lanes would otherwise touch (registries, routers, frozen interfaces,
   migration), and ships it empty. Add the pattern to `patterns.md`.
-- Status: open
+- Status: APPLIED to the template 2026-10-29 (B-024)
 
 ## FF-07 check-lane.sh is blind to untracked files (found 2026-10-28, severity: bug)
 
@@ -157,7 +172,7 @@ is nowhere in the playbook.
 - Proposed fix: union the tracked diff with
   `git ls-files --others --exclude-standard`. Done in this project's copy and
   proved with an untracked probe file; port it back.
-- Status: open
+- Status: APPLIED to the template 2026-10-29 (B-024)
 
 ## FF-08 The lane-brief template produces allowlists that fail their own task (found 2026-10-28, severity: gap)
 
@@ -176,7 +191,7 @@ is nowhere in the playbook.
 - Proposed fix: the template gains a standing allowance — the lane's own log,
   `plan.md`, and anything the task is required to create — and the playbook
   says the allowlist is written from the deliverable, not from the criteria.
-- Status: open
+- Status: APPLIED to the template 2026-10-29 (B-024)
 
 ## FF-09 "Free the port" is the wrong remedy on a developer machine (found 2026-10-28, severity: gap)
 
@@ -192,7 +207,7 @@ is nowhere in the playbook.
   runbook — an agent never kills a process or frees a port it did not start;
   it reports the conflict and moves its own port. Compose host ports should be
   env-overridable by default for the same reason.
-- Status: open
+- Status: APPLIED to the template 2026-10-29 (B-024)
 
 ## FF-10 The gate has no lane-scoped mode, so parallel lanes cannot pass it (found 2026-10-28, severity: bug)
 
@@ -220,7 +235,7 @@ is nowhere in the playbook.
   then stops failing agents for their neighbours' work. Implemented here;
   port it back. The sprint-playbook should also state plainly that during a
   wave "green" means the lane, and `hook-stop.sh` must not enforce the union.
-- Status: open
+- Status: APPLIED to the template 2026-10-29 (B-024)
 
 ## FF-11 Escalation is a brief-quality signal the runner throws away (found 2026-10-28, severity: gap)
 
@@ -242,7 +257,7 @@ is nowhere in the playbook.
   model tier; the other three stop the task and surface it to the Orchestrator
   immediately, with the lane continuing to its next independent task. Cheap to
   add, and it converts a wasted Sonnet pass into a one-line question.
-- Status: open
+- Status: APPLIED to the template 2026-10-29 (B-024)
 
 ## FF-12 `check-lane.sh` takes a FILE, and every agent passes globs (found 2026-10-29, severity: friction)
 
@@ -269,7 +284,7 @@ is nowhere in the playbook.
   "allowlist file not found" instead of reporting every path as a violation.
   Better still, the sprint runner writes one allowlist file per lane from
   plan.md, so the brief and the check read the same source.
-- Status: open
+- Status: APPLIED to the template 2026-10-29 (B-024)
 
 ## FF-13 "The Orchestrator commits per task" is a promise nothing enforces (found 2026-10-29, severity: process)
 
@@ -294,7 +309,7 @@ is nowhere in the playbook.
   Also state in merge-policy.md that files one task could not separate — a
   wiring file several tasks edit — are committed together with the reason in
   the message, rather than split into commits that do not build.
-- Status: open
+- Status: APPLIED to the template 2026-10-29 (B-024)
 
 ## FF-14 Agents clean up by pattern, and nothing in the rules says not to (found 2026-10-29, severity: safety)
 
@@ -316,7 +331,7 @@ is nowhere in the playbook.
 - Worth noting what worked: the agent reported the overshoot itself, and the
   reviewer had a snapshot to catch it with. The guard this task added is what
   made the discrepancy visible at all.
-- Status: open
+- Status: APPLIED to the template 2026-10-29 (B-024)
 
 ## FF-15 A fully green gate can ship a product nobody can open (found 2026-10-29, severity: critical)
 
@@ -348,4 +363,4 @@ is nowhere in the playbook.
   the full gate and CI, never in wave mode. Also: `architecture.md` must name
   how the browser reaches the api, because nobody owned that line here and
   every lane assumed another lane had.
-- Status: open
+- Status: APPLIED to the template 2026-10-29 (B-024)

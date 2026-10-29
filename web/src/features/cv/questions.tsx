@@ -210,8 +210,8 @@ function sameTops(a: Record<string, number>, b: Record<string, number>): boolean
   return ka.every((k) => a[k] === b[k]);
 }
 
-// Desktop column. Cards stay in server order; each one is placed at its field's
-// offsetTop, and pushed down only as far as needed to clear the card above it.
+// Desktop column. Cards render in server order but are placed in the order of their
+// fields' offsetTop; each sits at its field's offsetTop, and pushed down only as far as needed to clear the card above it.
 // Re-measured on every commit and whenever the sheet resizes.
 export function QuestionColumn({
   sheetRef,
@@ -239,11 +239,18 @@ export function QuestionColumn({
     for (const el of Array.from(column.querySelectorAll<HTMLElement>('[data-question-id]'))) {
       heights.set(el.getAttribute('data-question-id') ?? '', el.offsetHeight);
     }
+    // Place in the order of the fields' measured offsets, not the API's priority
+    // order. A question whose field is missing sorts after the sheet. Ties keep
+    // the API order (Array.sort is stable).
+    const placed = questions.map((q) => {
+      const field = fields.get(q.path);
+      return { q, offset: field ? field.offsetTop : Infinity };
+    });
+    placed.sort((a, b) => (a.offset === b.offset ? 0 : a.offset < b.offset ? -1 : 1));
     const next: Record<string, number> = {};
     let cursor = 0;
-    for (const q of questions) {
-      const field = fields.get(q.path);
-      const top = Math.max(field ? field.offsetTop : 0, cursor);
+    for (const { q, offset } of placed) {
+      const top = Math.max(Number.isFinite(offset) ? offset : 0, cursor);
       next[q.id] = top;
       cursor = top + (heights.get(q.id) ?? 0) + CARD_GAP;
     }

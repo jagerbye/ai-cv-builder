@@ -160,6 +160,33 @@ describe('questions beside their field — desktop alignment (F-005, design §3)
     expect(acme.compareDocumentPosition(location) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(location.compareDocumentPosition(degree) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+  it('places each card beside its own field when the API order disagrees with the document order (QA-15)', async () => {
+    setViewport(1200);
+    layout.setFieldTop(LONDON, 90);
+    layout.setFieldTop(ACME_PERIOD, 300);
+    layout.setFieldTop(DEGREE_VALUE, 1800);
+    layout.setCardHeight(100);
+    // Priority order: the field lowest on the page comes first, the highest comes last.
+    installApi([withQuestions(['degree', 'acme', 'location'])]);
+    mountEditor('/cvs/cv-1');
+    await screen.findByRole('group', { name: DEGREE_Q });
+    await waitFor(() => expect(cardTop(questionCard(DEGREE_Q))).toBe('1800px'));
+    expect(cardTop(questionCard(ACME_Q))).toBe('300px');
+    expect(cardTop(questionCard(LOCATION_Q))).toBe('90px');
+  });
+
+  it('still pushes down genuine overlaps when the API order is reversed', async () => {
+    setViewport(1200);
+    layout.setFieldTop(LONDON, 300);
+    layout.setFieldTop(ACME_PERIOD, 310);
+    layout.setCardHeight(100);
+    installApi([withQuestions(['acme', 'location'])]);
+    mountEditor('/cvs/cv-1');
+    await screen.findByRole('group', { name: LOCATION_Q });
+    await waitFor(() => expect(cardTop(questionCard(LOCATION_Q))).toBe('300px'));
+    expect(parseFloat(cardTop(questionCard(ACME_Q)))).toBeGreaterThanOrEqual(400);
+  });
+
 });
 
 describe('questions beside their field — mobile collapse (F-005)', () => {
@@ -190,6 +217,17 @@ describe('questions beside their field — mobile collapse (F-005)', () => {
     await screen.findByRole('group', { name: ACME_Q });
     expect(within(acmeEntry()).getByRole('group', { name: ACME_Q })).toBeTruthy();
   });
+  it('under 900px, with the API order against the document order, each card stays under its own field', async () => {
+    setViewport(375);
+    installApi([withQuestions(['degree', 'acme', 'location'])]);
+    mountEditor('/cvs/cv-1');
+    const contact = await screen.findByRole('region', { name: 'Contact' });
+    await screen.findByRole('group', { name: DEGREE_Q });
+    expect(within(contact).getByRole('group', { name: LOCATION_Q })).toBeTruthy();
+    expect(within(acmeEntry()).getByRole('group', { name: ACME_Q })).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: 'Education' })).getByRole('group', { name: DEGREE_Q })).toBeTruthy();
+  });
+
 });
 
 describe('answering a question (C-009, F-005)', () => {

@@ -24,6 +24,7 @@ const FUTURE = new Date('2099-01-01T00:00:00Z');
 
 let app: FastifyInstance;
 let suiteLock: JobSuiteLock;
+const userIds: string[] = [];
 
 function chars(n: number): string {
   const unit = 'Built payment APIs for retail clients in a team of six. ';
@@ -32,6 +33,7 @@ function chars(n: number): string {
 
 async function seedSession(expiresAt: Date): Promise<string> {
   const userId = randomUUID();
+  userIds.push(userId);
   const token = randomBytes(32).toString('base64url');
   await prisma.user.create({
     data: { id: userId, email: `hardening-session-${userId}@example.test`, passwordHash: 'not-a-real-hash' },
@@ -55,6 +57,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await app.close();
+  // Users cascade to sessions, cvs and generation_jobs. Runs under the suite lock, before release.
+  if (userIds.length > 0) await prisma.user.deleteMany({ where: { id: { in: userIds } } });
   await prisma.$disconnect();
   await suiteLock.release();
 });

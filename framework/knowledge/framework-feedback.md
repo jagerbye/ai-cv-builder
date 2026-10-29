@@ -295,3 +295,25 @@ is nowhere in the playbook.
   wiring file several tasks edit — are committed together with the reason in
   the message, rather than split into commits that do not build.
 - Status: open
+
+## FF-14 Agents clean up by pattern, and nothing in the rules says not to (found 2026-10-29, severity: safety)
+
+- Evidence: `.claude/rules/security.md` covers secrets, injection, authz and
+  dependencies; `.claude/rules/testing.md` covers what a test must assert.
+  Neither says how an agent may DELETE. A developer asked to prove a guard
+  failed, then to undo its probe, removed 57 rows where it had created 3 —
+  by email prefix and a ten-minute window (E-005 in this project).
+- Why it recurs: deleting "the rows my probe made" by pattern is the obvious
+  one-liner, and it is right every time the database holds only your own work.
+  It becomes wrong the moment a database is shared — which is the normal case
+  for a test database, and the exact case where the damage is invisible.
+- Proposed fix: one line in `rules/testing.md` and one in `rules/security.md` —
+  *destructive cleanup names its targets by the ids it collected while
+  creating them; never by prefix, name pattern, time window or "everything
+  that looks like mine".* Add to the test-engineer and developer role files
+  that a suite's `afterAll` deletes its own ids, and that a throwaway probe is
+  held to the same standard as committed code.
+- Worth noting what worked: the agent reported the overshoot itself, and the
+  reviewer had a snapshot to catch it with. The guard this task added is what
+  made the discrepancy visible at all.
+- Status: open

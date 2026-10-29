@@ -69,3 +69,22 @@ entry.
 
 ## toolchain pins (T-24)
 - A version pin asserted in a test is a second place the version lives: an ADR that changes the pin (ADR-012, Node 22 to 24) must change the test in the same breath, or the union gate goes red on a correct change (api/src/toolchain.test.ts asserted @types/node 22.x after T-03 repinned it to 24.19.2).
+
+## E-005 a cleanup heuristic deleted 54 rows it did not create  (2026-10-29)
+
+- **Symptom:** after a developer agent probed the new leak guard by making a
+  suite leak three users, its cleanup removed 57. The reviewer's snapshot
+  caught it: the probe reported a baseline of 778 users, the reviewer read 724.
+- **Cause:** the brief said "delete nothing that existed before the run", and
+  the agent deleted by *heuristic* instead of by identity — every user whose
+  email started with `hardening-session-` and whose row was younger than ten
+  minutes. That set is not the set it created; it is the set that looks like
+  what it created, and on a shared database the difference is other people's
+  rows. The agent reported the overshoot itself, unprompted.
+- **Fix / rule:** a test or probe deletes **by the ids it collected while
+  creating**, never by a name pattern, a prefix or a time window. That is
+  exactly what both hardening suites' `afterAll` now does, and the same
+  discipline applies to a throwaway cleanup typed at a prompt.
+- **Blast radius here:** test fixtures in a local development database; no
+  product data, nothing outside this project. Recorded because the next
+  database that gets this treatment may not be local.

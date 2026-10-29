@@ -25,6 +25,18 @@ entry.
 
 ---
 
+## E-004 generation-persist case 1 fails ~1 run in 3: job failed INTERNAL "The generation failed." within ms, CV untouched  (2026-10-29)
+- **Context:** tests/contract/generation-persist.test.ts. worker.ts classify() dropped the original error, so it read as a flake. With createJobWorker({ onError }) the log said PrismaClientKnownRequestError P2002, meta target Fact.id (persist.ts createMany of facts).
+- **Root cause:** tests/contract/hardening-ratelimit.test.ts commits ~50 queued jobs through POST /api/cvs and never deletes them. The persist suite's runJob drained those (claimNext takes the oldest) with its fixed-fact-id pipeline; the case's own job then re-inserted the same fact ids. Whether the order of suite files left the rows before the persist suite decided red or green.
+- **Fix:** persist suite's queueJob calls suite.clearOpenJobs() under the held lock (regression case added). The worker now reports error name, code, job id, attempt via onError (main.ts logs it).
+- **Prevention:** a silent catch hides a reproducible bug as a flake: log class and code. Open: hardening-ratelimit should delete its users in afterAll (outside this lane's files).
+
+## E-003 union red after a wave: a sibling lane's test pinned a temporary shape ("expected null not to be null" on a screen marker, regex on api.register(...) with no options)  (2026-10-29)
+- **Context:** SPRINT-001 wave B integration. web/src/app/routes.test.tsx (T-05) required the cv route to render an h1; T-22 replaced the placeholder with the real editor, whose pending/error states rendered a bare <p>. api/src/routes/registry.test.ts (T-07) pinned `await api.register(cvsRoutes)` literally; T-28 added `{ generationPipeline }`. Both lanes were green on their own gate.
+- **Root cause:** a test that encodes the current shape of another lane's file is true when written and false the moment that lane does its job. Lane gates cannot see it: the test and the subject belong to different lanes. Same class as wave A's conflict 1.
+- **Fix:** the invariant is kept, the accidental part dropped. cv route: every state now renders a heading (a product defect, fixed in code, with tests). registry: the regex still demands the register call and now permits an options object (a wrong test, corrected with reviewer sign-off through the integration notes).
+- **Prevention:** a cross-lane test asserts a contract (a landmark, a call, an export), never a literal shape of a file it does not own; when a conflict appears, first ask whether the code is wrong (fix the code) before touching the test. Recorded in the sprint report, wave B.
+
 ## E-002 job test flaky: "expected ... to be ..." on leasing, or "rejects a second queued job" passes; parallel suites share one queue table  (2026-10-28)
 - **Context:** T-16 durable jobs. api/src/core/jobs/jobs.test.ts and boundaries.test.ts run in parallel files on one Postgres. jobs.test.ts deletes and claims every queued/running row; boundaries.test.ts committed its own queued rows.
 - **Root cause:** the job queue is global by design (claimNext takes any queued row), so committed rows from another file leak in. Either side can win: a claim picks a boundary row, or a boundary insert hits a row jobs.test just deleted.

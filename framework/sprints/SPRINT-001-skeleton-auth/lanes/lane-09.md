@@ -44,3 +44,9 @@
 - save.test "shows Saving…": `findByRole('textbox', {name: 'Location'})` is unscoped and matches both Contact Location and the Experience Location of exp-1.
 - save.test 409 (conflict, Reload latest, delete): `api.setServer(..., version 9)` runs before `mountEditor`, so the page reads version 9 and no conflict occurs. The stale-read setup must mount, wait for load, then setServer.
 **Open:** 375px/1440px layout has no automated check (cv.css written mobile-first, tokens only).
+
+## T-22 — FIX-T-22 (developer): seven tests corrected, reasons recorded (.claude/rules/testing.md)
+Teamlead decision; the seven failures were test-authoring defects. Assertions unchanged; only how elements are reached and when the conflict is created.
+1. Ambiguous roles: bullet controls renamed in production (entries.tsx) to "Move bullet up", "Move bullet down", "Delete bullet" (a11y: "Delete" was announced twice inside one article). route.test bullet queries updated to the new names.
+2. save.test "Saving…": Location query scoped to the Contact region (it also matched the Experience field).
+3. save.test 409 tests (3): api.setServer(version 9) moved to AFTER mount and first load, so the client has read a version before the conflict exists.

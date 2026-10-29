@@ -243,3 +243,30 @@ is nowhere in the playbook.
   immediately, with the lane continuing to its next independent task. Cheap to
   add, and it converts a wasted Sonnet pass into a one-line question.
 - Status: open
+
+## FF-12 `check-lane.sh` takes a FILE, and every agent passes globs (found 2026-10-29, severity: friction)
+
+- Evidence: `framework/scripts/check-lane.sh:6` — `usage: check-lane.sh
+  <base-ref> <allowlist-file>`. The second argument is read with
+  `done < "$list"`, so a glob list on the command line makes the script read a
+  file named `api/src/http/**, api/src/server.ts, …`, which does not exist:
+  every changed path then falls through as a violation, **including the one
+  file the lane legitimately owns**.
+- What it cost here: in wave B, three agents hit it. Two reviewers (lanes 08
+  and 10) diagnosed it themselves and wrote a temporary allowlist file to a
+  scratch directory to get a real answer; one developer reported its own lane
+  as violating its own allowlist. The failure mode is the dangerous direction
+  — it reports violations that are not there, so a lane that is genuinely
+  clean looks dirty and the round is spent arguing.
+- Why it recurs: the plan and the brief both describe a lane's area as a list
+  of globs, because that is how humans and agents talk about it. Nothing
+  converts that list into the file the script wants, so every agent invents the
+  conversion — or forgets to.
+- Proposed fix: accept globs as trailing arguments
+  (`check-lane.sh <base> 'api/src/http/**' 'api/src/server.ts'`) and keep the
+  file form behind `-f <file>`. Then fail loudly when the second argument looks
+  like a glob but is being read as a path: `[ -f "$list" ] ||` exit with
+  "allowlist file not found" instead of reporting every path as a violation.
+  Better still, the sprint runner writes one allowlist file per lane from
+  plan.md, so the brief and the check read the same source.
+- Status: open

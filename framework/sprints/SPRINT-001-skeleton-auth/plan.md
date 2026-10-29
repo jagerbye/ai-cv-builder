@@ -70,7 +70,7 @@ never imports lane 04's implementation, which is why the two can run at once.
 | 10 | A | `README.md` | T-23 |
 | 11 | A | `api/src/core/jobs/test-lock*`, the four job suites, `tests/guard/**` | T-25 |
 
-Base ref for wave B: `59ab057`. The two seams that keep these five disjoint:
+Base ref for wave B: `e65f3b9`. The two seams that keep these five disjoint:
 `server.ts` belongs to lane 08 alone, so rate limiting is installed as one
 global hook rather than edited into five route files; and lane 11 keeps the
 `test-lock.ts` module path and its `acquireJobSuiteLock` export stable, because

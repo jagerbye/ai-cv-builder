@@ -9,3 +9,6 @@ build/
 coverage/
 *.log
 .DS_Store
+
+# transient: set while a wave is in flight, read by gate.config.sh
+framework/scripts/.wave-in-flight

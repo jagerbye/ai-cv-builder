@@ -21,15 +21,15 @@
 | Issue | Task | Lane | Summary | Status | Est |
 |---|---|---|---|---|---|
 | CVB-1 | T-01 | 01 | Scaffold, workspaces, real lint and bundler | Done | 2h |
-| CVB-2 | T-02 | 01 | Compose stack, seven-table schema, health | Ready for test | 2h |
+| CVB-2 | T-02 | 01 | Compose stack, seven-table schema, health | Done | 2h |
 | CVB-24 | T-07 | 01 | Route registry and cross-lane interfaces | Done | 1h |
 
 ## Sprint 001 — wave A (six lanes in parallel)
 
 | Issue | Task | Lane | Summary | Status | Est |
 |---|---|---|---|---|---|
-| CVB-3 | T-03 | 02 | Registration, argon2id, error envelope | Ready for test | 2h |
-| CVB-4 | T-04 | 02 | Login, session cookie, ownership guard | Ready for test | 2h |
+| CVB-3 | T-03 | 02 | Registration, argon2id, error envelope | Done | 2h |
+| CVB-4 | T-04 | 02 | Login, session cookie, ownership guard | Done | 2h |
 | CVB-5 | T-05 | 03 | Web shell, API client, mobile layout | Done | 2h |
 | CVB-6 | T-06 | 03 | Auth screens, session restore | Done | 2h |
 | CVB-13 | T-13 | 03 | Intake screen | Done | 2h |
@@ -107,10 +107,11 @@ that re-runs generation while `userEdited` fields survive, and it lives in
 `routes/cvs.ts`, which exactly one lane may own.
 
 **Statuses as of 2026-10-29:** everything the sprint built is `Done` — merged,
-covered by the gate, and re-checked by the QA pass. Four issues are held at
-`Ready for test` on purpose because they carry the `critical` label and this
-project's own process says the owner confirms their final transition; CVB-12 in
-particular is the groundedness guarantee, which ADR-022 is changing right now.
+covered by the gate, and re-checked by the QA pass. The four `critical` issues needed the owner's explicit yes before their final
+transition, which is this project's own rule. The owner confirmed CVB-2, CVB-3
+and CVB-4 by hand on 2026-10-29 and they are `Done`. CVB-12 stays open on
+purpose: it is the groundedness guarantee, and ADR-022 is rewriting it right
+now — confirming a guarantee while it is being changed would mean nothing.
 The live-key block (CVB-39…44) waits for the end-to-end re-run.
 
 **Labeled `critical`** (need the owner's explicit yes before their final

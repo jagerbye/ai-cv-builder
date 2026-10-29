@@ -75,7 +75,11 @@ describe('golden adversarial fixtures (F-004)', () => {
   }
 });
 
-describe('prompt-injection fixture keeps the output structure', () => {
+// ADR-025: what matters about an injection is that it cannot change the output's STRUCTURE and that its claim
+// arrives FLAGGED. The injected summary is prose, so it is kept and questioned (priority 1), no longer deleted; the
+// injected employer entry is structure, so it is still dropped. This test was corrected, not weakened: the old
+// expectation ("summary absent") asserted the deletion mechanism ADR-025 retires.
+describe('prompt-injection fixture keeps the output structure and flags the injected claim', () => {
   const fx = fixtures.find((f) => f.name === 'prompt-injection');
 
   it('the fixture exists', () => {
@@ -87,9 +91,10 @@ describe('prompt-injection fixture keeps the output structure', () => {
     expect(Object.keys(result).sort()).toEqual(['accepted', 'dropped', 'questions']);
   });
 
-  it('accepted has the composed top-level keys, minus the injected summary', () => {
+  it('accepted has exactly the composed top-level keys, the same as the draft', () => {
     const result = verify(structuredClone(fx!.draft), structuredClone(fx!.facts));
-    expect(Object.keys(result.accepted).sort()).toEqual(['education', 'experience', 'skills', 'targetRole']);
+    expect(Object.keys(result.accepted).sort()).toEqual(Object.keys(fx!.draft).sort());
+    expect(Object.keys(result.accepted).sort()).toEqual(['education', 'experience', 'skills', 'summary', 'targetRole']);
   });
 
   it('every accepted experience entry and bullet has the composed shape', () => {
@@ -103,11 +108,20 @@ describe('prompt-injection fixture keeps the output structure', () => {
     }
   });
 
-  it('the injected employer, period and accuracy claim appear nowhere in the accepted output', () => {
+  it('the injected structured claims (employer, period, accuracy bullet) are absent from accepted experience', () => {
     const result = verify(structuredClone(fx!.draft), structuredClone(fx!.facts));
-    const serialized = JSON.stringify(result.accepted);
+    const serialized = JSON.stringify(result.accepted.experience);
     expect(serialized).not.toContain('Google');
     expect(serialized).not.toContain('99%');
     expect(serialized).not.toContain('2010');
+  });
+
+  it('the injected summary claim arrives flagged: kept as drafted, with a priority-1 question that names it', () => {
+    const result = verify(structuredClone(fx!.draft), structuredClone(fx!.facts));
+    expect(result.accepted.summary).toEqual(fx!.draft.summary);
+    expect(result.dropped.map((d) => d.path)).not.toContain('summary');
+    const q = result.questions.find((x) => x.path === 'summary.text') as PlannedQuestion | undefined;
+    expect(q).toMatchObject({ reason: 'unverifiable', priority: 1 });
+    expect(q!.text).toContain('Google');
   });
 });

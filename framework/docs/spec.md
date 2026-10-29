@@ -130,9 +130,11 @@ This is the feature the product is judged on; its mechanism is
         facts, each with the verbatim `sourceQuote` it came from), **compose**
         (facts → CV; the composing call receives the fact list and the target
         role, **not** the raw source), **verify** (deterministic code, no LLM).
-  - [ ] The verifier rejects any CV content item whose `factIds` are empty or
-        unknown, and any item containing an organisation name, a date, a
-        number, or a named technology that appears in none of its cited facts.
+  - [ ] **The guarantee (ADR-025), in two sentences.** Every structured claim
+        (an experience entry, an education entry, a skill, a contact field) is
+        grounded in a cited fact or it is gone. Every unsupported phrase in
+        prose (the summary and bullet text) is flagged where the user will see
+        it. The verifier drops a structured item (entry, education, skill, contact field) whose `factIds` are empty or unknown; prose that cites nothing is kept with a question saying so.
   - [ ] **No recombination.** An experience entry needs one cited fact
         containing both its employer and its period; an education entry, one
         containing both its institution and its period. Two true facts about
@@ -144,28 +146,29 @@ This is the feature the product is judged on; its mechanism is
         parent's.** An experience entry's employer and period must be covered
         by the entry's own `factIds`; a bullet inside it is checked against
         its own `factIds` **and** its parent entry's. Without this a correct
-        bullet is dropped for not re-citing the employer named one line above
-        it, which is rejection of a true statement, not protection from a
+        bullet is flagged for not re-citing the employer named one line above
+        it, which is suspicion of a true statement, not protection from a
         false one. Inheritance goes one level only, parent → child, never
         sideways between siblings.
-  - [ ] **Prose is checked in two tiers (ADR-024).** The vocabulary is the text
-        of the cited facts plus the target role. An unsupported acronym, an
-        unsupported run of two or more capitalised words, or an unsupported
-        name standing where an employer stands ("at X", "for X") **drops** the
-        item. A single other unsupported capitalised word ("Senior", "Remote",
-        an unfamiliar product) **keeps** it and raises a question. Month names
-        and plainly English words are exempt, figures are compared after
-        normalising separators ("1,000" = "1000"), non-Latin capitals count
-        (Unicode-aware), and a claimed duration is judged against the envelope
-        (earliest start to latest end) of the stated periods.
-        **Known limit, by design:** a lowercase technology name ("kotlin") or a
-        composite assembled from two facts' tokens ("Northwind" from one fact,
-        "Payments" from another) cannot be caught deterministically in prose;
-        there is no technology list. Employer, period and institution are
-        structured fields with their own cited facts, which is where
-        recombination is caught.
-  - [ ] A rejected item never reaches the user as content: it is dropped, and a
-        clarifying question (F-005) is raised in its place.
+  - [ ] **Prose asks, structure drops (ADR-025).** The summary and bullet text
+        are never deleted for what they say. They are checked best-effort
+        against the text of the cited facts plus the target role, and an
+        unsupported name, acronym, number, technology or duration raises a
+        priority-1 question on that field naming what is unsupported; the
+        drafted text stays. Figures are compared after normalising separators
+        ("1,000" = "1000"), non-Latin capitals count, and a duration is
+        supported only when a cited fact states it. **Known limit, by
+        design:** this is a flag, not a proof. Names with an internal capital
+        ("eBay"), names in uncased scripts, lowercase technologies, numerals
+        written as words and possessives can pass unflagged, and a faithful
+        rewording ("Python 3" for "Python 3.11") can be flagged; both are
+        acceptable because the outcome is only ever a question. There is no
+        technology list. Employer, period, institution, skills and contact
+        fields are structured, each with its own cited facts, and that is
+        where invention and recombination are caught and removed.
+  - [ ] A structured item that is rejected never reaches the user as content:
+        it is dropped, and a clarifying question (F-005) is raised in its
+        place. Prose is not rejected; it stays, with its question beside it.
   - [ ] Every bullet point, every date, and the summary carry the ids of the
         facts they rest on; `GET /api/cvs/:id` exposes them so the UI can show
         the user the source quote behind any line.

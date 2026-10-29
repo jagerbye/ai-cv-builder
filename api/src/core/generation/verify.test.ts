@@ -31,7 +31,7 @@ const base = (over: Partial<CvDraft> = {}): CvDraft => ({
 });
 
 describe('verify — citation rule (ADR-002)', () => {
-  it('drops a bullet with empty factIds and raises a missing-reason question on its path', () => {
+  it('keeps a bullet with empty factIds and raises a priority-1 missing-reason question on its path (ADR-025 Amendment A)', () => {
     const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2019, built APIs')];
     const draft = base({
       experience: [
@@ -49,10 +49,13 @@ describe('verify — citation rule (ADR-002)', () => {
       ],
     });
     const r = verify(draft, facts);
-    expect(r.dropped.map((d) => d.path)).toEqual(['experience[0].bullets[0]']);
-    expect(r.accepted.experience[0].bullets).toEqual([{ text: 'Built APIs at Acme Ltd', factIds: ['f1'] }]);
+    expect(r.dropped).toEqual([]);
+    expect(r.accepted.experience[0].bullets).toEqual([
+      { text: 'Built APIs at Acme Ltd', factIds: [] },
+      { text: 'Built APIs at Acme Ltd', factIds: ['f1'] },
+    ]);
     expect(r.questions).toContainEqual(
-      expect.objectContaining({ path: 'experience[0].bullets[0].text', reason: 'missing' }),
+      expect.objectContaining({ path: 'experience[0].bullets[0].text', reason: 'missing', priority: 1 }),
     );
   });
 
@@ -280,7 +283,7 @@ describe('verify — entity rule against the entry\'s own facts (spec §3.4, ADR
     expect(r.accepted.experience[0].bullets).toEqual([{ text: 'Built payments for Acme Ltd', factIds: ['f2'] }]);
   });
 
-  it('drops a bullet naming an organisation that appears only in a fact neither the bullet nor its parent cites', () => {
+  it('keeps and flags a bullet naming an organisation that appears only in a fact neither the bullet nor its parent cites', () => {
     const facts = [
       fact('f1', 'Backend engineer at Acme Ltd, 2019', 'employment'),
       fact('f2', 'Built billing tools', 'achievement'),
@@ -299,13 +302,15 @@ describe('verify — entity rule against the entry\'s own facts (spec §3.4, ADR
       ],
     });
     const r = verify(draft, facts);
-    expect(r.dropped.map((d) => d.path)).toEqual(['experience[0].bullets[0]']);
+    // ADR-025: prose is never deleted; the unsupported organisation raises a priority-1 question instead.
+    expect(r.dropped).toEqual([]);
+    expect(r.accepted.experience[0].bullets.map((b) => b.text)).toEqual(['Built billing tools at Google']);
     expect(r.questions).toContainEqual(
-      expect.objectContaining({ path: 'experience[0].bullets[0].text', reason: 'unverifiable' }),
+      expect.objectContaining({ path: 'experience[0].bullets[0].text', reason: 'unverifiable', priority: 1, text: expect.stringContaining('Google') }),
     );
   });
 
-  it('drops a bullet whose number no cited fact contains, and matches 20 % against 20%', () => {
+  it('keeps a bullet whose number no cited fact contains and asks; 20 % matches 20%', () => {
     const facts = [fact('f1', 'Backend engineer at Acme Ltd, cut costs by 20% in 2021', 'employment')];
     const draft = base({
       experience: [
@@ -323,14 +328,15 @@ describe('verify — entity rule against the entry\'s own facts (spec §3.4, ADR
       ],
     });
     const r = verify(draft, facts);
-    expect(r.dropped.map((d) => d.path)).toEqual(['experience[0].bullets[0]']);
-    expect(r.accepted.experience[0].bullets.map((b) => b.text)).toEqual(['Cut costs by 20 %']);
+    expect(r.dropped).toEqual([]);
+    expect(r.accepted.experience[0].bullets.map((b) => b.text)).toEqual(['Cut costs by 25%', 'Cut costs by 20 %']);
     expect(r.questions).toContainEqual(
-      expect.objectContaining({ path: 'experience[0].bullets[0].text', reason: 'unverifiable' }),
+      expect.objectContaining({ path: 'experience[0].bullets[0].text', reason: 'unverifiable', priority: 1, text: expect.stringContaining('25') }),
     );
+    expect(r.questions.some((q) => q.path === 'experience[0].bullets[1].text')).toBe(false);
   });
 
-  it('questions a bullet naming one unheld capitalised technology (ADR-024 tier 2), and matches PostgreSQL case-insensitively', () => {
+  it('questions a bullet naming an unheld capitalised technology, and matches PostgreSQL case-insensitively', () => {
     const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2021, stored orders in PostgreSQL')];
     const draft = base({
       experience: [
@@ -667,32 +673,32 @@ describe('verify — purity and contract', () => {
   });
 });
 
-describe('verify — ADR-022 Amendment A: an invented entity drops the summary, a vague one does not', () => {
+describe('verify — ADR-025: an unsupported phrase in the summary is kept and flagged, never deleted', () => {
   const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2019-2024'), fact('f2', 'Built payments APIs in Go')];
-  const dropsSummary = (text: string, detail: RegExp) => {
+  const flagsSummary = (text: string, detail: RegExp) => {
     const r = verify(base({ summary: { text, factIds: ['f1', 'f2'] } }), facts);
-    expect(r.accepted.summary).toBeUndefined();
-    expect(r.dropped).toEqual([expect.objectContaining({ path: 'summary', reason: expect.stringMatching(detail) })]);
-    expect(r.questions).toEqual([expect.objectContaining({ path: 'summary.text', reason: 'unverifiable' })]);
+    expect(r.accepted.summary).toEqual({ text, factIds: ['f1', 'f2'] });
+    expect(r.dropped).toEqual([]);
+    expect(r.questions).toEqual([expect.objectContaining({ path: 'summary.text', reason: 'unverifiable', priority: 1, text: expect.stringMatching(detail) })]);
   };
 
-  it('drops a summary naming an organisation no cited fact holds', () => {
-    dropsSummary('Senior engineer with a decade at Google', /Google/);
+  it('keeps and flags a summary naming an organisation no cited fact holds', () => {
+    flagsSummary('Senior engineer with a decade at Google', /Google/);
   });
 
-  it('drops a summary naming a legal-suffix organisation no cited fact holds', () => {
-    dropsSummary('Backend engineer formerly at Globex Corp', /Globex Corp/);
+  it('keeps and flags a summary naming a legal-suffix organisation no cited fact holds', () => {
+    flagsSummary('Backend engineer formerly at Globex Corp', /Globex/);
   });
 
-  it('keeps a summary naming one unheld capitalised technology and asks (ADR-024 tier 2; no technology list)', () => {
+  it('keeps a summary naming an unheld capitalised technology and asks (no technology list)', () => {
     const r = verify(base({ summary: { text: 'Backend engineer who ships Kubernetes platforms', factIds: ['f1', 'f2'] } }), facts);
     expect(r.dropped).toEqual([]);
     expect(r.accepted.summary).toBeDefined();
     expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text' }));
   });
 
-  it('drops a summary stating a figure no cited fact holds', () => {
-    dropsSummary('Backend engineer who reached 99% accuracy', /99%/);
+  it('keeps and flags a summary stating a figure no cited fact holds', () => {
+    flagsSummary('Backend engineer who reached 99% accuracy', /99%/);
   });
 
   it('keeps a summary that is merely vague or woolly, with its question', () => {

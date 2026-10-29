@@ -1,8 +1,11 @@
 // verify(draft, facts): the groundedness gate (spec §3.4, ADR-002, ADR-013). Pure and deterministic:
 // no LLM, no clock, no randomness. Drafts and facts are never mutated.
+// ADR-025: every structured claim (experience entry, education entry, skill, contact field) is grounded in a cited fact
+// or it is dropped; prose (summary, bullet text) is never dropped: an unsupported phrase, or a missing citation, is
+// flagged with a question and the text is kept.
 import type { CvDraft, DroppedItem, Fact, VerificationResult } from './types.js';
 import { planQuestions, type PlannedQuestion, type QuestionReason } from './questions.js';
-import { ambiguousName, containsPeriod, containsText, containsToken, hasDerivedDuration, unsupportedEntity } from './verify-entities.js';
+import { containsPeriod, containsText, containsToken, unsupportedPhrase } from './verify-entities.js';
 
 interface Failure {
   reason: Exclude<QuestionReason, 'vague'>;
@@ -15,18 +18,6 @@ function resolveCited(factIds: string[], byId: Map<string, Fact>): { facts: Fact
   const unknown = factIds.filter((id) => !byId.has(id));
   if (unknown.length > 0) return { reason: 'unverifiable', detail: `unknown factIds: ${unknown.join(', ')}` };
   return { facts: factIds.map((id) => byId.get(id)!) };
-}
-
-// Citation rule for bullets, summary and skills: every item cites facts, each id must exist, and the
-// item's entities must occur in its own cited facts plus the inherited facts of its parent entry
-// (ADR-002 amendment, one level of parent to child only).
-function checkCited(text: string, factIds: string[], byId: Map<string, Fact>, inherited: readonly Fact[] = [], role = ''): Failure | null {
-  const resolved = resolveCited(factIds, byId);
-  if (!('facts' in resolved)) return resolved;
-  const cited = [...resolved.facts, ...inherited].map((f) => f.text);
-  const entity = unsupportedEntity(text, cited, [role]);
-  if (entity !== null) return { reason: 'unverifiable', detail: `${entity} not in cited facts` };
-  return null;
 }
 
 function questionText(path: string, reason: QuestionReason): string {
@@ -52,28 +43,43 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
   const dropped: DroppedItem[] = [];
   const candidates: PlannedQuestion[] = [];
 
-  // Missing and unverifiable drops are priority 2; employer and period drops are priority 1 (see below).
-  // `path` is the dropped item's own spelling (DroppedItem.path). `questionPath` names the FIELD the question is
-  // about (C-006 path grammar), so the editor can align the question beside it.
-  const checkItem = (
-    path: string,
-    text: string,
-    factIds: string[],
-    inherited: readonly Fact[] = [],
-    questionPath: string = path,
-  ): boolean => {
-    const f = checkCited(text, factIds, byId, inherited, draft.targetRole);
-    if (f === null) {
-      // ADR-024 tier 2: a single ambiguous capitalised word keeps the item and asks. The lie is removed, the doubt shown.
-      const resolved = resolveCited(factIds, byId);
-      const cited = 'facts' in resolved ? [...resolved.facts, ...inherited].map((x) => x.text) : [];
-      if (ambiguousName(text, cited, [draft.targetRole]) !== null) {
-        candidates.push({ path: questionPath, text: questionText(questionPath, 'unverifiable'), reason: 'unverifiable', priority: 2 });
-      }
-      return true;
+  // ADR-025: prose (summary, bullet text) is never deleted for what it says. A phrase the cited facts do not support
+  // (a name, a figure, a technology, a duration) raises a priority-1 question beside the field and the text stays.
+  // `questionPath` names the FIELD the question is about (C-006 path grammar), so the editor can align it.
+  const flagProse = (questionPath: string, text: string, cited: readonly Fact[]): void => {
+    const phrase = unsupportedPhrase(text, cited.map((f) => f.text), [draft.targetRole]);
+    if (phrase === null) return;
+    candidates.push({
+      path: questionPath,
+      text: `The drafted text contains ${phrase}, which the cited source does not support. Is it correct?`,
+      reason: 'unverifiable',
+      priority: 1,
+    });
+  };
+
+  // A bullet is checked against its own facts plus its parent entry's facts (one level, ADR-002). A bullet that
+  // cites nothing, or an unknown fact, is KEPT and asked about (priority 1, ADR-025 Amendment A): prose is never deleted.
+  const checkBullet = (text: string, factIds: string[], inherited: readonly Fact[], questionPath: string): void => {
+    const resolved = resolveCited(factIds, byId);
+    if (!('facts' in resolved)) {
+      candidates.push({ path: questionPath, text: questionText(questionPath, resolved.reason), reason: resolved.reason, priority: 1 });
+      return;
     }
-    dropped.push({ path, reason: f.detail });
-    candidates.push({ path: questionPath, text: questionText(questionPath, f.reason), reason: f.reason, priority: 2 });
+    flagProse(questionPath, text, [...resolved.facts, ...inherited]);
+  };
+
+  // A skill is a discrete claim, like an institution: a cited fact must hold its name, else it is dropped.
+  const checkSkill = (i: number, name: string, factIds: string[]): boolean => {
+    const path = `skills[${i}]`;
+    const resolved = resolveCited(factIds, byId);
+    const failure: Failure | null = !('facts' in resolved)
+      ? resolved
+      : someFactHolds(resolved.facts, (t) => containsText(t, name))
+        ? null
+        : { reason: 'unverifiable', detail: `skill "${name}" not in cited facts` };
+    if (failure === null) return true;
+    dropped.push({ path, reason: failure.detail });
+    candidates.push({ path: `${path}.name`, text: questionText(`${path}.name`, failure.reason), reason: failure.reason, priority: 2 });
     return false;
   };
 
@@ -135,28 +141,13 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
     accepted.education.push({ ...edu, factIds: [...edu.factIds] });
   });
 
-  // ADR-022 + Amendment A: a summary that fails is kept and flagged (one editable field, a CV needs a head)
-  // UNLESS what fails is an invented entity (an organisation, a figure, a named technology no cited fact holds):
-  // that is a lie, not a woolly phrase, and it is dropped with its question. The entity check is the one bullets use.
+  // ADR-025: the summary is prose. It always stays; one that cites nothing, or an unknown fact, is asked about
+  // (priority 2), and one the cited facts do not support is flagged (priority 1).
   if (draft.summary !== undefined) {
     const resolved = resolveCited(draft.summary.factIds, byId);
-    const cited = 'facts' in resolved ? resolved.facts.map((f) => f.text) : [];
-    const entity = 'facts' in resolved ? unsupportedEntity(draft.summary.text, cited, [draft.targetRole]) : null;
-    if (entity !== null) {
-      dropped.push({ path: 'summary', reason: `${entity} not in cited facts` });
-      candidates.push({ path: 'summary.text', text: questionText('summary.text', 'unverifiable'), reason: 'unverifiable', priority: 2 });
-    } else {
-      // A duration derived from stated periods (ADR-023) is kept and asked about, like any derivation.
-      const failure: Failure | null = !('facts' in resolved)
-        ? resolved
-        : hasDerivedDuration(draft.summary.text, cited) || ambiguousName(draft.summary.text, cited, [draft.targetRole]) !== null
-          ? { reason: 'unverifiable', detail: 'derived quantity or ambiguous name' }
-          : null;
-      if (failure !== null) {
-        candidates.push({ path: 'summary.text', text: questionText('summary.text', failure.reason), reason: failure.reason, priority: 2 });
-      }
-      accepted.summary = { text: draft.summary.text, factIds: [...draft.summary.factIds] };
-    }
+    if ('facts' in resolved) flagProse('summary.text', draft.summary.text, resolved.facts);
+    else candidates.push({ path: 'summary.text', text: questionText('summary.text', resolved.reason), reason: resolved.reason, priority: 2 });
+    accepted.summary = { text: draft.summary.text, factIds: [...draft.summary.factIds] };
   }
 
   draft.experience.forEach((entry, i) => {
@@ -192,16 +183,16 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
       candidates.push({ path: `${p}.role`, text: questionText(`${p}.role`, 'vague'), reason: 'vague', priority: 3 });
     }
 
-    // A bullet is checked against its own facts plus its parent entry's facts (one level, ADR-002).
-    const bullets = entry.bullets
-      .filter((b, j) => checkItem(`${p}.bullets[${j}]`, b.text, b.factIds, resolved.facts, `${p}.bullets[${j}].text`))
-      .map((b) => ({ text: b.text, factIds: [...b.factIds] }));
+    const bullets = entry.bullets.map((b, j) => {
+      checkBullet(b.text, b.factIds, resolved.facts, `${p}.bullets[${j}].text`);
+      return { text: b.text, factIds: [...b.factIds] };
+    });
 
     accepted.experience.push({ ...entry, factIds: [...entry.factIds], bullets });
   });
 
   accepted.skills = draft.skills
-    .filter((s, i) => checkItem(`skills[${i}]`, s.name, s.factIds, [], `skills[${i}].name`))
+    .filter((s, i) => checkSkill(i, s.name, s.factIds))
     .map((s) => ({ ...s, factIds: [...s.factIds] }));
 
   return { accepted, questions: planQuestions(candidates), dropped };

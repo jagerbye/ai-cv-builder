@@ -1,11 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { verify } from './verify.js';
-import { unsupportedEntity, ambiguousName } from './verify-entities.js';
+import { unsupportedPhrase } from './verify-entities.js';
 import type { CvDraft, Fact } from './types.js';
 
-// ADR-024 probes. Three silent holes (an invented entity kept with no question) and five over-fires (a legitimate
-// summary deleted), plus the duration check the reviewer's mutation found untested. Two tiers: an unsupported
-// multi-token capitalised sequence or acronym DROPS; a single ambiguous capitalised word raises a QUESTION.
+// ADR-024 probes, restated under ADR-025: prose is never deleted. A flagged phrase in a summary or bullet raises a
+// priority-1 question and the drafted text stays; the detector is best-effort and its known limits are documented.
 
 const fact = (id: string, text: string): Fact => ({ id, kind: 'employment', text, sourceQuote: text, source: 'document' });
 const base = (over: Partial<CvDraft> = {}): CvDraft => ({ targetRole: 'Senior engineer', experience: [], education: [], skills: [], ...over });
@@ -18,9 +17,8 @@ const bulletOf = (text: string, facts: Fact[]) =>
     }),
     facts,
   );
-// Flagged at either tier: dropped (unsupportedEntity) or questioned (ambiguousName).
 const flagged = (text: string, cited: string[], allowed: string[] = ['Senior engineer']) =>
-  unsupportedEntity(text, cited, allowed) ?? ambiguousName(text, cited, allowed);
+  unsupportedPhrase(text, cited, allowed);
 
 describe('ADR-024 silent holes', () => {
   it('1. sentence-initial invented name is checked: "Stripe-backed engineer ..." is flagged', () => {
@@ -28,6 +26,10 @@ describe('ADR-024 silent holes', () => {
     expect(flagged('Stripe-backed engineer with five years building payments', cited)).toContain('Stripe');
     const r = summaryOf('Stripe-backed engineer building payments', [fact('f1', cited[0])]);
     expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text' }));
+  });
+
+  it('1a. KNOWN LIMIT: a plain-looking invented name that opens a sentence is not flagged (every English word is capitalised there)', () => {
+    expect(flagged('Stripe engineer building payments', ['Backend engineer at Acme Ltd, 2015-2020, built payments'])).toBeNull();
   });
 
   it('1b. a sentence-initial word the facts hold, and plain English openers, stay silent', () => {
@@ -42,10 +44,11 @@ describe('ADR-024 silent holes', () => {
     expect(flagged('Worked at Ørsted', ['Engineer at Ørsted, 2019'])).toBeNull();
   });
 
-  it('2b. a non-ASCII multi-token invented organisation DROPS', () => {
+  it('2b. a non-ASCII multi-token invented organisation is KEPT and questioned', () => {
     const r = summaryOf('Worked with Ørsted Wind Power daily', [fact('f1', 'Platform engineer, 2019')]);
-    expect(r.accepted.summary).toBeUndefined();
-    expect(r.dropped.map((d) => d.path)).toContain('summary');
+    expect(r.accepted.summary).toBeDefined();
+    expect(r.dropped).toEqual([]);
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 1 }));
   });
 
   it('3. TECHNOLOGIES is gone: a lowercase technology name is not claimed to be caught (documented limit)', () => {
@@ -82,12 +85,15 @@ describe('ADR-024 over-fires: a legitimate summary is not deleted', () => {
     expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text' }));
   });
 
-  it('D. "1000 users served" is supported by a fact saying "1,000 users"; a different figure still drops', () => {
+  it('D. "1000 users served" is supported by a fact saying "1,000 users"; a different figure is questioned', () => {
     const f = [fact('f1', 'Engineer at Acme, 2019, served 1,000 users')];
-    expect(summaryOf('Engineer with 1000 users served', f).dropped).toEqual([]);
-    expect(summaryOf('Engineer with 10,000 users served', f).dropped.map((d) => d.path)).toContain('summary');
+    expect(summaryOf('Engineer with 1000 users served', f).questions).toEqual([]);
+    const other = summaryOf('Engineer with 10,000 users served', f);
+    expect(other.dropped).toEqual([]);
+    expect(other.accepted.summary).toBeDefined();
+    expect(other.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 1 }));
     const g = [fact('f1', 'Engineer at Acme, 2019, served 1000 users')];
-    expect(summaryOf('Engineer with 1,000 users served', g).dropped).toEqual([]);
+    expect(summaryOf('Engineer with 1,000 users served', g).questions).toEqual([]);
   });
 
   it('E. a bullet "Shipped a feature in a year" with no stated period is kept', () => {
@@ -97,52 +103,52 @@ describe('ADR-024 over-fires: a legitimate summary is not deleted', () => {
   });
 });
 
-describe('ADR-024 tiers', () => {
-  it('an unsupported multi-token capitalised sequence DROPS (injection shape)', () => {
+describe('ADR-025: prose asks, it never drops', () => {
+  it('an unsupported multi-token capitalised sequence is kept and questioned (the injection shape)', () => {
     const r = summaryOf('Engineer at Northwind Payments', [fact('f1', 'Engineer at Acme, 2019')]);
-    expect(r.accepted.summary).toBeUndefined();
-    expect(r.dropped.map((d) => d.path)).toContain('summary');
+    expect(r.accepted.summary?.text).toBe('Engineer at Northwind Payments');
+    expect(r.dropped).toEqual([]);
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 1, text: expect.stringContaining('Northwind') }));
   });
 
-  it('an unsupported acronym DROPS', () => {
+  it('an unsupported acronym is kept and questioned', () => {
     const r = summaryOf('Engineer who built the QXR ledger', [fact('f1', 'Engineer at Acme, 2019')]);
-    expect(r.accepted.summary).toBeUndefined();
+    expect(r.accepted.summary).toBeDefined();
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 1 }));
   });
 
-  it('a single doubtful word in a bullet keeps the bullet and raises a question', () => {
+  it('a doubtful word in a bullet keeps the bullet and raises a priority-1 question', () => {
     const r = bulletOf('Built Zentrio dashboards', [fact('f1', 'Backend engineer at Acme Ltd, 2019, built dashboards')]);
     expect(r.dropped).toEqual([]);
-    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'experience[0].bullets[0].text' }));
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'experience[0].bullets[0].text', priority: 1 }));
   });
 
-  it('"…a decade at Stripe": dropped with no Stripe fact, kept with one', () => {
+  it('"…a decade at Stripe": kept and questioned with no Stripe fact; silent with one that states the duration', () => {
     const none = summaryOf('Senior engineer with a decade at Stripe', [fact('f1', 'Backend engineer at Acme Ltd, 2014-2024')]);
-    expect(none.accepted.summary).toBeUndefined();
-    const some = summaryOf('Senior engineer with a decade at Stripe', [fact('f1', 'Senior engineer at Stripe, 2014-2024')]);
+    expect(none.accepted.summary).toBeDefined();
+    expect(none.dropped).toEqual([]);
+    expect(none.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 1 }));
+    const some = summaryOf('Senior engineer with a decade at Stripe', [fact('f1', 'Senior engineer at Stripe, a decade')]);
     expect(some.dropped).toEqual([]);
-    expect(some.accepted.summary).toBeDefined();
+    expect(some.questions).toEqual([]);
   });
 });
 
-describe('ADR-024 durations: envelope of the stated periods', () => {
-  it('a claimed duration LONGER than the stated span is dropped (mutation: durationSupported -> true was green)', () => {
+describe('ADR-025 durations: any duration a fact does not state verbatim is asked about', () => {
+  it('a duration longer than the stated span is kept and questioned', () => {
     const f = [fact('f1', 'Engineer at Acme Ltd, 2019-2021')];
     const r = summaryOf('Engineer with a decade of experience at Acme Ltd', f);
-    expect(r.accepted.summary).toBeUndefined();
-    expect(r.dropped.map((d) => d.path)).toContain('summary');
-    expect(unsupportedEntity('Engineer with a decade at Acme Ltd', ['Engineer at Acme Ltd, 2019-2021'])).toContain('duration');
+    expect(r.accepted.summary).toBeDefined();
+    expect(r.dropped).toEqual([]);
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 1 }));
+    expect(unsupportedPhrase('Engineer with a decade at Acme Ltd', ['Engineer at Acme Ltd, 2019-2021'])).toContain('decade');
   });
 
-  it('a real ten-year career with a gap is kept (sum of periods was 8)', () => {
+  it('a duration the periods would derive is still asked about, and the text stays', () => {
     const f = [fact('f1', 'Engineer at Acme Ltd, 2010-2014'), fact('f2', 'Engineer at Acme Ltd, 2016-2020')];
     const r = summaryOf('Engineer with a decade at Acme Ltd', f);
     expect(r.dropped).toEqual([]);
     expect(r.accepted.summary).toBeDefined();
-  });
-
-  it('overlapping periods are not double-counted (sum was 10, envelope is 6)', () => {
-    const f = [fact('f1', 'Engineer at Acme Ltd, 2019-2024'), fact('f2', 'Engineer at Acme Ltd, 2020-2025')];
-    const r = summaryOf('Engineer with a decade at Acme Ltd', f);
-    expect(r.accepted.summary).toBeUndefined();
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 1 }));
   });
 });

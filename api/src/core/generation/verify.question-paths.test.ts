@@ -55,6 +55,13 @@ describe('verify — question paths name the field (QA-05, C-006 path grammar)',
     expect(r.questions[0]).toMatchObject({ path: 'summary.text', reason: 'missing' });
   });
 
+  it('a skill whose name no cited fact holds is STILL dropped with its question (ADR-025 Amendment A)', () => {
+    const r = verify(base({ skills: [{ name: 'Kubernetes', factIds: ['f1'] }] }), facts);
+    expect(r.dropped.map((d) => d.path)).toEqual(['skills[0]']);
+    expect(r.accepted.skills).toEqual([]);
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'skills[0].name', reason: 'unverifiable' }));
+  });
+
   it('skill with unknown citations raises skills[3].name (unverifiable), index preserved', () => {
     const skills = [
       { name: 'Alpha', factIds: [] },
@@ -87,16 +94,18 @@ describe('verify — question paths name the field (QA-05, C-006 path grammar)',
       ],
     };
     const r = verify(base({ experience: [entry] }), facts);
-    expect(r.dropped.map((d) => d.path)).toEqual(['experience[0].bullets[2]']);
+    expect(r.dropped).toEqual([]);
+    expect(r.accepted.experience[0].bullets).toHaveLength(3);
     expect(pathsOf(r)).toEqual(['experience[0].bullets[2].text']);
-    expect(r.questions[0]).toMatchObject({ path: 'experience[0].bullets[2].text', reason: 'unverifiable' });
+    expect(r.questions[0]).toMatchObject({ path: 'experience[0].bullets[2].text', reason: 'unverifiable', priority: 1 });
   });
 
   it('bullet with no citations raises experience[0].bullets[0].text (missing)', () => {
     const entry = { ...validEntry, bullets: [{ text: 'Built APIs at Acme Ltd', factIds: [] }] };
     const r = verify(base({ experience: [entry] }), facts);
+    expect(r.dropped).toEqual([]);
     expect(pathsOf(r)).toEqual(['experience[0].bullets[0].text']);
-    expect(r.questions[0]).toMatchObject({ reason: 'missing' });
+    expect(r.questions[0]).toMatchObject({ reason: 'missing', priority: 1 });
   });
 
   it('education period that no cited fact holds raises education[0].period (missing, priority 1)', () => {

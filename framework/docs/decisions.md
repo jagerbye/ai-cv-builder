@@ -57,6 +57,20 @@ Format — newest on top, one block per decision:
   says is false is worse than code with a stated limit); a model-based entity
   check (a second model's opinion is not evidence, and ADR-002 requires the
   verifier to be deterministic).
+- **Amendment A (same day, from the review).** Two consequences of the rule
+  that the rule itself had not reached.
+  1. **An uncited bullet is prose too.** The verifier still deleted a bullet
+     whose citations were empty or pointed at an unknown fact — and a bullet is
+     prose, so that contradicted this ADR inside its own implementation. It is
+     kept with a priority-1 question saying it cites no source. One rule and no
+     exception: an exception would have to be explained in three files, and
+     this ADR exists so the guarantee fits in two sentences.
+  2. **A skill keeps the strong guarantee, aliases and all.** Skills are
+     structured items, so an unsupported one is still removed — which means a
+     draft writing "JS" against a fact saying "JavaScript" loses a true skill,
+     with a question raised. No alias dictionary: this build has just paid
+     three rounds to learn what a closed list costs, and a synonym table is the
+     same object with a different name.
 - **Consequences:** the guarantee is now stated in two sentences a reader can
   check — *every structured claim is grounded in a cited fact or it is gone;
   every unsupported phrase in prose is flagged where the user will see it* —

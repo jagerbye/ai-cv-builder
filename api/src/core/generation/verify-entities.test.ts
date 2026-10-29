@@ -1,50 +1,50 @@
 import { describe, it, expect } from 'vitest';
-import { ambiguousName, unsupportedEntity } from './verify-entities.js';
+import { unsupportedPhrase } from './verify-entities.js';
 
-// ADR-023: the vocabulary is the text of the cited facts. No list of organisations is consulted, so an organisation
-// nobody enumerated is flagged exactly like one everybody has heard of. The stoplist is about English only.
+// ADR-023/025: the vocabulary is the text of the cited facts. No list of organisations is consulted. The detector is
+// best-effort and only ever feeds a QUESTION on prose; it never decides a deletion.
 
-describe('unsupportedEntity — closed world over the cited facts (ADR-023)', () => {
+describe('unsupportedPhrase — closed world over the cited facts', () => {
   it('returns null when every capitalised name in the text is held by a cited fact', () => {
-    expect(unsupportedEntity('Backend engineer at Acme Ltd', ['Backend engineer at Acme Ltd, 2019'])).toBeNull();
+    expect(unsupportedPhrase('Backend engineer at Acme Ltd', ['Backend engineer at Acme Ltd, 2019'])).toBeNull();
   });
 
-  it('flags an organisation no cited fact names, though it is on no list (the defect ADR-023 deletes)', () => {
-    const r = unsupportedEntity('Senior engineer at Stripe', ['Senior engineer, 2019']);
-    expect(r).not.toBeNull();
+  it('flags an organisation no cited fact names, though it is on no list', () => {
+    const r = unsupportedPhrase('Senior engineer at Stripe', ['Senior engineer, 2019']);
     expect(r).toContain('Stripe');
   });
 
   it('treats a listed and an unlisted organisation alike', () => {
-    const listed = unsupportedEntity('Senior engineer at Google', ['Senior engineer, 2019']);
-    const unlisted = unsupportedEntity('Senior engineer at Stripe', ['Senior engineer, 2019']);
-    expect(listed).not.toBeNull();
-    expect(unlisted).not.toBeNull();
+    expect(unsupportedPhrase('Senior engineer at Google', ['Senior engineer, 2019'])).not.toBeNull();
+    expect(unsupportedPhrase('Senior engineer at Stripe', ['Senior engineer, 2019'])).not.toBeNull();
   });
 
   it('flags an unlisted acronym that no cited fact contains', () => {
-    const r = unsupportedEntity('Built the QXR ledger', ['Built the ledger']);
-    expect(r).not.toBeNull();
-    expect(r).toContain('QXR');
+    expect(unsupportedPhrase('Built the QXR ledger', ['Built the ledger'])).toContain('QXR');
   });
 
-  it('flags a made-up product name that no cited fact contains (single word: tier 2, a question)', () => {
-    const r = ambiguousName('Built Zentrio dashboards', ['Built dashboards']);
-    expect(r).not.toBeNull();
-    expect(r).toContain('Zentrio');
+  it('flags a made-up product name that no cited fact contains', () => {
+    expect(unsupportedPhrase('Built Zentrio dashboards', ['Built dashboards'])).toContain('Zentrio');
   });
 
   it('accepts a made-up product name that a cited fact holds', () => {
-    expect(unsupportedEntity('Built Zentrio dashboards', ['Built Zentrio dashboards'])).toBeNull();
+    expect(unsupportedPhrase('Built Zentrio dashboards', ['Built Zentrio dashboards'])).toBeNull();
   });
 
-  it('does not treat sentence-initial capitals as entities (stoplist, ADR-023 point 2)', () => {
-    expect(unsupportedEntity('Built payments. Mentored juniors.', ['Built payments and mentored juniors'])).toBeNull();
+  it('does not treat sentence-initial English openers as entities', () => {
+    expect(unsupportedPhrase('Built payments. Mentored juniors.', ['Built payments and mentored juniors'])).toBeNull();
   });
 
-  it('flags a figure no cited fact holds, as ADR-022 requires', () => {
-    const r = unsupportedEntity('Led 200 engineers', ['Led a team']);
-    expect(r).not.toBeNull();
-    expect(r).toContain('200');
+  it('flags a figure no cited fact holds', () => {
+    expect(unsupportedPhrase('Led 200 engineers', ['Led a team'])).toContain('200');
+  });
+
+  it('flags a duration no cited fact states verbatim, even when the periods would derive it', () => {
+    const r = unsupportedPhrase('Engineer with five years at Acme Ltd', ['Engineer at Acme Ltd, 2019-2024']);
+    expect(r).toContain('five years');
+  });
+
+  it('accepts a duration a cited fact states verbatim', () => {
+    expect(unsupportedPhrase('Engineer with five years at Acme Ltd', ['Engineer at Acme Ltd, five years'])).toBeNull();
   });
 });

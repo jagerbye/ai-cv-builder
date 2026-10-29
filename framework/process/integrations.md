@@ -63,5 +63,5 @@ believes it needs an MCP integration here has misread its brief.
 ## Degradation
 
 MCP tool missing or key absent → the flow continues file-only (backlog.md,
-design-tokens.json) and the Orchestrator tells the owner what to configure.
+design.json) and the Orchestrator tells the owner what to configure.
 Integration is an amplifier, never a blocker.

@@ -67,10 +67,22 @@ overwrite STATE.md, so any session can be compacted or restarted losslessly.
 
 - `framework/scripts/gate.sh` — THE definition of green (hooks, CI and agents all run
   it); project commands go in `framework/scripts/gate.config.sh` (see example file).
-- `framework/scripts/check-lane.sh <base> <allowlist>` — mechanical lane-isolation
-  check; reviewer and Integrator run it, violations fail the lane.
+- `framework/scripts/check-lane.sh <base> '<glob>' ['<glob>'...]` (globs from the
+  brief, quoted) or `check-lane.sh <base> -f <allowlist-file>` (one glob per
+  line) — mechanical lane-isolation check over tracked AND untracked files;
+  reviewer and Integrator run it, violations fail the lane. Passing globs
+  where `-f` expects a file, or the reverse, is a loud error, not an empty
+  allowlist.
+- `framework/scripts/wave.sh start|status|end` — Orchestrator runs `start`
+  before the first lane of a parallel wave (gate becomes lane-scoped: lint +
+  the brief's exported `GATE_LANE_TEST`); Integrator runs `end` after the last
+  merge (marker removed, FULL gate forced). Forgotten `start` = every lane
+  red on its neighbours' work; forgotten `end` = the weak gate forever.
 - Hooks in `.claude/settings.json`: fast check after every edit, full gate
-  before a turn may end. CI (`.github/workflows/ci.yml`) runs the same gate.
+  before a turn may end, and — while a wave is in flight — `git add -A` /
+  `commit -a` refused (`hook-pretool.sh`). CI (`.github/workflows/ci.yml`)
+  runs the same gate; it never sees the wave marker, so it is always full.
+- `framework/README.md` is the map of this directory for a reader arriving cold.
 
 ## Non-negotiable rules (always in force)
 
@@ -86,8 +98,8 @@ overwrite STATE.md, so any session can be compacted or restarted losslessly.
 
 1. Tests written first and failing, then code, then tests green (TDD loop in
    `framework/process/sprint-playbook.md` §3).
-2. `typecheck`, `lint`, `test`, `build` green (hooks in `.claude/settings.json`
-   enforce part of this automatically).
+2. `typecheck`, `lint`, `test`, `build`, `smoke` green — i.e. `gate.sh` green
+   (hooks in `.claude/settings.json` enforce part of this automatically).
 3. Docs touched by the change updated in the same change (`docs-sync` rule).
 4. New non-obvious failure + fix recorded in `framework/knowledge/errors.md`.
 5. Report written where the playbook says (lane file / sprint report).

@@ -45,8 +45,11 @@ Owner (human)
 
 ## Escalation
 
-Any agent that is blocked (missing info, contract conflict, failing twice on
-the same step) STOPS and reports to the Orchestrator — it does not improvise.
-The Orchestrator either resolves it from docs, escalates to the Architect, or
-asks the owner. Two failed attempts = escalation, always (see model-routing
-for the escalation ladder).
+Any agent that is blocked STOPS and reports to the Orchestrator with the kind
+of block — `blockedOn: code | brief | decision | dependency` — and does not
+improvise. Only `code` goes up the model ladder (model-routing.md); a brief
+goes back to the Teamlead, a decision or a missing dependency to the
+Architect, usually as an ADR. Reporting a block is a successful step. A
+block is valid only for what the agent's allowlist or brief cannot settle: a
+defect in a file it owns is its task. Two failed attempts on the same step
+= a `code` block, always.

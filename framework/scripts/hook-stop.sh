@@ -3,6 +3,8 @@
 # A red gate blocks the stop (exit 2) and hands the failure back to the
 # agent. stop_hook_active guard prevents an infinite block loop: the agent
 # gets exactly one forced attempt to fix the gate per turn.
+# During a wave gate.sh is lane-scoped (gate.config.sh + wave.sh), so this
+# hook stops an agent for ITS lane only, never for a neighbour's unfinished work.
 set -u
 cd "$(dirname "$0")/../.."
 input=$(cat)

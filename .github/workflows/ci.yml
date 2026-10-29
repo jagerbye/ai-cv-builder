@@ -37,4 +37,7 @@ jobs:
           node-version: 24
       - run: npm ci
       - run: npx prisma generate --schema api/prisma/schema.prisma
-      - run: bash framework/scripts/gate.sh
+      # CI is a verdict, not a convenience: an absent stack fails the smoke
+      # step instead of skipping it (FF-15).
+      - run: docker compose up -d --wait
+      - run: SMOKE_REQUIRED=1 bash framework/scripts/gate.sh

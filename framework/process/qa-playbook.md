@@ -7,6 +7,28 @@
 > careful human: flows AND design. Findings route to the cheap hotfix loop
 > (`/hotfix`), not back through the full sprint machinery.
 
+## Why this stage exists — and why it must not be the first look
+
+A fully green gate can ship a product nobody can open. Server suites call
+handlers in-process; client suites mock the transport; both are correct at
+their level, and the seam between them — a browser, a web server, a service
+reached over a network — is the one thing neither instantiates. In the first
+project run on this framework that seam was missing entirely (no route from
+the served client to the service), and nearly seven hundred green tests,
+sixty-six reviews and two integration passes could not see it. The manual
+pass found it in minutes. **That is the case for this stage.**
+
+It is also the case against relying on it: the defect entered in the first
+wave and was found at stage 4.5 of the second. Everything built in between
+assumed a seam that did not exist. So the product is opened earlier as well,
+by rule: the bootstrap task (sprint-playbook.md §1) ends with the stack
+composed as it will run, started, and its front door reached through the
+origin a user would use — and with the smoke variables filled so the gate
+can repeat that check; the full gate carries that smoke step, which drives
+the composed stack over the real transport (it never runs under the wave
+marker, so it runs at `wave.sh end` and in CI); and `architecture.md` names
+who owns the seam. QA is the last net, not the only one.
+
 ## When it runs
 
 - **Sprint stage 4.5:** after integration, before the sprint closes — on the
@@ -22,6 +44,12 @@
 - Browser control: the Playwright MCP plugin if installed, else
   claude-in-chrome tools. The QA agent takes SCREENSHOTS and reads them —
   design verdicts come from looking, not from the DOM alone.
+- **Port conflicts: move your own port, never free someone else's.** On a
+  developer machine a busy default port usually belongs to work you cannot
+  see — another project's dev server, up for weeks. No agent kills a process
+  or "frees a port" it did not start. Report the conflict, start on another
+  port (host ports are env-overridable for exactly this reason), and QA
+  against that. A fix-list item that says "free the port" is itself a defect.
 
 ## The pass (per page/flow in scope)
 

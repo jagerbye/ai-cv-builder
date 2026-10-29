@@ -24,17 +24,53 @@
 | hotfix developer | Haiku 5.5 (Sonnet retry) | same ladder, smaller tasks |
 | debug of a stuck lane | Sonnet 5.5 → Fable 5 | see escalation ladder |
 
-## Escalation ladder
+## Escalation ladder — but first, what kind of block is it
 
-1. Haiku fails task → same model, improved brief (the brief is usually the
-   bug), ONE retry.
+Every agent result carries `blockedOn: none | code | brief | decision |
+dependency`. **Only `code` climbs the ladder.** The other three are not
+capability failures and a stronger model cannot resolve them; they stop the
+task and go to the Orchestrator as a one-line question (brief → Teamlead,
+decision/dependency → Architect, usually an ADR).
+
+1. `blockedOn: code` on a cheap model → same model, improved brief (the brief
+   is usually the bug), ONE retry. This rung needs someone who can rewrite
+   the brief; the sprint runner (`.claude/workflows/sprint.js`) cannot, so
+   it skips to rung 2 and reports a second failure with both reports.
 2. Fails again → Sonnet 5.5 with the full failure history in the prompt.
 3. Sonnet fails → Orchestrator stops the lane, involves Architect: a task
    that defeats Sonnet is almost always mis-decomposed or under-specified,
    not "too hard".
 
-Every escalation is logged in the lane file: it is a signal about task
-quality, and `/retro` aggregates these signals.
+`ok=false` with `blockedOn: none` is read as `code`: a failure that names
+no cause is a capability failure until something says otherwise. The other
+reading — "not a block, not a failure" — drops the task on the floor.
+
+Why the field comes first: in the first project run on this framework, once
+the ladder was wired through `blockedOn`, **not one task returned
+`blockedOn: code` across two waves and three fix rounds.** Rung 2 was never
+used. Every block was a brief or a decision — a dependency missing from the
+approved list, a rule contradicting its own fixture, a lane test command
+sweeping a sibling's suite — and four of them became ADRs instead of
+improvised rules. Before the field existed, the same blocks were sent up the
+ladder and paid a second model to be told the same thing. Treat an escalation
+as a signal about the brief until proven otherwise.
+
+Two costs, both real:
+- **Latency.** A blocked task stalls its lane until the Orchestrator's next
+  pass; the runner does not yet skip to the lane's next independent task.
+  Answer blocks promptly, and keep lanes short enough that a stall is cheap.
+- **Misuse.** Agents reach for `blockedOn` for defects in files they own —
+  typically their own test files, which they treat as off-limits. The rule
+  in the brief template: a block is valid only for what the allowlist or the
+  brief cannot settle; a defect inside the allowlist is the task. The
+  Orchestrator sends such a block straight back, without a tier change.
+
+A reviewer rejection is not a block and not an escalation: it opens the fix
+cycle (sprint-playbook §3) — one developer pass on the next tier with the
+structured fix-list, then a re-review of that list item by item.
+
+Every escalation and every block is logged in the lane file with its kind:
+it is a signal about task quality, and `/retro` aggregates these signals.
 
 ## Token-economy rules
 

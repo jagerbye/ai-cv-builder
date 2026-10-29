@@ -1,5 +1,5 @@
 {
-  "_comment": "The enforcement layer. All checks route through scripts/ so hooks, CI and agents agree on what 'green' means. Define this project's commands in scripts/gate.config.sh (see gate.config.example.sh); until then the scripts no-op and nothing blocks.",
+  "_comment": "The enforcement layer. All checks route through framework/scripts/ so hooks, CI and agents agree on what 'green' means. Define this project's commands in framework/scripts/gate.config.sh (see gate.config.example.sh); until then the scripts no-op and nothing blocks. PreToolUse: while a wave is in flight (wave.sh start), all-inclusive git add/commit -a is refused so one task's commit cannot sweep other lanes' work.",
   "permissions": {
     "deny": [
       "Read(./.env)",
@@ -8,6 +8,17 @@
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash framework/scripts/hook-pretool.sh"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",

@@ -28,9 +28,21 @@ async function stackUp(): Promise<boolean> {
 }
 
 const up = await stackUp();
-if (!up) {
-  console.warn(`smoke: SKIPPED — nothing answers at ${WEB}. Run \`docker compose up -d --wait\` to run this suite.`);
+
+// A smoke check that passes because it did not run is the silent pass this
+// suite exists to prevent (FF-15). Skipping is a convenience for a developer
+// with nothing started; where the result is a verdict — CI, or anyone who sets
+// SMOKE_REQUIRED — an absent stack is a failure, not a skip.
+const required = (process.env.SMOKE_REQUIRED ?? '') !== '';
+if (!up && !required) {
+  console.warn(`smoke: SKIPPED — nothing answers at ${WEB}. Run \`docker compose up -d --wait\` to run this suite, or set SMOKE_REQUIRED=1 to make its absence a failure.`);
 }
+
+describe.runIf(!up && required)('stack smoke (required)', () => {
+  it('finds the stack running', () => {
+    expect.unreachable(`SMOKE_REQUIRED is set and nothing answers at ${WEB}: start the stack before the gate.`);
+  });
+});
 
 // Users created by this suite, by the ids the register response returned (E-005).
 const createdUserIds: string[] = [];

@@ -39,11 +39,28 @@
   never diffs or file dumps. If a report is unclear, send a follow-up
   message to the same agent instead of reading the code yourself.
 - **Parallelize only independent work.** Agents whose files or contracts
-  overlap run sequentially or in worktrees (see merge-policy.md).
-- **Escalation ladder, not retry loops.** Same failure twice on a cheap
-  model → re-brief once; still failing → escalate one model tier with the
-  failure history in the brief (see model-routing.md). Never let an agent
-  grind >2 attempts on the same error.
+  overlap run sequentially (see merge-policy.md, Mode B).
+- **A parallel wave is bracketed, and you hold the opening bracket.** Before
+  the first lane's first brief goes out: `framework/scripts/wave.sh start`,
+  and note it in the sprint plan. Every lane brief exports `GATE_LANE_TEST`
+  (sprint-playbook.md §2) — that is what the lane-scoped gate runs. The
+  Integrator holds the closing bracket (`wave.sh end`, after the last merge);
+  before you open stage 4.5 or end the session, `wave.sh status` must say
+  "none". Every lane failing the same way, and the stronger model failing
+  the same way after it, is not many hard tasks: check `wave.sh status`
+  before you escalate anything.
+- **Read the kind of block before you escalate.** A result's `blockedOn`
+  decides the next actor: `code` → the ladder; `brief` → Teamlead;
+  `decision` or `dependency` → Architect. A stronger model cannot settle a
+  decision, and in practice almost every block is one. The ladder has two
+  shapes, by who drives: the sprint runner (`.claude/workflows/sprint.js`)
+  goes ONE tier up with the failure history — a script cannot rewrite a
+  brief — and a second failure comes back to you with both reports; when
+  you hand-drive a task, re-brief once first (the brief is usually the
+  bug), then one tier up. `ok=false` with `blockedOn: none` is a `code`
+  failure that named no cause, not a block to route — the runner treats it
+  so. A reviewer rejection opens the fix cycle, not the ladder. Never let an
+  agent grind >2 attempts on one error.
 
 ## Context budget per role (guideline)
 

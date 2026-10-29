@@ -114,7 +114,7 @@ CVB-12 (the groundedness guarantee).
 
 | Issue | Backlog | Summary | Status | Est |
 |---|---|---|---|---|
-| CVB-26 | B-024 | Harvest this build into the ai-dev-framework template | To Do — runs at project end, single pass | 2h |
+| CVB-26 | B-024 | Harvest this build into the ai-dev-framework template | To Do — runs now, single pass | 2h |
 
 Nine findings are already logged with evidence in
 `framework/knowledge/framework-feedback.md` (FF-01…FF-06): the runner ignoring
@@ -125,6 +125,24 @@ the bootstrap-task pattern missing from the playbook, check-lane being blind to
 untracked files, lane allowlists that fail their own task, and "free the port"
 as a remedy on a shared machine. Entries are added when hit, not reconstructed
 later; they are APPLIED once, at project end (owner's decision 2026-10-28).
+
+## Sprint 001 — QA stage 4.5 and the fixes it forced
+
+| Issue | Finding | Severity | Status |
+|---|---|---|---|
+| CVB-32 | QA-01 the browser had no route to the api at all | blocker | Ready for test |
+| CVB-33 | QA-02/03/09 no front door, a list that never fetched, sign-in losing the destination | blocker | Ready for test |
+| CVB-34 | QA-04 a 503 left the client on a stale version and locked all saving | blocker | Ready for test |
+| CVB-35 | QA-05/15 question paths, and cards placed in API order instead of their fields' | major | Ready for test |
+| CVB-36 | QA-06/07/08/11/12/13 clipped text, overlapping header, native controls, four containers | visual | Ready for test |
+| CVB-37 | QA-10/14 a failed job left the CV generating, and nothing reconciled a crash | major | Ready for test |
+| CVB-38 | ADR-019 the suite stops sharing a database with the app | — | Ready for test |
+
+**QA found what 691 green tests could not**, and that is the sprint's most
+useful result: the api suites call the server in-process and the web suites
+mock fetch, so nobody ever opened the product. Two rounds of re-check later all
+fifteen findings are fixed, the gate has a sixth step that loads the real app
+over HTTP, and the gate passes **10 of 10 consecutive serial runs**.
 
 ## Parked
 

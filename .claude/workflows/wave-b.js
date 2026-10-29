@@ -14,13 +14,13 @@ export const meta = {
   ],
 }
 
-const BASE = 'e65f3b9'
+const BASE = '57e76e8'
 const SPRINT = 'framework/sprints/SPRINT-001-skeleton-auth/'
 
 const PREAMBLE = [
   'Project root: /Users/mike/Desktop/www/ai-cv-builder. Sprint: ' + SPRINT,
   'Base ref for check-lane.sh: ' + BASE + '. Commits before it are wave A and are not your lane.',
-  'ALWAYS ALLOWED, in addition to the files your task names: your own lane log, plan.md, and any doc the docs-sync rule requires for a change you actually made. Judging a lane for touching those is a false failure.',
+  'ALWAYS ALLOWED, in addition to the files your task names: your own lane log, plan.md, any doc the docs-sync rule requires for a change you actually made, and anything under .claude/ or .gitignore (the Orchestrator\'s runner, not lane work). Judging a lane for touching those is a false failure.',
   'GREEN MEANS YOUR LANE. Four other lanes are editing this same tree right now. Run the gate as: GATE_LANE_TEST=\'<your lane test command>\' bash framework/scripts/gate.sh — it then runs database + lint + your tests, which is the whole definition of green for you. NEVER run the root test command, and never report red for a failure in a file your task does not own; the Integrator runs the union afterwards.',
   'Tests need the database: export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ai_cv_builder before running vitest by hand. The gate does this for you; a bare vitest run does not.',
   'If your blocker is a decision, a missing dependency, or a rule the frozen contracts cannot express, STOP and say so plainly in your report with blockedOn set. Do not improvise, and do not write yourself an ADR — ADRs are the architect\'s. "Blocked, and here is exactly why" is a successful step, not a failed one.',

@@ -6,33 +6,42 @@
 
 ## Now
 
-- **Phase:** sprint 01 — wave A complete (15/15 approved), integrating the union
-- **Current focus:** Integrator resolving two cross-lane conflicts; then wave B.
+- **Phase:** sprint 01 — waves 0, A and B all complete and integrated.
+- **Green:** `bash framework/scripts/gate.sh` ✓ on three consecutive full runs
+  (api 534 passed / 5 skipped, web 157 passed). No wave marker in the tree.
+- **Current focus:** manual QA, then the sprint close.
 
 ## In flight
 
-- Integrator (Fable): web route-registry tests that pinned the placeholder
-  state, and the `.env.example` strictness test vs `WEB_PORT`
+- One lane fixing the rate-limit suite's leaked queued jobs (E-004's root
+  cause; the persist suite is already immune).
 
 ## Waiting on
 
-- **Owner:** `ANTHROPIC_API_KEY` in `.env` before sprint 2 (sprint 1 needs no key)
-- **Owner (optional):** overrule any A-01…A-06 inference in `assumptions.md`
+- **Owner:** `ANTHROPIC_API_KEY` in `.env` — the suite needs none, a real
+  end-to-end generation does.
 
 ## Next 3 actions
 
-1. Read the runner's result; `needsAttention` goes back to its lane with a
-   corrected brief before integration.
-2. Integrator merges six lanes, union of tests after each; commit per task.
-3. Wave B (T-20…T-23), QA, report, retro. LAST: B-024 — port
-   `knowledge/framework-feedback.md` to the template in one pass.
+1. QA per `framework/process/qa-playbook.md`: real browser, functional +
+   visual, 1440×900 and 375×812, screenshots into `qa-report.md`.
+2. Sprint report + `framework/sprints/HISTORY.md` + `/retro`.
+3. LAST: B-024 / CVB-26 — port `framework/knowledge/framework-feedback.md`
+   (FF-01…FF-13) into `~/Desktop/www/ai-dev-framework` in ONE pass.
 
 ## Recent decisions (this week only)
 
-- ADR-002 — groundedness = extract → compose(facts only) → deterministic verify
+- ADR-002/013 — groundedness = extract → compose(facts only) → deterministic
+  verify; entries cite their own facts, employer and period must co-occur
 - ADR-004 — Postgres `SKIP LOCKED` is the queue; no Redis, no broker
-- ADR-005 — PDF via `@react-pdf/renderer`, no headless Chrome
-- ADR-008 — trimmed ceremony: 3 sprints, QA after sprints 2 and 3, one retro
 - ADR-009 — Jira is virtual (`framework/sprints/board.md`, key CVB)
-- ADR-010/011 — toolchain belongs in the dependency list; six parallel lanes,
-  worktrees unavailable at lane granularity
+- ADR-011 — lanes are disjoint file sets; worktrees unavailable per lane
+- ADR-012 — Node 24 LTS, argon2id from the standard library
+- ADR-014 — the job-queue suite lock is a helper with a guard test
+- ADR-015 — answering a question bumps the CV's version (C-008's token)
+
+## Open, owned by nobody yet
+
+- 5 container tests skipped until the api image is built
+  (`tests/contract/auth-session-container.test.ts`)
+- Facts are stored but no UI shows them yet (B-022, parked)

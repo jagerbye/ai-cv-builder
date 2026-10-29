@@ -30,6 +30,7 @@ const prisma = new PrismaClient();
 let suiteLock: JobSuiteLock;
 let clock: { t: number };
 let app: FastifyInstance;
+const userIds: string[] = [];
 
 function chars(n: number): string {
   const unit = 'Built payment APIs for retail clients in a team of six. ';
@@ -41,6 +42,7 @@ const INVALID_CREATE = JSON.stringify({});
 
 async function seedUser(): Promise<string> {
   const userId = randomUUID();
+  userIds.push(userId);
   const token = randomBytes(32).toString('base64url');
   await prisma.user.create({
     data: { id: userId, email: `hardening-rl-${userId}@example.test`, passwordHash: 'not-a-real-hash' },
@@ -97,6 +99,8 @@ beforeAll(async () => {
 }, JOB_SUITE_LOCK_WAIT_MS);
 
 afterAll(async () => {
+  // Users cascade to sessions, cvs and generation_jobs. Runs under the suite lock, before release.
+  if (userIds.length > 0) await prisma.user.deleteMany({ where: { id: { in: userIds } } });
   await prisma.$disconnect();
   await suiteLock.release();
 });

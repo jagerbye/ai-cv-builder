@@ -270,3 +270,28 @@ is nowhere in the playbook.
   Better still, the sprint runner writes one allowlist file per lane from
   plan.md, so the brief and the check read the same source.
 - Status: open
+
+## FF-13 "The Orchestrator commits per task" is a promise nothing enforces (found 2026-10-29, severity: process)
+
+- Evidence: ADR-009 in this project (and `framework/process/merge-policy.md` in
+  the template) says one commit per finished task, written by the Orchestrator.
+  During wave B the Orchestrator ran `git add -A` to commit an ADR, and swept
+  five lanes' approved-but-uncommitted work into a commit whose message
+  describes only the ADR. Caught by reading `git show --stat`, not by anything
+  in the framework.
+- Why it is structural, not carelessness: a wave by design leaves the tree full
+  of other lanes' finished work — that is what "lanes share one tree, the
+  Integrator merges" means. So the one command every agent reaches for first is
+  precisely the command that violates the rule, and the violation is invisible
+  at the moment it happens.
+- What it cost here: a 3 000-line commit whose message names one decision;
+  recovered with `git reset --mixed` and four coherent commits, which is only
+  possible because nothing had been pushed.
+- Proposed fix: the sprint runner writes each lane's file list (it already has
+  the allowlist file — FF-12), and the Orchestrator commits with
+  `git add --pathspec-from-file`, never `-A`, during a wave. A pre-commit hook
+  can refuse `git add -A` while `framework/scripts/.wave-in-flight` exists.
+  Also state in merge-policy.md that files one task could not separate — a
+  wiring file several tasks edit — are committed together with the reason in
+  the message, rather than split into commits that do not build.
+- Status: open

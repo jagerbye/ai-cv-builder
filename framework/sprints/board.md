@@ -76,14 +76,14 @@ Added during the wave, not in the original plan:
 
 | Issue | Task | Lane | Summary | Status | Est |
 |---|---|---|---|---|---|
-| CVB-17 | T-20 | 07 | Answer → user fact → section-scoped recompose (C-009) | To Do | 3h |
-| CVB-29 | T-26 | 07 | Regenerate, userEdited survives (C-010) | To Do | 2h |
-| CVB-19 | T-21 | 08 | Rate limits, error envelope installed, one session guard | To Do | 2h |
-| CVB-15b | T-22 | 09 | CV editor: every field, add/delete/reorder, version | To Do | 3h |
-| CVB-30 | T-27 | 09 | Questions beside the fields they ask about | To Do | 2h |
-| CVB-20 | T-23 | 10 | README and clean-clone verification | To Do | 2h |
+| CVB-17 | T-20 | 07 | Answer → user fact → section-scoped recompose (C-009) | Ready for test | 3h |
+| CVB-29 | T-26 | 07 | Regenerate, userEdited survives (C-010) | Ready for test | 2h |
+| CVB-19 | T-21 | 08 | Rate limits, error envelope installed, one session guard | Ready for test | 2h |
+| CVB-15b | T-22 | 09 | CV editor: every field, add/delete/reorder, version | Ready for test | 3h |
+| CVB-30 | T-27 | 09 | Questions beside the fields they ask about | Ready for test | 2h |
+| CVB-20 | T-23 | 10 | README and clean-clone verification | Ready for test | 2h |
 | CVB-28 | T-25 | 11 | Job-queue test helper and its guard test (ADR-014) | Ready for test | 1h |
-| CVB-31 | T-28 | 12 | The worker persists what it generates, and the app starts it | To Do | 3h |
+| CVB-31 | T-28 | 12 | The worker persists what it generates, and the app starts it | Ready for test | 3h |
 
 **CVB-31 is scope nobody wrote down.** `core/jobs/worker.ts` runs extract →
 compose → verify and then writes only the job row; its own comment says "the
@@ -93,6 +93,12 @@ hole was invisible until T-26's regenerate test asserted that the old employer
 was gone after the worker ran, and it was not. The README already says
 generation does not run end to end; this is the task that makes that sentence
 false.
+
+**Wave B is complete — seven issues, each reviewed and approved, union gate
+green on three consecutive full runs (api 534 + web 157).** The three defects
+that only the union could see are in the sprint report: two tests that pinned a
+sibling lane's temporary shape, and one "flake" that turned out to be a
+reproducible failure hidden by a silent catch in the worker (E-004).
 
 **C-010 regenerate was frozen in sprint 3's contracts and implemented by no
 wave-A lane** — `core/cv/merge.ts` exists for it, the route does not. It joins

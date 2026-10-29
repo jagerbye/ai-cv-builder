@@ -48,7 +48,8 @@ describe('CV editor — PATCH carries the version from the last read (C-008)', (
     const api = installApi([cvA()]);
     const release = api.planPatch({ kind: 'apply' }, true);
     mountEditor('/cvs/cv-1');
-    commit(await screen.findByRole('textbox', { name: 'Location' }), 'Bristol');
+    const contact = await screen.findByRole('region', { name: 'Contact' });
+    commit(within(contact).getByRole('textbox', { name: 'Location' }), 'Bristol');
     expect(await screen.findByText('Saving…')).toBeTruthy();
     release();
     expect(await screen.findByText('Saved')).toBeTruthy();
@@ -64,9 +65,10 @@ describe('CV editor — 409 VERSION_CONFLICT (C-008, design: conflict_409)', () 
     const other = cvA();
     other.version = 9;
     other.contact.email = 'other@device.example';
-    api.setServer('cv-1', other);
     mountEditor('/cvs/cv-1');
-    commit(await screen.findByRole('textbox', { name: 'Email' }), 'my-typed@example.com');
+    const email = await screen.findByRole('textbox', { name: 'Email' });
+    api.setServer('cv-1', other);
+    commit(email, 'my-typed@example.com');
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain(CONFLICT_COPY);
     expect(within(alert).getByRole('button', { name: 'Reload latest' })).toBeTruthy();
@@ -84,9 +86,10 @@ describe('CV editor — 409 VERSION_CONFLICT (C-008, design: conflict_409)', () 
     const other = cvA();
     other.version = 9;
     other.contact.email = 'other@device.example';
-    api.setServer('cv-1', other);
     mountEditor('/cvs/cv-1');
-    commit(await screen.findByRole('textbox', { name: 'Email' }), 'my-typed@example.com');
+    const email = await screen.findByRole('textbox', { name: 'Email' });
+    api.setServer('cv-1', other);
+    commit(email, 'my-typed@example.com');
     const reload = await screen.findByRole('button', { name: 'Reload latest' });
     reload.click();
     await waitFor(() => expect(api.gets()).toHaveLength(2));
@@ -99,9 +102,9 @@ describe('CV editor — 409 VERSION_CONFLICT (C-008, design: conflict_409)', () 
     const api = installApi([cvA()]);
     const other = cvA();
     other.version = 9;
-    api.setServer('cv-1', other);
     mountEditor('/cvs/cv-1');
     const experience = await screen.findByRole('region', { name: 'Experience' });
+    api.setServer('cv-1', other);
     within(within(experience).getAllByRole('article')[1]).getByRole('button', { name: 'Delete' }).click();
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain(CONFLICT_COPY);

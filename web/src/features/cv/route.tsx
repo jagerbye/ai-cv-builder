@@ -31,10 +31,24 @@ function CvPage({ id }: { id: string }) {
     // A 4xx is an answer, not a blip: only transport failures are retried.
     retry: (failureCount, error) => failureCount < 2 && !(error instanceof ApiError),
   });
-  if (query.isPending) return <p className="cv-message">Loading the CV…</p>;
+  // Every state of /cvs/:id carries a heading: a slow or failed request still
+  // leaves the user something to orient on, and the route registry proves it.
+  if (query.isPending) {
+    return (
+      <section className="screen-message">
+        <h1>Your CV</h1>
+        <p role="status">Loading the CV…</p>
+      </section>
+    );
+  }
   if (query.isError) {
     const message = query.error instanceof ApiError ? query.error.message : GENERIC_MESSAGE;
-    return <p className="cv-message">{message}</p>;
+    return (
+      <section className="screen-message">
+        <h1>CV unavailable</h1>
+        <p role="alert">{message}</p>
+      </section>
+    );
   }
   // A new read remounts the editor, so a reload shows the stored version only.
   return <CvEditor key={query.dataUpdatedAt} cv={query.data} onReload={() => void query.refetch()} />;

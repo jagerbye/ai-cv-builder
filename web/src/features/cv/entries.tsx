@@ -13,16 +13,22 @@ export function ExperienceList({ items, onChange }: { items: CvExperience[]; onC
     <>
       {items.map((entry, i) => (
         <article key={entry.id} className="cv-entry">
-          <Field label="Employer" value={entry.employer} onCommit={(v) => set(i, { employer: v })} />
-          <Field label="Role" value={entry.role} onCommit={(v) => set(i, { role: v })} />
-          <Field label="Period" value={entry.period} onCommit={(v) => set(i, { period: v })} />
-          <Field label="Location" value={entry.location ?? ''} onCommit={(v) => set(i, { location: v })} />
+          <Field label="Employer" path={`experience[${i}].employer`} value={entry.employer} onCommit={(v) => set(i, { employer: v })} />
+          <Field label="Role" path={`experience[${i}].role`} value={entry.role} onCommit={(v) => set(i, { role: v })} />
+          <Field label="Period" path={`experience[${i}].period`} value={entry.period} onCommit={(v) => set(i, { period: v })} />
+          <Field
+            label="Location"
+            path={`experience[${i}].location`}
+            value={entry.location ?? ''}
+            onCommit={(v) => set(i, { location: v })}
+          />
           <ul className="cv-bullets">
             {entry.bullets.map((bullet, j) => (
               <li key={bullet.id} className="cv-bullet">
                 <Field
                   label="Bullet"
                   multiline
+                  path={`experience[${i}].bullets[${j}].text`}
                   value={bullet.text}
                   onCommit={(v) =>
                     setBullets(
@@ -33,7 +39,7 @@ export function ExperienceList({ items, onChange }: { items: CvExperience[]; onC
                 />
                 <div className="cv-actions">
                   <button type="button" className="cv-button" disabled={j === 0} onClick={() => setBullets(i, move(entry.bullets, j, -1))}>
-                    Move up
+                    Move bullet up
                   </button>
                   <button
                     type="button"
@@ -41,10 +47,10 @@ export function ExperienceList({ items, onChange }: { items: CvExperience[]; onC
                     disabled={j === entry.bullets.length - 1}
                     onClick={() => setBullets(i, move(entry.bullets, j, 1))}
                   >
-                    Move down
+                    Move bullet down
                   </button>
                   <button type="button" className="cv-button" onClick={() => setBullets(i, remove(entry.bullets, j))}>
-                    Delete
+                    Delete bullet
                   </button>
                 </div>
               </li>
@@ -85,9 +91,9 @@ export function EducationList({ items, onChange }: { items: CvEducation[]; onCha
     <>
       {items.map((entry, i) => (
         <article key={entry.id} className="cv-entry">
-          <Field label="Institution" value={entry.institution} onCommit={(v) => set(i, { institution: v })} />
-          <Field label="Degree" value={entry.degree ?? ''} onCommit={(v) => set(i, { degree: v })} />
-          <Field label="Period" value={entry.period} onCommit={(v) => set(i, { period: v })} />
+          <Field label="Institution" path={`education[${i}].institution`} value={entry.institution} onCommit={(v) => set(i, { institution: v })} />
+          <Field label="Degree" path={`education[${i}].degree`} value={entry.degree ?? ''} onCommit={(v) => set(i, { degree: v })} />
+          <Field label="Period" path={`education[${i}].period`} value={entry.period} onCommit={(v) => set(i, { period: v })} />
           <div className="cv-actions">
             <button type="button" className="cv-button" disabled={i === 0} onClick={() => onChange(move(items, i, -1))}>
               Move up
@@ -131,6 +137,7 @@ export function SkillList({
           <li key={skill.id} className="cv-skill">
             <Field
               label="Skill"
+              path={`skills[${i}].name`}
               value={skill.name}
               onCommit={(v) => onChange(items.map((s, k) => (k === i ? { ...s, name: v } : s)))}
             />

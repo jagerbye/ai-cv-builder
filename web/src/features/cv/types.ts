@@ -32,6 +32,12 @@ export interface CvSkill {
   factIds: string[];
   userEdited: boolean;
 }
+export interface CvQuestion {
+  id: string;
+  path: string;
+  text: string;
+  status: 'open' | 'answered' | 'dismissed';
+}
 export interface CvContact {
   fullName?: string;
   email?: string;
@@ -56,7 +62,7 @@ export interface CvDto {
   experience: CvExperience[];
   education: CvEducation[];
   skills: CvSkill[];
-  questions: unknown[];
+  questions: CvQuestion[];
   facts: unknown[];
 }
 

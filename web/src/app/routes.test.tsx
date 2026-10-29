@@ -9,9 +9,10 @@
 //   so the registry is now proven by rendering the real screens (see the
 //   SPRINT-001 integration notes). The router itself is never edited again.
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, cleanup } from '@testing-library/react';
+import { render, cleanup, waitFor, within } from '@testing-library/react';
 import type { ComponentType } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { cvA, installApi } from '../features/cv/testkit';
 
 const FEATURES = ['auth', 'intake', 'generation', 'cv'] as const;
 type Feature = (typeof FEATURES)[number];
@@ -21,15 +22,19 @@ const sample = (path: string) => path.replace(/:[A-Za-z_]+/g, 'test-id').replace
 
 // What each real screen must put on the page when mounted at its own path.
 // Structural markers, not copy: the feature suites own the wording.
+// The cv marker is the editor's Experience section. The error and pending states
+// of /cvs/:id have no such section, so it proves the loaded editor rendered.
 const SCREEN_MARKER: Record<Feature, string> = {
   auth: 'form',
   intake: 'form',
   generation: '[role="status"], [role="alert"]',
-  cv: 'h1',
+  cv: '#cv-section-experience',
 };
 
 // Screens may call the API on mount; the network is the only external and is
 // stubbed with the C-000 NOT_FOUND envelope so nothing leaves the process.
+// The cv route is the exception: it is stubbed with a successful C-006 read
+// (testkit's installApi) so the loaded editor, not its error state, is mounted.
 function stubNetwork() {
   const body = JSON.stringify({ error: { code: 'NOT_FOUND', message: 'No such route.' } });
   vi.stubGlobal(
@@ -109,7 +114,8 @@ describe('web route registry (T-05, CVB-5)', () => {
   });
 
   it.each(FEATURES)('resolving a %s path yields a component that renders the real %s screen', async (feature) => {
-    stubNetwork();
+    if (feature === 'cv') installApi([{ ...cvA(), id: 'test-id' }]);
+    else stubNetwork();
     const { routes, resolveRoute } = await loadRegistry();
     const entry = routes.find((r: { feature: string }) => r.feature === feature);
     expect(entry).toBeDefined();
@@ -118,10 +124,17 @@ describe('web route registry (T-05, CVB-5)', () => {
     expect(hit?.component, `resolving ${pathname}`).toBe(entry!.component);
 
     const { container } = mountAt(pathname, hit!.component);
+    // The cv query resolves after mount; the other screens render synchronously.
+    await waitFor(() =>
+      expect(container.querySelector(SCREEN_MARKER[feature]), `${feature} screen marker`).not.toBeNull(),
+    );
     // Not the T-05 placeholder any more: a real screen with its own landmark.
     expect(container.innerHTML).not.toBe('');
     expect(container.textContent?.trim().length).toBeGreaterThan(0);
-    expect(container.querySelector(SCREEN_MARKER[feature]), `${feature} screen marker`).not.toBeNull();
+    if (feature === 'cv') {
+      // The stored CV's contact value, so the editor shows the server's data.
+      expect(within(container).getByRole('textbox', { name: 'Full name' })).toHaveProperty('value', 'Ana Lovelace');
+    }
   });
 
   it('resolves every declared route path to its own feature entry', async () => {

@@ -176,13 +176,128 @@
   margin: 0 0 var(--space-3);
 }
 
-.cv-message {
-  padding: var(--space-6) var(--space-gutter-mobile);
-  color: var(--color-text-secondary);
-}
-
 @media (min-width: 600px) {
   .cv-page {
     padding: var(--space-8) var(--space-gutter-desktop);
+  }
+}
+
+/* T-27 questions beside their fields. Amber is for questions only; red is for
+   errors only (framework/docs/design/design.json). */
+.cv-field-question {
+  border-left: var(--border-rule) solid var(--color-question-rule);
+  padding-left: var(--space-3);
+}
+
+.cv-question {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-hairline) solid var(--color-question-border);
+  border-left: var(--border-rule) solid var(--color-question-rule);
+  border-radius: var(--radius-sm);
+  background: var(--color-question-bg);
+  color: var(--color-text-primary);
+  transition: opacity var(--motion-duration-slow) var(--motion-easing);
+}
+
+.cv-question-answered {
+  opacity: 0.55;
+}
+
+.cv-question-eyebrow {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line-height);
+  font-weight: var(--text-label-weight);
+  color: var(--color-question-text);
+}
+
+.cv-question-text {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+  font-weight: var(--text-body-strong-weight);
+}
+
+.cv-question-label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-line-height);
+  font-weight: var(--text-label-weight);
+}
+
+.cv-question textarea {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-hairline) solid var(--color-border-input);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-family: var(--font-document);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+}
+
+.cv-question textarea:focus {
+  border-color: var(--color-accent-default);
+  box-shadow: var(--shadow-focus);
+  outline: none;
+}
+
+.cv-question-status {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line-height);
+  color: var(--color-success-text);
+}
+
+.cv-question-notice {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line-height);
+  color: var(--color-text-secondary);
+}
+
+.cv-question-error {
+  margin: var(--space-2) 0;
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line-height);
+  color: var(--color-danger-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cv-question {
+    transition: none;
+  }
+}
+
+@media (min-width: 900px) {
+  .cv-page {
+    max-width: var(--space-content-max);
+  }
+
+  .cv-sheet {
+    position: relative;
+  }
+
+  .cv-layout {
+    display: grid;
+    grid-template-columns: minmax(0, var(--space-document-max)) var(--space-questions-column);
+    gap: var(--space-8);
+    align-items: start;
+  }
+
+  .cv-questions {
+    position: relative;
+  }
+
+  .cv-questions .cv-question {
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin: 0;
   }
 }

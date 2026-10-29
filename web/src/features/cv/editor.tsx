@@ -1,9 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { ApiError, GENERIC_MESSAGE, apiFetch } from '../../api/client';
 import { Field } from './fields';
 import { EducationList, ExperienceList, SkillList } from './entries';
 import { toDraft, toWire } from './draft';
-import type { CvDraft, CvDto, CvPatch, Section } from './types';
+import {
+  QuestionCard,
+  QuestionColumn,
+  QuestionScopeContext,
+  fieldPathsOf,
+  sectionOf,
+  useTwoColumn,
+  type AnswerKind,
+  type QuestionScope,
+} from './questions';
+import type { CvDraft, CvDto, CvPatch, CvQuestion, Section } from './types';
 
 interface SectionError {
   messages: string[];
@@ -18,9 +28,15 @@ export function CvEditor({ cv, onReload }: { cv: CvDto; onReload: () => void }) 
   const [saved, setSaved] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<Section, SectionError>>>({});
+  const [questions, setQuestions] = useState<CvQuestion[]>(cv.questions);
+  const [answers, setAnswers] = useState<Record<string, AnswerKind>>({});
+  const [skipped, setSkipped] = useState<Record<string, true>>({});
   const versionRef = useRef(cv.version);
   const blockedRef = useRef(false);
   const chain = useRef<Promise<void>>(Promise.resolve());
+  const answering = useRef(new Set<string>());
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const twoColumn = useTwoColumn();
 
   useEffect(() => {
     if (!saved) return;
@@ -64,97 +80,173 @@ export function CvEditor({ cv, onReload }: { cv: CvDto; onReload: () => void }) 
     enqueue(section, toWire(section, value) as CvDraft[Section]);
   }
 
+  // C-009. The answer is posted to the question, never PATCHed. On success only the
+  // section the question's path belongs to takes the server's copy; every other
+  // section, and every userEdited field, keeps its node and its value.
+  async function answerQuestion(q: CvQuestion, text: string) {
+    if (answering.current.has(q.id)) return;
+    answering.current.add(q.id);
+    setAnswers((a) => ({ ...a, [q.id]: 'busy' }));
+    try {
+      const next = await apiFetch<CvDto>(`/cvs/${cv.id}/questions/${q.id}/answer`, {
+        method: 'POST',
+        body: { answer: text },
+      });
+      versionRef.current = next.version;
+      setQuestions(next.questions);
+      const section = sectionOf(q.path);
+      if (section) setDraft((d) => ({ ...d, [section]: toDraft(next)[section] }) as CvDraft);
+      setAnswers((a) => ({ ...a, [q.id]: 'answered' }));
+    } catch (err) {
+      const kind: AnswerKind =
+        err instanceof ApiError && err.status === 409
+          ? 'conflict'
+          : err instanceof ApiError && err.status === 503
+            ? 'recompose-failed'
+            : 'error';
+      setAnswers((a) => ({ ...a, [q.id]: kind }));
+    } finally {
+      answering.current.delete(q.id);
+    }
+  }
+
+  function finishAnswer(id: string) {
+    setAnswers((a) => {
+      const next = { ...a };
+      delete next[id];
+      return next;
+    });
+  }
+
   const setContact = (patch: Partial<CvDraft['contact']>) => commit('contact', { ...draft.contact, ...patch });
   const retry = (section: Section) => enqueue(section, toWire(section, draft[section]) as CvDraft[Section]);
   const status = pending > 0 ? 'Saving…' : saved ? 'Saved' : '';
 
+  // A question stays while it is open, and while its answer is on screen.
+  const visible = questions.filter((q) => !skipped[q.id] && (q.status === 'open' || answers[q.id] !== undefined));
+  const placed = fieldPathsOf(draft);
+  const openPaths = new Set(visible.map((q) => q.path));
+  const renderCard = (q: CvQuestion, style?: CSSProperties) => (
+    <QuestionCard
+      key={q.id}
+      question={q}
+      kind={answers[q.id]}
+      style={style}
+      onAnswer={(text) => void answerQuestion(q, text)}
+      onDone={() => finishAnswer(q.id)}
+      onSkip={() => setSkipped((s) => ({ ...s, [q.id]: true }))}
+      onReload={onReload}
+    />
+  );
+  const scope: QuestionScope = {
+    inline: !twoColumn,
+    marked: (path) => openPaths.has(path),
+    cardsFor: (path) => visible.filter((q) => q.path === path).map((q) => renderCard(q)),
+  };
+  // Narrow screens put each card under its field. A question whose path has no
+  // field on the page is still shown, after the sheet, rather than dropped.
+  const loose = twoColumn ? [] : visible.filter((q) => !placed.has(q.path));
+
   return (
-    <div className="cv-page">
-      <header className="cv-header">
-        <h1 className="cv-title">{cv.title}</h1>
-        <p className="cv-target">{cv.targetRole}</p>
-        <p role="status" className="cv-status">
-          {status}
-        </p>
-      </header>
-      {conflict && (
-        <div role="alert" className="cv-callout">
-          <p>
-            This CV was changed on another device. Your edits are still shown below; Reload latest replaces them with
-            the saved version.
+    <QuestionScopeContext.Provider value={scope}>
+      <div className="cv-page">
+        <header className="cv-header">
+          <h1 className="cv-title">{cv.title}</h1>
+          <p className="cv-target">{cv.targetRole}</p>
+          <p role="status" className="cv-status">
+            {status}
           </p>
-          <button type="button" className="cv-button" onClick={onReload}>
-            Reload latest
-          </button>
+        </header>
+        {conflict && (
+          <div role="alert" className="cv-callout">
+            <p>
+              This CV was changed on another device. Your edits are still shown below; Reload latest replaces them with
+              the saved version.
+            </p>
+            <button type="button" className="cv-button" onClick={onReload}>
+              Reload latest
+            </button>
+          </div>
+        )}
+        <div className="cv-layout">
+          <div className="cv-sheet" ref={sheetRef}>
+            <section className="cv-section" aria-labelledby="cv-section-contact">
+              <h2 id="cv-section-contact" className="cv-eyebrow">
+                Contact
+              </h2>
+              <Field label="Full name" path="contact.fullName" value={draft.contact.fullName ?? ''} onCommit={(v) => setContact({ fullName: v })} />
+              <Field label="Email" path="contact.email" value={draft.contact.email ?? ''} onCommit={(v) => setContact({ email: v })} />
+              <Field label="Phone" path="contact.phone" value={draft.contact.phone ?? ''} onCommit={(v) => setContact({ phone: v })} />
+              <Field
+                label="Location"
+                path="contact.location"
+                value={draft.contact.location ?? ''}
+                onCommit={(v) => setContact({ location: v })}
+              />
+              <Field
+                label="Links"
+                multiline
+                path="contact.links"
+                value={draft.contact.links.join('\n')}
+                onCommit={(v) =>
+                  setContact({
+                    links: v
+                      .split('\n')
+                      .map((line) => line.trim())
+                      .filter((line) => line !== ''),
+                  })
+                }
+              />
+              <SectionFooter error={errors.contact} onRetry={() => retry('contact')} />
+            </section>
+
+            <section className="cv-section" aria-labelledby="cv-section-summary">
+              <h2 id="cv-section-summary" className="cv-eyebrow">
+                Summary
+              </h2>
+              <Field
+                label="Summary"
+                multiline
+                path="summary.text"
+                value={draft.summary?.text ?? ''}
+                onCommit={(v) => commit('summary', { ...(draft.summary ?? { factIds: [], userEdited: false }), text: v })}
+              />
+              <SectionFooter error={errors.summary} onRetry={() => retry('summary')} />
+            </section>
+
+            <section className="cv-section" aria-labelledby="cv-section-experience">
+              <h2 id="cv-section-experience" className="cv-eyebrow">
+                Experience
+              </h2>
+              <ExperienceList items={draft.experience} onChange={(next) => commit('experience', next)} />
+              <SectionFooter error={errors.experience} onRetry={() => retry('experience')} />
+            </section>
+
+            <section className="cv-section" aria-labelledby="cv-section-education">
+              <h2 id="cv-section-education" className="cv-eyebrow">
+                Education
+              </h2>
+              <EducationList items={draft.education} onChange={(next) => commit('education', next)} />
+              <SectionFooter error={errors.education} onRetry={() => retry('education')} />
+            </section>
+
+            <section className="cv-section" aria-labelledby="cv-section-skills">
+              <h2 id="cv-section-skills" className="cv-eyebrow">
+                Skills
+              </h2>
+              <SkillList
+                items={draft.skills}
+                onAdd={(skill) => setDraft((d) => ({ ...d, skills: [...d.skills, skill] }))}
+                onChange={(next) => commit('skills', next)}
+              />
+              <SectionFooter error={errors.skills} onRetry={() => retry('skills')} />
+            </section>
+          </div>
+          {twoColumn && <QuestionColumn sheetRef={sheetRef} questions={visible} renderCard={renderCard} />}
         </div>
-      )}
-      <div className="cv-sheet">
-        <section className="cv-section" aria-labelledby="cv-section-contact">
-          <h2 id="cv-section-contact" className="cv-eyebrow">
-            Contact
-          </h2>
-          <Field label="Full name" value={draft.contact.fullName ?? ''} onCommit={(v) => setContact({ fullName: v })} />
-          <Field label="Email" value={draft.contact.email ?? ''} onCommit={(v) => setContact({ email: v })} />
-          <Field label="Phone" value={draft.contact.phone ?? ''} onCommit={(v) => setContact({ phone: v })} />
-          <Field label="Location" value={draft.contact.location ?? ''} onCommit={(v) => setContact({ location: v })} />
-          <Field
-            label="Links"
-            multiline
-            value={draft.contact.links.join('\n')}
-            onCommit={(v) =>
-              setContact({
-                links: v
-                  .split('\n')
-                  .map((line) => line.trim())
-                  .filter((line) => line !== ''),
-              })
-            }
-          />
-          <SectionFooter error={errors.contact} onRetry={() => retry('contact')} />
-        </section>
-
-        <section className="cv-section" aria-labelledby="cv-section-summary">
-          <h2 id="cv-section-summary" className="cv-eyebrow">
-            Summary
-          </h2>
-          <Field
-            label="Summary"
-            multiline
-            value={draft.summary?.text ?? ''}
-            onCommit={(v) => commit('summary', { ...(draft.summary ?? { factIds: [], userEdited: false }), text: v })}
-          />
-          <SectionFooter error={errors.summary} onRetry={() => retry('summary')} />
-        </section>
-
-        <section className="cv-section" aria-labelledby="cv-section-experience">
-          <h2 id="cv-section-experience" className="cv-eyebrow">
-            Experience
-          </h2>
-          <ExperienceList items={draft.experience} onChange={(next) => commit('experience', next)} />
-          <SectionFooter error={errors.experience} onRetry={() => retry('experience')} />
-        </section>
-
-        <section className="cv-section" aria-labelledby="cv-section-education">
-          <h2 id="cv-section-education" className="cv-eyebrow">
-            Education
-          </h2>
-          <EducationList items={draft.education} onChange={(next) => commit('education', next)} />
-          <SectionFooter error={errors.education} onRetry={() => retry('education')} />
-        </section>
-
-        <section className="cv-section" aria-labelledby="cv-section-skills">
-          <h2 id="cv-section-skills" className="cv-eyebrow">
-            Skills
-          </h2>
-          <SkillList
-            items={draft.skills}
-            onAdd={(skill) => setDraft((d) => ({ ...d, skills: [...d.skills, skill] }))}
-            onChange={(next) => commit('skills', next)}
-          />
-          <SectionFooter error={errors.skills} onRetry={() => retry('skills')} />
-        </section>
+        {loose.length > 0 && <div className="cv-questions-loose">{loose.map((q) => renderCard(q))}</div>}
       </div>
-    </div>
+    </QuestionScopeContext.Provider>
   );
 }
 

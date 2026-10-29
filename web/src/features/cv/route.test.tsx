@@ -56,10 +56,22 @@ describe('CV editor — fetch and render (F-006, C-006)', () => {
     expect(screen.queryByDisplayValue('Ana Lovelace')).toBeNull();
   });
 
+  it('titles the screen and announces the load while the GET is still pending', () => {
+    installApi([cvA()]);
+    mountEditor('/cvs/cv-1');
+    // Nothing has resolved yet: the user must still have a heading to orient on.
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Your CV');
+    expect(screen.getByRole('status').textContent).toBe('Loading the CV…');
+    expect(screen.queryAllByRole('textbox')).toHaveLength(0);
+  });
+
   it('shows the server message for a 404 envelope and renders no editable fields (error case)', async () => {
     installApi([cvA()]);
     mountEditor('/cvs/cv-404');
     expect(await screen.findByText('No CV with that id.')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('CV unavailable');
+    expect(screen.getByRole('alert').textContent).toBe('No CV with that id.');
+    expect(screen.queryByRole('status')).toBeNull();
     expect(screen.queryByRole('region', { name: 'Contact' })).toBeNull();
     expect(screen.queryAllByRole('textbox')).toHaveLength(0);
   });
@@ -69,6 +81,8 @@ describe('CV editor — fetch and render (F-006, C-006)', () => {
     api.nextGet(new Response('<html>stack trace at editor.js:9</html>', { status: 500 }));
     mountEditor('/cvs/cv-1');
     expect(await screen.findByText('Something went wrong. Please try again.')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('CV unavailable');
+    expect(screen.getByRole('alert').textContent).toBe('Something went wrong. Please try again.');
     expect(screen.queryByText(/stack trace/)).toBeNull();
     expect(screen.queryAllByRole('textbox')).toHaveLength(0);
   });
@@ -211,7 +225,7 @@ describe('CV editor — add, delete and reorder (F-006)', () => {
     mountEditor('/cvs/cv-1');
     const experience = await screen.findByRole('region', { name: 'Experience' });
     const bulletItem = within(experience).getAllByRole('article')[0].querySelectorAll('li')[0] as HTMLElement;
-    fireClick(within(bulletItem).getByRole('button', { name: 'Delete' }));
+    fireClick(within(bulletItem).getByRole('button', { name: 'Delete bullet' }));
     await waitFor(() => expect(api.current('cv-1').experience[0].bullets.map((b) => b.text)).toEqual(['Led a team of four.']));
 
     const education = screen.getByRole('region', { name: 'Education' });
@@ -243,7 +257,7 @@ describe('CV editor — add, delete and reorder (F-006)', () => {
     mountEditor('/cvs/cv-1');
     const experience = await screen.findByRole('region', { name: 'Experience' });
     const secondBullet = within(experience).getAllByRole('article')[0].querySelectorAll('li')[1] as HTMLElement;
-    fireClick(within(secondBullet).getByRole('button', { name: 'Move up' }));
+    fireClick(within(secondBullet).getByRole('button', { name: 'Move bullet up' }));
     await waitFor(() => expect(api.current('cv-1').experience[0].bullets.map((b) => b.id)).toEqual(['b-2', 'b-1']));
 
     const skills = screen.getByRole('region', { name: 'Skills' });

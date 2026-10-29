@@ -317,3 +317,35 @@ is nowhere in the playbook.
   reviewer had a snapshot to catch it with. The guard this task added is what
   made the discrepancy visible at all.
 - Status: open
+
+## FF-15 A fully green gate can ship a product nobody can open (found 2026-10-29, severity: critical)
+
+- Evidence: `framework/scripts/gate.sh` was green on three consecutive full runs
+  — 534 api tests, 157 web tests, typecheck, lint, build. The first QA pass
+  found that the shipped web container has **no route to the api at all**:
+  `web/vite.config.ts` declares no proxy, `web/Dockerfile` runs bare
+  `vite preview`, and `docker-compose.yml` has no reverse proxy, so every
+  `GET /api/*` from the browser is answered by the SPA's own HTML fallback with
+  200, and every POST returns 404. Nobody can sign in. QA had to stand up a
+  throwaway proxy outside the repo to test anything at all.
+- Why no test could see it: the api suites call the server in-process, and the
+  web suites mock `fetch`. Both are correct at their level. The seam between
+  them — a browser, talking to a web server, reaching an api over a network —
+  is the one thing neither level instantiates, and the gate's five steps do not
+  include "open the product".
+- Related, same blind spot, same pass: the CV list screen never calls
+  `GET /api/cvs` (it renders its empty state unconditionally) and the app has
+  no route for `/`, so the front door is a 404. Both are invisible to a suite
+  that mounts a component directly and to a suite that calls a handler directly.
+- What it is worth: this is the strongest argument the framework has for the
+  manual-QA stage existing at all. It is also an argument that the stage is
+  **too late**: the defect was introduced in wave 0 and survived two waves,
+  eighteen reviews and an integration pass.
+- Proposed fix: the gate grows a sixth step — one smoke test that starts the
+  composed stack and asserts, over HTTP against the real ports, that the SPA is
+  served, that `/api/health` answers JSON through the SAME origin the browser
+  uses, and that a sign-in round-trip sets a cookie. It is slow, so it runs in
+  the full gate and CI, never in wave mode. Also: `architecture.md` must name
+  how the browser reaches the api, because nobody owned that line here and
+  every lane assumed another lane had.
+- Status: open

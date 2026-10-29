@@ -1,0 +1,12 @@
+api/src/core/jobs/*
+api/src/core/cv/persist*
+tests/contract/generation-persist*
+scripts/*
+framework/sprints/SPRINT-001-skeleton-auth/lanes/*
+framework/sprints/SPRINT-001-skeleton-auth/plan.md
+framework/sprints/SPRINT-001-skeleton-auth/qa-report.md
+framework/sprints/SPRINT-001-skeleton-auth/allow/*
+framework/docs/*
+framework/knowledge/*
+.claude/*
+.gitignore

@@ -36,6 +36,46 @@ Python"*; the model drafted the title *Data Pipelines Engineer*. The title is
 not in the evidence, so the entry is kept and the user is asked. Nothing was
 invented and nothing was deleted.
 
+## Three source texts, not one
+
+The first run proved the flow. Two more were chosen to attack the parts most
+likely to behave badly, and both ran all seven steps green.
+
+**A sparse source** — no dates, no company names, an unfinished degree:
+"worked at a fintech startup, then at a bigger company". The model did not
+invent names. It used the words the source gave — `Bigger company`,
+`Fintech startup` — with the period `Not specified`, and raised **five
+questions**: both periods, the education period, and both job titles. That is
+the system telling the user exactly what it does not know, which is the
+product's purpose.
+
+**A messy source** — stream of consciousness, a contradiction in its own
+dates, contract work under NDA, and a job the author suggests omitting:
+
+```
+1.00  Vela Health         | Platform Engineer     | 2019 - Present
+0.95  Contract            | Kubernetes Consultant | About a year
+0.40  NorthStar Logistics | Software Engineer     | 2014 - 2017 or maybe early 2018
+0.30  Startup             | Software Engineer     | 2016 (6 months)
+```
+
+The model **carried the source's own uncertainty through verbatim** rather
+than picking a date and pretending to know. The job the author said was
+"probably not worth mentioning" is present at the lowest relevance — the data
+is the user's, and the hint shaped the ranking rather than deleting anything.
+Eight questions, all correct.
+
+One flag is a documented limit firing exactly as designed: the summary said
+`CI/CD`, the source says only "CI from jenkins to github actions", and the
+checker flagged the acronym `CD` as unsupported. A false positive — and it
+raises a question instead of deleting the text, which is the trade ADR-025
+chose deliberately.
+
+Two findings from the sparse run, recorded and not fixed: a period renders as
+the literal string `Not specified` where an empty value would read better, and
+nothing asks the user to name a company called `Bigger company`. Neither
+invents anything; both would make the first draft less awkward.
+
 ## What the key found
 
 Five defects, in the order they surfaced. Each was hidden behind the previous

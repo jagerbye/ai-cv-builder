@@ -74,7 +74,7 @@ function AuthForm({ endpoint, submitLabel, passwordAutocomplete, heading, footer
   const describedBy = (field: Field) => (fieldErrors[field] ? `${field}-error` : undefined);
 
   return (
-    <section className="auth-screen">
+    <section className="page auth-screen">
       <h1>{heading}</h1>
       <form className="auth-form" noValidate onSubmit={(e) => void onSubmit(e)}>
         {formError && (

@@ -30,6 +30,19 @@
   padding: var(--space-6) var(--space-gutter-mobile);
 }
 
+/* The one page container: a centred column inside the shell's gutter. A screen
+   picks its measure with --page-max; nothing else centres or caps width. */
+.page {
+  width: 100%;
+  max-width: var(--page-max, var(--space-content-max));
+  min-width: 0;
+  margin: 0 auto;
+}
+
+.screen-message {
+  --page-max: var(--space-document-max);
+}
+
 .screen-message h1 {
   margin: 0 0 var(--space-4);
   font-size: var(--text-h2-size);

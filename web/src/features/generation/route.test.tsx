@@ -266,3 +266,25 @@ describe('progress view — succeeded job (spec §3.3)', () => {
     });
   });
 });
+
+describe('QA-08 Regenerate on the failed job screen', () => {
+  it('uses the product button class, not a bare button', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(JSON.stringify({ ...baseJob, status: 'failed', error: { code: 'X', message: 'Nope.' } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+    window.history.replaceState({}, '', '/jobs/job-1');
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <GenerationRoute />
+      </QueryClientProvider>,
+    );
+    const btn = await screen.findByRole('button', { name: /regenerate/i });
+    expect(btn.className).toBe('cv-button');
+  });
+});

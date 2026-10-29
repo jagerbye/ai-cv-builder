@@ -15,6 +15,7 @@ const MAX_ATTEMPTS = 2;
 
 const JOB_TIMEOUT_MESSAGE = 'The generation did not finish within 180 seconds.';
 const GENERATION_FAILED_MESSAGE = 'The generation failed.';
+const ORPHANED_CV_MESSAGE = 'The generation was interrupted and did not finish. Regenerate to try again.';
 const LEASE_EXPIRED_MESSAGE = 'The generation was interrupted and no attempts remain.';
 
 export interface JobLease {
@@ -30,6 +31,10 @@ export interface JobWorker {
   claimNext(): Promise<JobLease | null>;
   // Claims one job and runs it to a terminal state. Returns the job id, or null when none ran.
   runOnce(): Promise<string | null>;
+  // QA-14: at startup, marks failed every CV in state `generating` that has no non-terminal job of its own
+  // (the state a crashed worker, or data from before QA-10, leaves behind). Returns how many it changed.
+  // `only` narrows it further to those CV ids (a test seam on a shared database, E-005); production passes none.
+  reconcile(only?: readonly string[]): Promise<number>;
   // Simulates process death: no further renewals, no further writes from runs in flight.
   stop(): void;
 }
@@ -278,6 +283,16 @@ export function createJobWorker(opts: JobWorkerOptions): JobWorker {
 
   return {
     claimNext,
+
+    // The condition is structural and nothing else: state generating AND no queued or running job for this CV.
+    // One statement, so a job enqueued between a read and a write cannot be misjudged. Version and items stay.
+    async reconcile(only?: readonly string[]): Promise<number> {
+      const res = await prisma.cv.updateMany({
+        where: { ...(only ? { id: { in: [...only] } } : {}), state: 'generating', jobs: { none: { status: { in: ['queued', 'running'] } } } },
+        data: { state: 'failed', lastErrorCode: 'INTERNAL', lastErrorMessage: ORPHANED_CV_MESSAGE },
+      });
+      return res.count;
+    },
 
     async runOnce(): Promise<string | null> {
       const lease = await claimNext();

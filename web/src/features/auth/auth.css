@@ -2,7 +2,7 @@
    the mobile suite reads them statically, and 16px inputs stop iOS zoom-on-focus. */
 
 .auth-screen {
-  max-width: var(--space-form-max);
+  --page-max: var(--space-form-max);
 }
 
 .auth-screen h1 {

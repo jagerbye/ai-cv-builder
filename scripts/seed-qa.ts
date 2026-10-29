@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { PrismaClient, type Prisma } from '@prisma/client';
 import { hashPassword, verifyPassword } from '../api/src/core/auth/password.ts';
 import { itemsFromDraft } from '../api/src/core/cv/persist.ts';
+import { verify } from '../api/src/core/generation/verify.ts';
 import type { CvDraft, Fact } from '../api/src/core/generation/types.ts';
 
 const EMAIL = 'qa.seed@example.test';
@@ -28,7 +29,7 @@ const CONTACT = {
 
 const PROFILE_LINE = 'Backend engineer with seven years of experience building payment and logistics APIs in TypeScript and Go.';
 const SKILLS_LINE = 'TypeScript, Go, PostgreSQL, Kubernetes, AWS, Terraform';
-const SUMMARY_TEXT = 'Backend engineer with seven years of building payment and logistics APIs, focused on latency and reliable event delivery.';
+const SUMMARY_TEXT = 'Backend engineer with seven years of building payment and logistics APIs, focused on latency and reliable event delivery on Kafka.';
 
 const ROLES = [
   {
@@ -122,9 +123,8 @@ async function ensureUser(): Promise<string> {
   return existing.id;
 }
 
-async function main(): Promise<void> {
-  const userId = await ensureUser();
-
+// The draft and facts the seed CV is built from. Exported so a test can run them through verify().
+export function buildSeedData(): { facts: Array<Fact & { quote: string }>; draft: CvDraft } {
   // Facts: one per draft line, each sourceQuote verbatim from sourceText.
   const facts: Array<Fact & { quote: string }> = [];
   const fact = (kind: string, text: string, quote: string): string => {
@@ -133,11 +133,17 @@ async function main(): Promise<void> {
     facts.push({ id, kind, text, sourceQuote: quote, source: 'document', quote });
     return id;
   };
-  const profileFact = fact('profile', 'Seven years building payment and logistics APIs in TypeScript and Go', PROFILE_LINE);
-  const roleFacts = ROLES.map((r) => fact('role', `${r.role} at ${r.employer}, ${r.period}`, roleLine(r)));
+  const profileFact = fact('profile', 'Backend engineer building payment and logistics APIs in TypeScript and Go', PROFILE_LINE);
+  const roleFacts = ROLES.map((r, i) =>
+    // The second role's fact names employer and period but not the title, so verify() asks about experience[1].role.
+    fact('role', i === 1 ? `Worked at ${r.employer}, ${r.period}` : `${r.role} at ${r.employer}, ${r.period}`, roleLine(r)),
+  );
   const bulletFacts = ROLES.map((r) => r.bullets.map((b) => fact('achievement', b, b)));
-  const educationFacts = EDUCATION.map((e) => fact('education', `${e.degree}, ${e.institution}`, educationLine(e)));
-  const skillFacts = SKILLS.map((s) => fact('skill', `Lists ${s.name} as a skill`, SKILLS_LINE));
+  const educationFacts = EDUCATION.map((e) => fact('education', `${e.degree}, ${e.institution}, ${e.period}`, educationLine(e)));
+  const skillFacts = SKILLS.map((s) =>
+    // Terraform is listed but no fact names it, so verify() asks about skills[5].name.
+    fact('skill', s.name === 'Terraform' ? 'Lists infrastructure tooling as a skill' : `Lists ${s.name} as a skill`, SKILLS_LINE),
+  );
 
   const draft: CvDraft = {
     targetRole: TARGET_ROLE,
@@ -154,6 +160,16 @@ async function main(): Promise<void> {
     education: EDUCATION.map((e, i) => ({ institution: e.institution, degree: e.degree, period: e.period, factIds: [educationFacts[i]] })),
     skills: SKILLS.map((s, i) => ({ name: s.name, group: s.group, factIds: [skillFacts[i]] })),
   };
+
+  return { facts, draft };
+}
+
+async function main(): Promise<void> {
+  const userId = await ensureUser();
+
+  const { facts, draft } = buildSeedData();
+  // E-007: the questions are what the production verifier returns for this draft and these facts, never a literal.
+  const verified = verify(draft, facts);
 
   const cvId = await prisma.$transaction(async (tx) => {
     // Idempotent: the previous seed CV goes first; its facts, items and questions cascade.
@@ -206,34 +222,15 @@ async function main(): Promise<void> {
     await tx.cvItem.createMany({ data: [...contact, ...rows(tops)] });
     await tx.cvItem.createMany({ data: rows(children) });
 
-    // Three open questions on different paths: a period, a skill and a summary claim.
     await tx.question.createMany({
-      data: [
-        {
-          cvId: cv.id,
-          path: 'experience[1].period',
-          text: 'Brightpath Payments has a year range but no start month. Which month did you join?',
-          reason: 'missing',
-          status: 'open',
-          priority: 1,
-        },
-        {
-          cvId: cv.id,
-          path: 'skills[5]',
-          text: 'Terraform is listed under skills, but no line describes a project that used it. Where did you use it?',
-          reason: 'unverifiable',
-          status: 'open',
-          priority: 2,
-        },
-        {
-          cvId: cv.id,
-          path: 'summary',
-          text: 'The summary says seven years of experience, and the dated roles span 2018 to 2025. Is seven the number to state?',
-          reason: 'vague',
-          status: 'open',
-          priority: 3,
-        },
-      ],
+      data: verified.questions.map((q) => ({
+        cvId: cv.id,
+        path: q.path,
+        text: q.text,
+        reason: q.reason,
+        status: 'open',
+        priority: q.priority,
+      })),
     });
     return cv.id;
   });
@@ -241,9 +238,11 @@ async function main(): Promise<void> {
   console.log(JSON.stringify({ email: EMAIL, password: PASSWORD, cvId, url: `http://127.0.0.1:5273/cvs/${cvId}` }, null, 2));
 }
 
-main()
+if (!process.env.VITEST) {
+  main()
   .catch((err) => {
     console.error(err instanceof Error ? err.message : err);
     process.exitCode = 1;
   })
   .finally(() => prisma.$disconnect());
+}

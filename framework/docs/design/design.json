@@ -839,9 +839,7 @@
       "xl": "32px"
     },
     "rule": "An icon earns its place only on a control that repeats per row AND has no room for a label. Everything else is a text label: buttons say what they do, errors are a red border plus a red caption, states are words. Adding an icon to this list is a design decision, not a detail.",
-    "needed": [
-      "trash"
-    ],
+    "needed": [],
     "cut": "Cut from 18 to 1 by the Orchestrator on 2026-10-28. Dropped: question-circle, check, check-circle, x, x-circle, upload, file-text, quote, download, plus, trash-adjacent arrows (arrow-up, arrow-down), chevron-down, eye, eye-off, alert-triangle, refresh. Each was decoration beside a label that already said the same thing; reorder stayed as Move up / Move down text buttons, which the spec had already chosen for keyboard access."
   },
   "design_principles": [

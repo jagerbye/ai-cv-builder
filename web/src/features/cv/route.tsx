@@ -29,7 +29,7 @@ function CvPage({ id }: { id: string }) {
   // leaves the user something to orient on, and the route registry proves it.
   if (query.isPending) {
     return (
-      <section className="screen-message">
+      <section className="page screen-message">
         <h1>Your CV</h1>
         <p role="status">Loading the CV…</p>
       </section>
@@ -38,7 +38,7 @@ function CvPage({ id }: { id: string }) {
   if (query.isError) {
     const message = query.error instanceof ApiError ? query.error.message : GENERIC_MESSAGE;
     return (
-      <section className="screen-message">
+      <section className="page screen-message">
         <h1>CV unavailable</h1>
         <p role="alert">{message}</p>
       </section>

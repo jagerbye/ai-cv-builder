@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { ApiError, GENERIC_MESSAGE, apiFetch } from '../../api/client';
 import { Field } from './fields';
 import { EducationList, ExperienceList, SkillList } from './entries';
+import { cvDisplayTitle } from './title';
 import { toDraft, toWire } from './draft';
 import {
   QuestionCard,
@@ -166,9 +167,9 @@ export function CvEditor({ cv, onReload }: { cv: CvDto; onReload: () => void }) 
 
   return (
     <QuestionScopeContext.Provider value={scope}>
-      <div className="cv-page">
+      <div className="page cv-page">
         <header className="cv-header">
-          <h1 className="cv-title">{cv.title}</h1>
+          <h1 className="cv-title">{cvDisplayTitle(cv.title)}</h1>
           <p className="cv-target">{cv.targetRole}</p>
           <p role="status" className="cv-status">
             {status}

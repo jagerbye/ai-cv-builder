@@ -19,6 +19,37 @@ Format — newest on top, one block per decision:
 
 ---
 
+## ADR-019: The test suite gets its own database (2026-10-29, accepted)
+
+- **Context:** the suite and the running dev stack share one database, and the
+  bill for that has now come in four times. E-002: two suites' workers stealing
+  each other's queued jobs. E-004: a suite leaking fifty rows for the next
+  suite's worker to drain, which cost a day disguised as a flake. E-005: a
+  cleanup heuristic deleting 54 rows it had not created. And now, since T-28
+  made the api actually start a worker, the **running container** competes with
+  the suite for queued jobs — `runOnce()` returns null because the stack
+  claimed the row first. Each was fixed individually: a suite lock, a leak
+  guard, a cleanup rule. They are one defect wearing four hats.
+- **Decision:** `npm test` and the gate run against their own database
+  (`ai_cv_builder_test`), created and migrated by the gate, never the one
+  `docker compose up` serves. The suite lock, the leak guard and the delete-by-id
+  rule all stay — they are still right when two suites run in parallel — but
+  they stop being the only thing standing between a test run and a developer's
+  running app.
+- **Alternatives rejected:** a flag that disables the container's worker during
+  tests (the dev stack needs its worker, and the flag is one more thing to
+  remember — the same class of fix that has already failed three times here);
+  running the suite only with the stack down (turns a shared machine into a
+  mutex and does not survive CI or a second developer); schema-per-run (more
+  machinery than a second database, for the same effect).
+- **Consequences:** the gate's database step creates and migrates the test
+  database as well; `DATABASE_URL` for a bare `vitest` run points there, and
+  the smoke suite still uses the real stack, because its whole subject is the
+  stack. Tests stop seeing the fixtures of an app someone is clicking through,
+  which is also why QA's seeded CV will no longer appear in a test run.
+
+---
+
 ## ADR-018: The error enum gains the two provider failures F-010 asks to distinguish (2026-10-29, accepted)
 
 - **Context:** reviewing ADR-017's implementation, the reviewer noticed that

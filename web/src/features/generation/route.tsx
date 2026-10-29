@@ -78,7 +78,7 @@ export default function GenerationRoute() {
 
   if (jobId === null) {
     return (
-      <section className="screen-message">
+      <section className="page screen-message">
         <h1>Progress unavailable</h1>
         <p role="alert">This address does not point to a generation job.</p>
       </section>
@@ -87,7 +87,7 @@ export default function GenerationRoute() {
 
   if (job.isError) {
     return (
-      <section className="screen-message">
+      <section className="page screen-message">
         <h1>Progress unavailable</h1>
         <p role="alert">{errorMessage(job.error)}</p>
       </section>
@@ -96,7 +96,7 @@ export default function GenerationRoute() {
 
   if (!data) {
     return (
-      <section className="screen-message">
+      <section className="page screen-message">
         <p role="status">Loading your generation…</p>
       </section>
     );
@@ -104,12 +104,13 @@ export default function GenerationRoute() {
 
   if (data.status === 'failed') {
     return (
-      <section className="screen-message">
+      <section className="page screen-message">
         <h1>Generation failed</h1>
         <p role="alert">{data.error ? data.error.message : FALLBACK_MESSAGE}</p>
         <p>Your source text is kept, so you can try again.</p>
         <button
           type="button"
+          className="cv-button"
           onClick={() => regenerate.mutate(data.cvId)}
           disabled={regenerate.isPending}
         >
@@ -122,7 +123,7 @@ export default function GenerationRoute() {
 
   if (data.status === 'succeeded') {
     return (
-      <section className="screen-message">
+      <section className="page screen-message">
         <p role="status">Done. Opening your CV…</p>
       </section>
     );
@@ -132,7 +133,7 @@ export default function GenerationRoute() {
 
   if (data.status === 'queued') {
     return (
-      <section className="screen-message">
+      <section className="page screen-message">
         <p role="status">Queued. It will start shortly.</p>
         {attemptNote}
       </section>
@@ -140,7 +141,7 @@ export default function GenerationRoute() {
   }
 
   return (
-    <section className="screen-message">
+    <section className="page screen-message">
       <p role="status" aria-live="polite">
         {data.stage ? STAGE_COPY[data.stage] : 'Starting…'}
       </p>

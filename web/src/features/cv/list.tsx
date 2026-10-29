@@ -3,6 +3,7 @@
 // load says so instead (QA-03).
 import { useQuery } from '@tanstack/react-query';
 import { ApiError, GENERIC_MESSAGE, apiFetch } from '../../api/client';
+import { cvDisplayTitle } from './title';
 import './list.css';
 
 export type CvState = 'generating' | 'ready' | 'failed';
@@ -43,7 +44,7 @@ export function CvList() {
   const items = query.data?.items ?? [];
 
   return (
-    <section className="cv-list" aria-labelledby="cv-list-heading">
+    <section className="page cv-list" aria-labelledby="cv-list-heading">
       <div className="cv-list-head">
         <h1 id="cv-list-heading">Your CVs</h1>
         {query.isSuccess && items.length > 0 && (
@@ -73,7 +74,7 @@ export function CvList() {
           {items.map((item) => (
             <li key={item.id} className="cv-list-row">
               <a className="cv-list-title" href={`/cvs/${encodeURIComponent(item.id)}`}>
-                {item.title || 'Untitled CV'}
+                {cvDisplayTitle(item.title)}
               </a>
               <span className="cv-list-role">{item.targetRole}</span>
               <span className={`cv-list-state cv-list-state-${item.state}`}>{STATE_LABEL[item.state]}</span>

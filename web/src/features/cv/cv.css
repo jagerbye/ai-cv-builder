@@ -2,9 +2,7 @@
    single column is the base; the sheet widens at the document measure. */
 
 .cv-page {
-  padding: var(--space-6) var(--space-gutter-mobile);
-  max-width: var(--space-document-max);
-  margin: 0 auto;
+  --page-max: var(--space-document-max);
 }
 
 .cv-header {
@@ -122,36 +120,6 @@
   margin-top: var(--space-2);
 }
 
-.cv-button {
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0 var(--space-4);
-  border: var(--border-hairline) solid var(--color-border-input);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font-family: var(--font-ui);
-  font-size: var(--text-body-strong-size);
-  font-weight: var(--text-body-strong-weight);
-  cursor: pointer;
-}
-
-.cv-button:hover {
-  border-color: var(--color-border-strong);
-}
-
-.cv-button:disabled {
-  background: var(--color-surface-sunken);
-  color: var(--color-text-muted);
-  border-color: var(--color-border-subtle);
-  cursor: default;
-}
-
-.cv-button:focus-visible {
-  box-shadow: var(--shadow-focus);
-  outline: none;
-}
-
 .cv-error {
   margin-top: var(--space-2);
   color: var(--color-danger-text);
@@ -174,12 +142,6 @@
 
 .cv-callout p {
   margin: 0 0 var(--space-3);
-}
-
-@media (min-width: 600px) {
-  .cv-page {
-    padding: var(--space-8) var(--space-gutter-desktop);
-  }
 }
 
 /* T-27 questions beside their fields. Amber is for questions only; red is for
@@ -276,7 +238,7 @@
 
 @media (min-width: 900px) {
   .cv-page {
-    max-width: var(--space-content-max);
+    --page-max: var(--space-content-max);
   }
 
   .cv-sheet {

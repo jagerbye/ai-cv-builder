@@ -6,3 +6,4 @@ framework/sprints/SPRINT-001-skeleton-auth/*
 framework/docs/*
 framework/knowledge/*
 .claude/*
+api/src/main.ts

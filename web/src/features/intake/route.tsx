@@ -75,7 +75,7 @@ export default function IntakeRoute() {
   const count = sourceText.length.toLocaleString('en-US');
 
   return (
-    <section className="intake" aria-labelledby={`${ids}-heading`}>
+    <section className="page intake" aria-labelledby={`${ids}-heading`}>
       <h1 id={`${ids}-heading`} className="intake-heading">
         Create your CV
       </h1>
@@ -140,14 +140,20 @@ export default function IntakeRoute() {
                 Up to 10 MB and 20 pages. A scanned PDF with no text layer cannot be read, so paste the text
                 instead.
               </p>
-              <input
-                id={`${ids}-file`}
-                type="file"
-                accept="application/pdf,.pdf"
-                className="intake-file"
-                aria-describedby={fileHintId}
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              />
+              <div className="file-picker">
+                <input
+                  id={`${ids}-file`}
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  className="file-picker-input"
+                  aria-describedby={fileHintId}
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                />
+                <label htmlFor={`${ids}-file`} className="file-picker-button">
+                  Choose file
+                </label>
+                <span className="file-picker-name">{file ? file.name : 'No file chosen'}</span>
+              </div>
             </div>
           )}
         </div>

@@ -329,3 +329,34 @@ describe('success navigates to the progress view', () => {
     expect(window.location.pathname).toBe('/cvs/new');
   });
 });
+
+// QA-08: the PDF chooser is a styled control, not the browser's own.
+describe('QA-08 PDF chooser', () => {
+  it('shows a styled "Choose file" control that owns a keyboard-reachable native input, and the chosen name', () => {
+    setViewport(WIDE);
+    renderRoute();
+    const input = screen.getByLabelText('PDF file') as HTMLInputElement;
+    expect(input.type).toBe('file');
+    // Reachable by keyboard: not removed from tab order, not display:none / hidden.
+    expect(input.getAttribute('tabindex')).toBeNull();
+    expect(input.hidden).toBe(false);
+    expect(input.getAttribute('aria-hidden')).toBeNull();
+    // Not what the user sees: visually hidden class, and a label owns it as the visible control.
+    expect(input.classList.contains('file-picker-input')).toBe(true);
+    const visible = document.querySelector(`label[for="${input.id}"].file-picker-button`) as HTMLElement;
+    expect(visible.textContent).toBe('Choose file');
+    expect(screen.getByText('No file chosen')).toBeTruthy();
+    const file = new File(['%PDF-1.4'], 'my-cv.pdf', { type: 'application/pdf' });
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(screen.getByText('my-cv.pdf')).toBeTruthy();
+  });
+
+  it('stylesheet hides the native input visually without display:none and shows focus on the control', async () => {
+    const { readFileSync } = await import('node:fs');
+    const css = readFileSync(`${process.cwd()}/src/features/intake/intake.css`, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const rule = /\.file-picker-input\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
+    expect(rule).toMatch(/position:\s*absolute/);
+    expect(rule).not.toMatch(/display:\s*none|visibility:\s*hidden/);
+    expect(css).toMatch(/\.file-picker-input:focus-visible\s*\+\s*\.file-picker-button/);
+  });
+});

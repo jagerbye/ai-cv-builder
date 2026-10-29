@@ -1,8 +1,7 @@
 /* Intake screen (T-13). Values come from tokens.css; mobile-first, one column. */
 
 .intake {
-  max-width: var(--space-form-max);
-  min-width: 0;
+  --page-max: var(--space-form-max);
 }
 
 .intake-heading {
@@ -87,9 +86,57 @@
   resize: vertical;
 }
 
-.intake-file {
-  font-size: var(--text-body-size);
+/* The native input stays in the DOM, focusable and holding the file, but is
+   clipped away; the label is what the user sees (so the browser's locale never shows). */
+.file-picker {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.file-picker-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.file-picker-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: var(--border-hairline) solid var(--color-border-input);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
   color: var(--color-text-primary);
+  font-size: var(--text-body-strong-size);
+  font-weight: var(--text-body-strong-weight);
+  cursor: pointer;
+}
+
+.file-picker-button:hover {
+  border-color: var(--color-border-strong);
+}
+
+.file-picker-input:focus-visible + .file-picker-button {
+  box-shadow: var(--shadow-focus);
+}
+
+.file-picker-name {
+  min-width: 0;
+  font-size: var(--text-body-size);
+  color: var(--color-text-secondary);
 }
 
 .intake-alert {

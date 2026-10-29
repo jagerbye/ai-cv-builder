@@ -44,7 +44,7 @@ function Screen({ route }: { route: RouteEntry }) {
 
 function NotFound() {
   return (
-    <section className="screen-message">
+    <section className="page screen-message">
       <h1>Page not found</h1>
       <p>The address you opened does not match a page in this app.</p>
     </section>

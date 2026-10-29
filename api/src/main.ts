@@ -23,6 +23,12 @@ const worker = createJobWorker({
   leaseMs: JOB_LEASE_MS,
   onError: (info) => app.log.warn(info, 'job run ended in an error'),
 });
+// QA-14: before the first claim, fail every CV that says generating but has no live job of its own (what a
+// crashed worker leaves behind). A failure here must not keep the app from booting.
+await worker.reconcile().then(
+  (n) => app.log.info({ reconciled: n }, 'orphaned generating CVs marked failed'),
+  (err: unknown) => app.log.error({ errorName: (err as Error).name }, 'startup reconcile failed'),
+);
 const loop = startJobLoop({
   worker,
   intervalMs: JOB_POLL_MS,

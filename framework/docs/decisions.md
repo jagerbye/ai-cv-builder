@@ -19,6 +19,50 @@ Format — newest on top, one block per decision:
 
 ---
 
+## ADR-022: A reformatted date is a question, not a deletion — and the CV has a head (2026-10-29, accepted)
+
+- **Context:** the first end-to-end run on a real model produced a CV with
+  **zero experience entries, zero education entries, no contact block and no
+  summary** — from a source that plainly states two jobs, a degree, a name, an
+  email, a phone and a city. The pipeline did not malfunction. Extract found
+  all fifteen facts with verbatim quotes; the verifier applied ADR-013's rule —
+  employer and period must co-occur in one cited fact — and the model had
+  written `2019 - Present` where the source says `Since 2019`. Not a substring,
+  so the entry was dropped. The same for `2016 - 2019` against "from 2016 to
+  2019", and for the degree. The question it raised was exactly right: *"What
+  were the exact dates of this role? The drafted dates are not in the cited
+  source."* It then deleted the job it had just asked about.
+- **Decision:** three changes.
+  1. **The employer stays strict; the period becomes lenient.** An entry is
+     kept when a cited fact names the **employer** (or the institution). A
+     period the cited facts do not state is kept, marked unverified, and raises
+     its question — the user is told, not silently robbed of a job. The
+     anti-recombination guarantee is untouched: the entry still has to be
+     established by a fact naming its employer, so the mis-pairing ADR-013
+     forbade — one employer's name with another's dates — still surfaces as a
+     question on a field the user can see.
+  2. **Compose emits the contact block.** It never did: `compose.ts` has no
+     mention of contact, so a CV could not carry a name, an email or a phone,
+     while F-004 requires them and the facts for them were extracted. Contact
+     fields are verified **strictly** — a wrong email is a real harm, unlike a
+     reformatted date — and an unsupported field is dropped with a question.
+  3. **The summary is kept with its question** rather than dropped. It is one
+     editable text field, and a CV with no head is worse than a CV whose
+     summary is flagged. The compose prompt also forbids derived quantities:
+     the model wrote "5+ years of experience", which no fact states, and
+     deriving it is the kind of invention this product exists to prevent.
+- **Alternatives rejected:** normalising dates before comparing (guessing what
+  "Since 2019" should become is the model's job, and a normaliser that is wrong
+  is a silent fabricator); loosening the rule to "occurs in any fact" (that is
+  the recombination hole ADR-013 closed, and it is not reopened here —
+  the employer remains bound to the entry's own cited facts).
+- **Consequences:** a verified-looking CV can now contain an unverified period,
+  so the question beside it is the guarantee and the UI must keep showing it;
+  the golden fixtures gain a case for a reformatted date, which is the input
+  this build met on its first contact with a real model.
+
+---
+
 ## ADR-021: The output cap and the spend budget are two numbers, and running out of budget says so (2026-10-29, accepted)
 
 - **Context:** the first real model call this project ever made failed, and the

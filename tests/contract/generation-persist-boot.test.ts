@@ -53,7 +53,9 @@ describe('T-28 pipeline factory: boots without a key (F-010)', () => {
     const result = pipeline.verify(draft, facts);
 
     expect(result.accepted.skills).toEqual([{ name: 'TypeScript', factIds: [factId] }]);
-    expect(result.questions).toEqual([]);
+    // ADR-030: this bare draft has no contact block, so the two completeness questions are expected. What this
+    // test is about is that verify() ran at all without a key, and dropped nothing it should have kept.
+    expect(result.questions.filter((q) => !q.path.startsWith('contact.'))).toEqual([]);
   });
 });
 

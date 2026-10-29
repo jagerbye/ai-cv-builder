@@ -20,11 +20,45 @@ export const ANSWER_MAX_CHARS = 2000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Question paths name a field of one experience or education entry, e.g. experience[0].period.
 const BOUND_PATH = /^(experience|education)\[(\d+)\]\.period$/;
+// ADR-030. A contact question asks for the value itself ("What is your full name?"), so the answer IS the field.
+const CONTACT_PATH = /^contact\.(fullName|email|phone|location)$/;
+// The same caps C-008 PATCH applies (patch.ts), so one route cannot store what the other would reject.
+const CONTACT_MAX_CHARS: Record<string, number> = { fullName: 200, email: 200, phone: 50, location: 200 };
 
 // Gateway failures that keep their own code on the 503; everything else reads as transient.
 const NON_TRANSIENT: readonly ErrorCode[] = ['CONFIG_MISSING', 'LLM_AUTH_FAILED', 'LLM_INVALID_REQUEST', 'LLM_BUDGET_EXCEEDED'];
 
 const FACT_KIND: Record<string, string> = { experience: 'employment', education: 'education' };
+
+// Writes one contact field from the user's answer. The contact row is created when the CV has none, which is
+// exactly the case the question exists for: nothing was grounded, so nothing was stored.
+async function writeContactField(
+  tx: Prisma.TransactionClient,
+  cvId: string,
+  field: string,
+  value: string,
+  factId: string,
+): Promise<void> {
+  const row = await tx.cvItem.findFirst({ where: { cvId, kind: 'contact' } });
+  const data: Record<string, unknown> = { ...((row?.data as Record<string, unknown>) ?? {}) };
+  const citations: Record<string, unknown> = { ...((data.citations as Record<string, unknown>) ?? {}) };
+  citations[field] = [factId];
+  data[field] = value;
+  data.citations = citations;
+  if (row) {
+    await tx.cvItem.update({
+      where: { id: row.id },
+      data: { data: data as Prisma.InputJsonValue, factIds: [...row.factIds, factId], userEdited: true },
+    });
+    return;
+  }
+  await tx.cvItem.create({
+    data: {
+      cvId, kind: 'contact', path: 'contact', orderIndex: 0,
+      data: data as Prisma.InputJsonValue, factIds: [factId], relevance: null, userEdited: true,
+    },
+  });
+}
 
 function notFound(): ApiError {
   return new ApiError(404, 'NOT_FOUND', 'Not found.');
@@ -70,11 +104,17 @@ export async function answerQuestion(
   if (question.status !== 'open') throw conflict();
 
   const bound = BOUND_PATH.exec(question.path);
+  const contactField = CONTACT_PATH.exec(question.path)?.[1];
+  if (contactField !== undefined && answer.length > CONTACT_MAX_CHARS[contactField]) {
+    throw new ApiError(400, 'VALIDATION', `answer must be at most ${CONTACT_MAX_CHARS[contactField]} characters.`);
+  }
   const sectionKind = /^(experience|education)(?![a-z])/.exec(question.path)?.[1];
   const factId = randomUUID();
   const storedAt = new Date();
 
   // Step 1: the answer is stored. The updateMany guard makes a concurrent second answer a 409, not a second fact.
+  // A contact answer is written in this same transaction (ADR-030): the answer IS the field's value, so there is
+  // nothing for the model to recompose, and storing the fact without the field would leave the CV still nameless.
   await prisma.$transaction(async (tx) => {
     const marked = await tx.question.updateMany({
       where: { id: questionId, cvId, status: 'open' },
@@ -85,14 +125,19 @@ export async function answerQuestion(
       data: {
         id: factId,
         cvId,
-        kind: sectionKind ? FACT_KIND[sectionKind] : 'other',
+        kind: contactField ? 'contact' : sectionKind ? FACT_KIND[sectionKind] : 'other',
         text: answer,
         sourceQuote: '',
         source: 'user',
       },
     });
+    if (contactField !== undefined) await writeContactField(tx, cvId, contactField, answer, factId);
     await tx.cv.update({ where: { id: cvId }, data: { version: { increment: 1 } } });
   });
+
+  // F-006: a user fact bypasses the verifier, so a contact answer needs no model call. That also removes the 503
+  // a user could get for typing their own name, and the tokens a recompose would spend touching nothing.
+  if (contactField !== undefined) return getCv(prisma, userId, cvId);
 
   // Step 2: the targeted recompose. Any failure here is 503; the answer above is already stored.
   let verdict: PlannedVerification;

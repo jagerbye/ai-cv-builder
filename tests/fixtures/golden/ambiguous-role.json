@@ -34,7 +34,9 @@
     },
     "droppedPaths": [],
     "questions": [
-      {"path": "experience[0].role", "reason": "unverifiable"}
+      {"path": "experience[0].role", "reason": "unverifiable"},
+      {"path": "contact.fullName", "reason": "missing"},
+      {"path": "contact.email", "reason": "missing"}
     ]
   }
 }

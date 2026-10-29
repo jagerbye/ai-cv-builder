@@ -30,6 +30,12 @@ const base = (over: Partial<CvDraft> = {}): CvDraft => ({
   ...over,
 });
 
+// ADR-030 adds two completeness questions (contact.fullName, contact.email) to any draft that omits them, and the
+// drafts here omit them. Those are covered in verify.required-contact.test.ts; these assertions are about the
+// groundedness verdict, so they read the content questions only.
+const contentQuestions = <Q extends { path: string }>(r: { questions: Q[] }): Q[] =>
+  r.questions.filter((q) => !q.path.startsWith('contact.'));
+
 describe('verify — citation rule (ADR-002)', () => {
   it('keeps a bullet with empty factIds and raises a priority-2 missing-reason question on its path (ADR-026)', () => {
     const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2019, built APIs')];
@@ -450,7 +456,7 @@ describe('verify — questions (spec §3.5)', () => {
     expect(vague.reason).toBe('unverifiable');
     expect(vague.priority).toBe(2);
     expect(employer.priority).toBeLessThan(vague.priority);
-    expect(r.questions[0].path).toBe('experience[0].employer');
+    expect(contentQuestions(r)[0].path).toBe('experience[0].employer');
     expect(r.accepted.experience.map((e) => e.role)).toEqual(['Lead Engineer']);
   });
 
@@ -483,9 +489,12 @@ describe('verify — questions (spec §3.5)', () => {
     });
     const r = verify(draft, facts);
     expect(r.questions).toHaveLength(12);
-    expect(r.questions[0].path).toBe('experience[0].employer');
+    expect(contentQuestions(r)[0].path).toBe('experience[0].employer');
     expect(r.questions.some((x) => (x as { reason?: string }).reason === 'vague')).toBe(false);
-    expect(r.questions.filter((x) => (x as { reason?: string }).reason === 'unverifiable')).toHaveLength(11);
+    // ADR-030: the two completeness questions are priority 1, so they take cap slots ahead of the priority-2
+    // ones, and two more 'unverifiable' questions fall off the end. The cap itself is unchanged.
+    expect(r.questions.filter((x) => x.path.startsWith('contact.'))).toHaveLength(2);
+    expect(r.questions.filter((x) => (x as { reason?: string }).reason === 'unverifiable')).toHaveLength(9);
   });
 });
 
@@ -508,7 +517,7 @@ describe('verify — education is grounded against its own facts', () => {
     const r = verify(base({ education: [edu] }), facts);
     expect(r.dropped).toEqual([]);
     expect(r.accepted.education).toEqual([edu]);
-    expect(r.questions).toEqual([expect.objectContaining({ path: 'education[0].period', reason: 'missing', priority: 2 })]);
+    expect(contentQuestions(r)).toEqual([expect.objectContaining({ path: 'education[0].period', reason: 'missing', priority: 2 })]);
   });
   it('drops an education entry whose institution is in a fact it does not cite', () => {
     const twoFacts = [
@@ -528,7 +537,7 @@ describe('verify — ADR-022: derived quantities, strict contact, co-occurring e
     const r = verify(base({ summary }), facts);
     expect(r.accepted.summary).toEqual(summary);
     expect(r.dropped).toEqual([]);
-    expect(r.questions).toEqual([expect.objectContaining({ path: 'summary.text', reason: 'unverifiable' })]);
+    expect(contentQuestions(r)).toEqual([expect.objectContaining({ path: 'summary.text', reason: 'unverifiable' })]);
   });
 
   it('keeps a summary whose names and numbers are all in its cited facts, with no question (negative control)', () => {
@@ -536,7 +545,7 @@ describe('verify — ADR-022: derived quantities, strict contact, co-occurring e
     const summary = { text: 'Backend engineer at Acme Ltd, 2019-2024', factIds: ['f1'] };
     const r = verify(base({ summary }), facts);
     expect(r.accepted.summary).toEqual(summary);
-    expect(r.questions).toEqual([]);
+    expect(contentQuestions(r)).toEqual([]);
   });
 
   it('keeps an education entry whose institution and period are in different cited facts, and asks about the period (ADR-022)', () => {
@@ -548,7 +557,7 @@ describe('verify — ADR-022: derived quantities, strict contact, co-occurring e
     const r = verify(base({ education: [edu] }), twoFacts);
     expect(r.dropped).toEqual([]);
     expect(r.accepted.education).toEqual([edu]);
-    expect(r.questions).toEqual([expect.objectContaining({ path: 'education[0].period', reason: 'missing', priority: 2 })]);
+    expect(contentQuestions(r)).toEqual([expect.objectContaining({ path: 'education[0].period', reason: 'missing', priority: 2 })]);
   });
 
   describe('contact is verified strictly, per field, against that field\'s own cited facts', () => {
@@ -670,7 +679,7 @@ describe('verify — purity and contract', () => {
     const r = verify(clean, facts);
     expect(r.accepted).toEqual(clean);
     expect(r.dropped).toEqual([]);
-    expect(r.questions).toEqual([]);
+    expect(contentQuestions(r)).toEqual([]);
   });
 });
 
@@ -680,7 +689,7 @@ describe('verify — ADR-025: an unsupported phrase in the summary is kept and f
     const r = verify(base({ summary: { text, factIds: ['f1', 'f2'] } }), facts);
     expect(r.accepted.summary).toEqual({ text, factIds: ['f1', 'f2'] });
     expect(r.dropped).toEqual([]);
-    expect(r.questions).toEqual([expect.objectContaining({ path: 'summary.text', reason: 'unverifiable', priority: 2, text: expect.stringMatching(detail) })]);
+    expect(contentQuestions(r)).toEqual([expect.objectContaining({ path: 'summary.text', reason: 'unverifiable', priority: 2, text: expect.stringMatching(detail) })]);
   };
 
   it('keeps and flags a summary naming an organisation no cited fact holds', () => {
@@ -707,21 +716,21 @@ describe('verify — ADR-025: an unsupported phrase in the summary is kept and f
     const r = verify(base({ summary }), facts);
     expect(r.accepted.summary).toEqual(summary);
     expect(r.dropped).toEqual([]);
-    expect(r.questions).toEqual([]);
+    expect(contentQuestions(r)).toEqual([]);
   });
 
   it('keeps a summary with no citation (missing, not an entity) and asks', () => {
     const summary = { text: 'Dependable engineer', factIds: [] };
     const r = verify(base({ summary }), facts);
     expect(r.accepted.summary).toEqual(summary);
-    expect(r.questions).toEqual([expect.objectContaining({ path: 'summary.text', reason: 'missing' })]);
+    expect(contentQuestions(r)).toEqual([expect.objectContaining({ path: 'summary.text', reason: 'missing' })]);
   });
 
   it('keeps a summary whose entities are all held by its cited facts (control)', () => {
     const summary = { text: 'Backend engineer at Acme Ltd building payments APIs in Go', factIds: ['f1', 'f2'] };
     const r = verify(base({ summary }), facts);
     expect(r.accepted.summary).toEqual(summary);
-    expect(r.questions).toEqual([]);
+    expect(contentQuestions(r)).toEqual([]);
   });
 });
 

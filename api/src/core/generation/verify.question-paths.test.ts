@@ -38,7 +38,13 @@ const validEntry = {
   bullets: [] as { text: string; factIds: string[] }[],
 };
 
-const pathsOf = (r: { questions: { path: string }[] }): string[] => r.questions.map((q) => q.path);
+// ADR-030 adds two completeness questions (contact.fullName, contact.email) to any draft that omits them, and
+// every draft below omits them. They are covered in verify.required-contact.test.ts; this file is about where a
+// GROUNDEDNESS question points, so it reads the content paths only.
+const contentQuestions = <Q extends { path: string }>(r: { questions: Q[] }): Q[] =>
+  r.questions.filter((q) => !q.path.startsWith('contact.'));
+
+const pathsOf = (r: { questions: { path: string }[] }): string[] => contentQuestions(r).map((q) => q.path);
 
 describe('verify — question paths name the field (QA-05, C-006 path grammar)', () => {
   it('summary with unknown citations is kept and raises summary.text (unverifiable, ADR-022)', () => {
@@ -46,13 +52,13 @@ describe('verify — question paths name the field (QA-05, C-006 path grammar)',
     expect(r.dropped).toEqual([]);
     expect(r.accepted.summary).toEqual({ text: 'Backend engineer at Acme Ltd', factIds: ['f404'] });
     expect(pathsOf(r)).toEqual(['summary.text']);
-    expect(r.questions[0]).toMatchObject({ path: 'summary.text', reason: 'unverifiable' });
+    expect(contentQuestions(r)[0]).toMatchObject({ path: 'summary.text', reason: 'unverifiable' });
   });
 
   it('summary with no citations raises summary.text (missing)', () => {
     const r = verify(base({ summary: { text: 'Backend engineer at Acme Ltd', factIds: [] } }), facts);
     expect(pathsOf(r)).toEqual(['summary.text']);
-    expect(r.questions[0]).toMatchObject({ path: 'summary.text', reason: 'missing' });
+    expect(contentQuestions(r)[0]).toMatchObject({ path: 'summary.text', reason: 'missing' });
   });
 
   it('a skill whose name no cited fact holds is STILL dropped with its question (ADR-025 Amendment A)', () => {
@@ -81,7 +87,7 @@ describe('verify — question paths name the field (QA-05, C-006 path grammar)',
     expect(r.dropped).toEqual([]);
     expect(r.accepted.experience.map((e) => e.period)).toEqual(['2019', '2015-2016']);
     expect(pathsOf(r)).toEqual(['experience[1].period']);
-    expect(r.questions[0]).toMatchObject({ path: 'experience[1].period', reason: 'missing', priority: 2 });
+    expect(contentQuestions(r)[0]).toMatchObject({ path: 'experience[1].period', reason: 'missing', priority: 2 });
   });
 
   it('unsupported bullet raises experience[0].bullets[2].text (unverifiable)', () => {
@@ -97,7 +103,7 @@ describe('verify — question paths name the field (QA-05, C-006 path grammar)',
     expect(r.dropped).toEqual([]);
     expect(r.accepted.experience[0].bullets).toHaveLength(3);
     expect(pathsOf(r)).toEqual(['experience[0].bullets[2].text']);
-    expect(r.questions[0]).toMatchObject({ path: 'experience[0].bullets[2].text', reason: 'unverifiable', priority: 2 });
+    expect(contentQuestions(r)[0]).toMatchObject({ path: 'experience[0].bullets[2].text', reason: 'unverifiable', priority: 2 });
   });
 
   it('bullet with no citations raises experience[0].bullets[0].text (missing)', () => {
@@ -105,7 +111,7 @@ describe('verify — question paths name the field (QA-05, C-006 path grammar)',
     const r = verify(base({ experience: [entry] }), facts);
     expect(r.dropped).toEqual([]);
     expect(pathsOf(r)).toEqual(['experience[0].bullets[0].text']);
-    expect(r.questions[0]).toMatchObject({ reason: 'missing', priority: 2 });
+    expect(contentQuestions(r)[0]).toMatchObject({ reason: 'missing', priority: 2 });
   });
 
   it('education period that no cited fact holds raises education[0].period (missing, priority 2)', () => {
@@ -114,35 +120,35 @@ describe('verify — question paths name the field (QA-05, C-006 path grammar)',
       facts,
     );
     expect(pathsOf(r)).toEqual(['education[0].period']);
-    expect(r.questions[0]).toMatchObject({ reason: 'missing', priority: 2 });
+    expect(contentQuestions(r)[0]).toMatchObject({ reason: 'missing', priority: 2 });
   });
 
   it('education with no citations raises education[0].institution, not the entry path', () => {
     const r = verify(base({ education: [{ institution: 'Warsaw University', period: '2010-2014', factIds: [] }] }), facts);
     expect(r.dropped.map((d) => d.path)).toEqual(['education[0]']);
     expect(pathsOf(r)).toEqual(['education[0].institution']);
-    expect(r.questions[0]).toMatchObject({ reason: 'missing', priority: 1 });
+    expect(contentQuestions(r)[0]).toMatchObject({ reason: 'missing', priority: 1 });
   });
 
   it('experience entry with no citations raises experience[0].employer, not the entry path', () => {
     const r = verify(base({ experience: [{ ...validEntry, factIds: [] }] }), facts);
     expect(r.dropped.map((d) => d.path)).toEqual(['experience[0]']);
     expect(pathsOf(r)).toEqual(['experience[0].employer']);
-    expect(r.questions[0]).toMatchObject({ reason: 'missing' });
+    expect(contentQuestions(r)[0]).toMatchObject({ reason: 'missing' });
   });
 
   it('experience entry with an unknown citation raises experience[0].employer (unverifiable)', () => {
     const r = verify(base({ experience: [{ ...validEntry, factIds: ['f404'] }] }), facts);
     expect(r.dropped.map((d) => d.path)).toEqual(['experience[0]']);
     expect(pathsOf(r)).toEqual(['experience[0].employer']);
-    expect(r.questions[0]).toMatchObject({ reason: 'unverifiable' });
+    expect(contentQuestions(r)[0]).toMatchObject({ reason: 'unverifiable' });
   });
 
   it('role in NO cited fact keeps the entry and raises role as unsupported (priority 2, text says the source lacks it)', () => {
     const r = verify(base({ experience: [{ ...validEntry, role: 'Platform engineer' }] }), facts);
     expect(r.dropped).toEqual([]);
     expect(pathsOf(r)).toEqual(['experience[0].role']);
-    expect(r.questions[0]).toMatchObject({
+    expect(contentQuestions(r)[0]).toMatchObject({
       reason: 'unverifiable',
       priority: 2,
       text: 'Which job title did you hold? The drafted title is not in the cited source.'
@@ -157,7 +163,7 @@ describe('verify — question paths name the field (QA-05, C-006 path grammar)',
     );
     expect(r.dropped).toEqual([]);
     expect(pathsOf(r)).toEqual(['experience[0].role']);
-    expect(r.questions[0]).toMatchObject({
+    expect(contentQuestions(r)[0]).toMatchObject({
       reason: 'vague',
       priority: 3,
       text: 'Which job title did you hold? The cited source mentions this title but does not tie it to this employer.'

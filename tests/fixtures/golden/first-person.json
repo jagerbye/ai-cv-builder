@@ -115,7 +115,9 @@
       {
         "path": "experience[0].bullets[2].text",
         "reason": "unverifiable"
-      }
+      },
+      {"path": "contact.fullName", "reason": "missing"},
+      {"path": "contact.email", "reason": "missing"}
     ]
   }
 }

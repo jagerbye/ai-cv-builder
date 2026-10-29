@@ -97,6 +97,12 @@ Three stages, two of them LLM calls and one of them ordinary code:
 - **Responsibility:** owns prompts, the Anthropic gateway (`gateway.ts`: the
   only SDK import — timeouts, retries, the token ledger), the schemas, and the
   verifier.
+- **Request shape (E-015).** `ToolCallRequest` separates `description` — the
+  tool's static rules, sent in the `tools` array — from `prompt`, the user
+  message that carries the source text or the fact list. One string serving as
+  both put the payload in the body twice, on every call and every retry; for
+  extract that is the whole source, up to 50,000 characters. `extract.test.ts`
+  asserts the source appears in the request exactly once.
 - **Gateway retries (ADR-029).** A 429, a 5xx or a transport failure is
   retried; 401/403 (`LLM_AUTH_FAILED`) and any other 4xx
   (`LLM_INVALID_REQUEST`) fail at once. The wait is the provider's
@@ -131,6 +137,12 @@ Three stages, two of them LLM calls and one of them ordinary code:
   priority-2 question beside it. Prompts ask nicely; the verifier is what is
   tested. A question is stored against the item's id, and its `path` is
   derived at read time (ADR-027).
+- **Completeness is a separate rule from groundedness** (ADR-030). The checks
+  above loop over what the draft asserts, so a field the model never drafted
+  passes by not existing. The verifier therefore also iterates the REQUIRED
+  contact keys (`fullName`, `email`) and raises a priority-1 `missing` question
+  for each one the draft does not carry. This is the only check in the module
+  that fires on an absence.
 
 ### 2.5 `core/jobs` — durable async work
 

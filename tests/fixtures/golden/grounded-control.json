@@ -37,6 +37,9 @@
       "skills": [{"name": "PostgreSQL", "group": "Databases", "factIds": ["f3"]}]
     },
     "droppedPaths": [],
-    "questions": []
+    "questions": [
+      {"path": "contact.fullName", "reason": "missing"},
+      {"path": "contact.email", "reason": "missing"}
+    ]
   }
 }

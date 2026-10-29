@@ -15,7 +15,8 @@ const FIXTURE_DIR = fileURLToPath(new URL('../../../../tests/fixtures/llm/', imp
 interface Canned { status: number; body: unknown; headers?: Record<string, string> }
 const fixture = (name: string): Canned => JSON.parse(readFileSync(FIXTURE_DIR + name, 'utf8'));
 
-const PROMPT_SENTINEL = 'PROMPT-SENTINEL-DESCRIPTION-7731';
+const PROMPT_SENTINEL = 'PROMPT-SENTINEL-USER-MESSAGE-7731';
+const TOOL_DESCRIPTION_SENTINEL = 'TOOL-DESCRIPTION-SENTINEL-5512';
 const KEY = 'sk-ant-api03-KEY-SENTINEL-4420';
 const SCHEMA_ERROR = 'items: expected array of strings';
 
@@ -26,7 +27,8 @@ interface Facts { items: string[] }
 function makeRequest(): ToolCallRequest<Facts> {
   return {
     name: 'record_facts',
-    description: PROMPT_SENTINEL,
+    description: TOOL_DESCRIPTION_SENTINEL,
+    prompt: PROMPT_SENTINEL,
     inputSchema: {
       type: 'object',
       properties: { items: { type: 'array', items: { type: 'string' } } },
@@ -111,11 +113,30 @@ describe('AnthropicGateway request shape (C-012, ADR-006)', () => {
     expect(body.tools).toEqual([
       {
         name: 'record_facts',
-        description: PROMPT_SENTINEL,
+        description: TOOL_DESCRIPTION_SENTINEL,
         input_schema: makeRequest().inputSchema,
       },
     ]);
     expect(body.tool_choice).toEqual({ type: 'tool', name: 'record_facts' });
+  });
+
+  it('sends the prompt as the user message and nowhere else, so the payload is not billed twice', async () => {
+    const t = scriptedFetch([fixture('tool-ok.json')]);
+    await createAnthropicGateway(CONFIG, { fetch: t.fetch, sleep }).callTool(makeRequest());
+    const body = t.body(0);
+    expect(body.messages).toEqual([{ role: 'user', content: PROMPT_SENTINEL }]);
+    // The one place the prompt may appear in the wire body is that message.
+    expect(String(t.calls[0].init.body).split(PROMPT_SENTINEL)).toHaveLength(2);
+    expect(JSON.stringify(body.tools)).not.toContain(PROMPT_SENTINEL);
+  });
+
+  it('does not repeat the prompt when a schema violation is retried', async () => {
+    const t = scriptedFetch([fixture('schema-violation.json'), fixture('tool-ok.json')]);
+    await createAnthropicGateway(CONFIG, { fetch: t.fetch, sleep }).callTool(makeRequest());
+    expect(t.calls).toHaveLength(2);
+    // The retry re-sends the conversation, so the prompt is in it once; the tools array still never carries it.
+    expect(String(t.calls[1].init.body).split(PROMPT_SENTINEL)).toHaveLength(2);
+    expect(JSON.stringify(t.body(1).tools)).not.toContain(PROMPT_SENTINEL);
   });
 
   it('sends the model from configuration and max_tokens from the output cap', async () => {

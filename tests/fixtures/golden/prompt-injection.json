@@ -111,7 +111,9 @@
       {
         "path": "summary.text",
         "reason": "unverifiable"
-      }
+      },
+      {"path": "contact.fullName", "reason": "missing"},
+      {"path": "contact.email", "reason": "missing"}
     ]
   }
 }

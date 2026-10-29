@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createComposeStage } from './compose.js';
-import { buildComposeDescription } from './prompts/compose.js';
+import { COMPOSE_TOOL_DESCRIPTION } from './prompts/compose.js';
 import type { AnthropicGateway, CvDraft, Fact, ToolCallRequest } from './types.js';
 
 // T-11 (CVB-11). Spec §3.4 (F-004), ADR-002 compose stage, C-012 (GenerationPipeline.compose).
@@ -59,7 +59,9 @@ describe('compose stage (T-11)', () => {
 
     expect(calls).toHaveLength(1);
     expect(JSON.stringify(calls[0])).not.toContain(SOURCE_SENTINEL);
-    expect(JSON.stringify(calls[0].description)).toContain(FACTS[0].sourceQuote);
+    expect(JSON.stringify(calls[0].prompt)).toContain(FACTS[0].sourceQuote);
+    // The fact list rides the prompt only: the tool description is static and carries no user data.
+    expect(JSON.stringify(calls[0].description)).not.toContain(FACTS[0].sourceQuote);
   });
 
   it('returns a draft carrying the target role and the composed content', async () => {
@@ -289,8 +291,8 @@ describe('compose stage: contact and derived quantities (ADR-022)', () => {
     expect(draft.contact).toBeUndefined();
   });
 
-  it('the compose prompt forbids derived quantities and names the contact block', () => {
-    const text = buildComposeDescription(FACTS, ROLE);
+  it('the compose rules forbid derived quantities and name the contact block', () => {
+    const text = COMPOSE_TOOL_DESCRIPTION;
     expect(text).toMatch(/derive|compute|calculat/i);
     expect(text).toMatch(/quantit/i);
     expect(text).toMatch(/contact/i);

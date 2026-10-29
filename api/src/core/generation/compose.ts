@@ -6,7 +6,7 @@
 
 import type { AnthropicGateway, CvDraft, Fact, ToolCallRequest } from './types.js';
 import type { TokenLedger } from './ledger.js';
-import { buildComposeDescription, COMPOSE_TOOL_NAME } from './prompts/compose.js';
+import { buildComposePrompt, COMPOSE_TOOL_DESCRIPTION, COMPOSE_TOOL_NAME } from './prompts/compose.js';
 
 export const BULLET_MAX_CHARS = 240;
 
@@ -242,7 +242,9 @@ export function createComposeStage(gateway: AnthropicGateway): ComposeStage {
 
       const req: ToolCallRequest<RawDraft> = {
         name: COMPOSE_TOOL_NAME,
-        description: buildComposeDescription(facts, targetRole),
+        description: COMPOSE_TOOL_DESCRIPTION,
+        // The fact list travels in the user message, once.
+        prompt: buildComposePrompt(facts, targetRole),
         inputSchema: COMPOSE_SCHEMA,
         parse,
       };

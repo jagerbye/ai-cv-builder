@@ -5,9 +5,13 @@ import type { TokenLedger } from './ledger.js';
 // else, so the raw source text cannot reach it at compile time.
 
 // Request handed to the one place the SDK sits behind. T is the parsed result.
+// `description` is the tool's own description and carries no user data: it is sent in the tools
+// array, which the provider bills on every call and every schema retry. `prompt` is the user
+// message, and the only place the source text or the fact list travels, so neither is sent twice.
 export interface ToolCallRequest<T> {
   name: string;
   description: string;
+  prompt: string;
   inputSchema: Record<string, unknown>;
   parse: (raw: unknown) => T;
 }

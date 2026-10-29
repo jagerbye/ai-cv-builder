@@ -31,6 +31,12 @@ const entryWithBullet = (bulletText: string, bulletFactIds: string[] = ['f1']): 
   bullets: [{ text: bulletText, factIds: bulletFactIds }],
 });
 
+// ADR-030 adds two completeness questions (contact.fullName, contact.email) to any draft that omits them, and the
+// drafts here omit them. Those are covered in verify.required-contact.test.ts; these assertions are about the
+// groundedness verdict, so they read the content questions only.
+const contentQuestions = <Q extends { path: string }>(r: { questions: Q[] }): Q[] =>
+  r.questions.filter((q) => !q.path.startsWith('contact.'));
+
 describe('ADR-023/025 — an organisation no cited fact names is flagged in prose, listed or not', () => {
   it('keeps "…a decade at Stripe" and questions it when no cited fact names Stripe (the attack that found the defect)', () => {
     const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2014-2024')];
@@ -45,7 +51,7 @@ describe('ADR-023/025 — an organisation no cited fact names is flagged in pros
     const r = verify(base({ summary: { text: 'Senior engineer with a decade at Stripe', factIds: ['f1'] } }), facts);
     expect(r.dropped).toEqual([]);
     expect(r.accepted.summary).toEqual({ text: 'Senior engineer with a decade at Stripe', factIds: ['f1'] });
-    expect(r.questions).toEqual([]);
+    expect(contentQuestions(r)).toEqual([]);
   });
 
   it('keeps a duration-free Stripe sentence with no question when a cited fact names Stripe', () => {

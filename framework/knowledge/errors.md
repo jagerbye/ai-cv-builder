@@ -285,3 +285,45 @@ entry.
 - **Worth noticing:** the dangerous entries were not the gaps. A missing
   paragraph is visibly missing. A paragraph describing last month's rule reads
   as authoritative, and the next agent builds on it.
+
+## E-014 A check that reads the draft can only ever see what the draft contains  (2026-10-29)
+
+- **Symptom:** a live generation produced a CV whose contact block held email,
+  phone and location but no name, and raised zero questions. The PDF printed
+  the target role in the name's place. 1,062 tests, nine adversarial golden
+  fixtures and a manual QA pass were all green.
+- **Cause:** every groundedness rule in `verify.ts` is written as "for each
+  thing the draft asserts, is it supported?" — a loop over the draft. The
+  contact loop read `draft.contact[key]` and `continue`d on `undefined`.
+  Compose, correctly, omits any field no fact supports. So the one case the
+  product rule most cares about — a fact the source has and the pipeline lost —
+  was structurally invisible: it is an absence, and the check iterates
+  presences. The prompt was the proximate cause (extract emitted no fact for a
+  bare name on its own line) but the check is why nobody heard about it.
+- **Fix / rule:** ADR-030. Where a field is REQUIRED, iterate the required set,
+  not the drafted set. More generally: a verifier built as a loop over output
+  tests only for wrong content, never for missing content, and those are
+  different defects. Ask of any new check, "what shape of failure does the loop
+  I am writing make unreachable?"
+- **Worth noticing:** the golden fixtures made this worse, not better. Nine of
+  them had no contact block at all, so the expected output of nine adversarial
+  cases agreed that a CV with no name was correct. A fixture set inherits the
+  blind spot of the code it was written against; it pins behaviour, and a
+  behaviour nobody thought of is pinned as absent.
+
+## E-015 One string used as both the tool description and the user message is billed twice  (2026-10-29)
+
+- **Symptom:** none visible. Every test passed, every response was correct, and
+  each provider call cost roughly twice what it should.
+- **Cause:** `ToolCallRequest` had a single `description` field, and the gateway
+  sent it in two places: `tools[0].description` and the user message. For the
+  extract call that string is the whole untrusted source — up to 50,000
+  characters — so every call, and every transient or schema retry, carried the
+  CV twice. A code comment named the gap ("ToolCallRequest has no user-message
+  field yet") without naming the consequence, and so it read as a tidiness note
+  rather than as a bill.
+- **Fix / rule:** split the field — `description` is the tool's static rules,
+  `prompt` is the payload, and a test asserts the payload appears exactly once
+  in the wire body. The rule: when one value is sent to a metered API in two
+  fields, that is a defect even when the output is right. A gap recorded in a
+  comment needs its cost written next to it, or nobody will prioritise it.

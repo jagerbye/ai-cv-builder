@@ -38,6 +38,48 @@ Amendment A records rather than hides.
 
 ---
 
+## ADR-030: A field the model never drafted is a question, not a gap (2026-10-29, accepted)
+
+- **Context:** a live run on a source whose first line is the candidate's name
+  produced a CV with no name on it. The extract stage emitted no contact fact
+  for the bare name; compose therefore left `fullName` out, as its prompt tells
+  it to for any field no fact states; and `verify()` skipped the field because
+  its contact loop reads `draft.contact[key]` and `continue`s on `undefined`.
+  The result passed every check, raised no question, and the PDF printed the
+  target role where the name belongs. 1,062 tests and nine golden fixtures were
+  green. The brief's rule is explicit — "anything missing or vague becomes a
+  question to the user" — and nothing in the system could see an absence.
+- **Decision:** three changes, in the order a fix should go in.
+  (1) **The check.** `verify()` iterates the contact keys rather than the keys
+  the draft happens to carry. `fullName` and `email` are REQUIRED: absent, each
+  raises a priority-1 `missing` question at `contact.<field>`. Phone and
+  location stay optional. This is a *completeness* rule, distinct from the
+  groundedness rules around it: it fires on what is not there.
+  (2) **The cause.** The extract prompt now asks for the person's own name as a
+  contact fact and says that a name alone on a line is still the name; the
+  compose prompt says to emit `fullName` whenever a fact names the person. A
+  prompt is not a control, which is why it is second and not first.
+  (3) **The answer.** A `contact.*` question asks for the value itself, so the
+  answer IS the field: `answerQuestion` writes it to the contact row inside the
+  same transaction that stores the user fact, and returns. Before this, a
+  contact answer was stored as a fact and handed to a recompose whose
+  section-scoped write path has no contact branch — the question closed and the
+  CV stayed nameless.
+- **Alternatives rejected:** *make the compose schema require `contact`* — the
+  model would then invent a name to satisfy the schema, which is the one thing
+  this system exists to prevent. *Derive the name from the first line of the
+  source* — a heuristic on untrusted input, and wrong for a cover letter or a
+  PDF with a header. *Let the recompose fill the contact block from the stored
+  user fact* — it already had the fact and did not; worse, it spends a model
+  call to write a string the user typed.
+- **Consequences:** a draft with no contact block now carries two questions it
+  did not before, and those are priority 1, so they take cap slots (12,
+  `MAX_OPEN_QUESTIONS`) ahead of priority-2 ones. Nine golden fixtures were
+  updated: the diff in every one of them is contact-only, which is the evidence
+  that groundedness behaviour did not move. The QA seed's draft gained a
+  grounded contact block, because a seed meant to be a complete CV should be
+  one. Answering a contact question costs no tokens and cannot return 503.
+
 ## ADR-029: A retry policy is dimensioned against an observed failure (2026-10-29, accepted)
 
 - **Context:** the first full run on the current build failed at generation

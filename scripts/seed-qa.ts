@@ -145,8 +145,23 @@ export function buildSeedData(): { facts: Array<Fact & { quote: string }>; draft
     fact('skill', s.name === 'Terraform' ? 'Lists infrastructure tooling as a skill' : `Lists ${s.name} as a skill`, SKILLS_LINE),
   );
 
+  // ADR-030: the seed is meant to be a COMPLETE CV, so its draft carries the contact block grounded in contact
+  // facts, exactly as the compose stage would. A draft without one raises two completeness questions.
+  const contactFacts = {
+    fullName: fact('contact', CONTACT.fullName, CONTACT.fullName),
+    email: fact('contact', `Email is ${CONTACT.email}`, CONTACT.email),
+    phone: fact('contact', `Phone is ${CONTACT.phone}`, CONTACT.phone),
+    location: fact('contact', `Based in ${CONTACT.location}`, CONTACT.location),
+  };
+
   const draft: CvDraft = {
     targetRole: TARGET_ROLE,
+    contact: {
+      fullName: { value: CONTACT.fullName, factIds: [contactFacts.fullName] },
+      email: { value: CONTACT.email, factIds: [contactFacts.email] },
+      phone: { value: CONTACT.phone, factIds: [contactFacts.phone] },
+      location: { value: CONTACT.location, factIds: [contactFacts.location] },
+    },
     summary: { text: SUMMARY_TEXT, factIds: [profileFact] },
     experience: ROLES.map((r, i) => ({
       employer: r.employer,
@@ -207,23 +222,14 @@ export async function seedQaCv(db: PrismaClient, opts: { email?: string; title?:
         relevance: item.relevance,
         userEdited: item.id === userEditedId,
       }));
-    const contact = [
-      {
-        id: randomUUID(),
-        cvId: cv.id,
-        kind: 'contact',
-        parentId: null,
-        path: 'contact',
-        orderIndex: 0,
-        data: CONTACT as Prisma.InputJsonValue,
-        factIds: [],
-        relevance: null,
-        userEdited: false,
-      },
-    ];
     const tops = generated.filter((item) => item.parentId === null);
     const children = generated.filter((item) => item.parentId !== null);
-    await tx.cvItem.createMany({ data: [...contact, ...rows(tops)] });
+    // ADR-030: the contact row comes from the draft now, so it carries its per-field citations like every other
+    // item. `links` is not a draft field, so the seed adds it here, as an intake or a hand edit would.
+    const contactRow = tops.find((item) => item.kind === 'contact');
+    if (!contactRow) throw new Error('the draft produced no contact item');
+    contactRow.data = { ...(contactRow.data as Record<string, unknown>), links: CONTACT.links };
+    await tx.cvItem.createMany({ data: rows(tops) });
     await tx.cvItem.createMany({ data: rows(children) });
 
     await tx.question.createMany({

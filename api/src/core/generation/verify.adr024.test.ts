@@ -20,6 +20,12 @@ const bulletOf = (text: string, facts: Fact[]) =>
 const flagged = (text: string, cited: string[], allowed: string[] = ['Senior engineer']) =>
   unsupportedPhrase(text, cited, allowed);
 
+// ADR-030 adds two completeness questions (contact.fullName, contact.email) to any draft that omits them, and the
+// drafts here omit them. Those are covered in verify.required-contact.test.ts; these assertions are about the
+// groundedness verdict, so they read the content questions only.
+const contentQuestions = <Q extends { path: string }>(r: { questions: Q[] }): Q[] =>
+  r.questions.filter((q) => !q.path.startsWith('contact.'));
+
 describe('ADR-024 silent holes', () => {
   it('1. sentence-initial invented name is checked: "Stripe-backed engineer ..." is flagged', () => {
     const cited = ['Backend engineer at Acme Ltd, 2015-2020, built payments'];
@@ -74,7 +80,7 @@ describe('ADR-024 over-fires: a legitimate summary is not deleted', () => {
     const r = summaryOf('Engineer at Acme since March 2019', f);
     expect(r.dropped).toEqual([]);
     expect(r.accepted.summary).toBeDefined();
-    expect(r.questions).toEqual([]);
+    expect(contentQuestions(r)).toEqual([]);
   });
 
   it('C. "Engineer open to Remote roles" is kept, with a question', () => {
@@ -87,13 +93,13 @@ describe('ADR-024 over-fires: a legitimate summary is not deleted', () => {
 
   it('D. "1000 users served" is supported by a fact saying "1,000 users"; a different figure is questioned', () => {
     const f = [fact('f1', 'Engineer at Acme, 2019, served 1,000 users')];
-    expect(summaryOf('Engineer with 1000 users served', f).questions).toEqual([]);
+    expect(contentQuestions(summaryOf('Engineer with 1000 users served', f))).toEqual([]);
     const other = summaryOf('Engineer with 10,000 users served', f);
     expect(other.dropped).toEqual([]);
     expect(other.accepted.summary).toBeDefined();
     expect(other.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 2 }));
     const g = [fact('f1', 'Engineer at Acme, 2019, served 1000 users')];
-    expect(summaryOf('Engineer with 1,000 users served', g).questions).toEqual([]);
+    expect(contentQuestions(summaryOf('Engineer with 1,000 users served', g))).toEqual([]);
   });
 
   it('E. a bullet "Shipped a feature in a year" with no stated period is kept', () => {
@@ -130,7 +136,7 @@ describe('ADR-025: prose asks, it never drops', () => {
     expect(none.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 2 }));
     const some = summaryOf('Senior engineer with a decade at Stripe', [fact('f1', 'Senior engineer at Stripe, a decade')]);
     expect(some.dropped).toEqual([]);
-    expect(some.questions).toEqual([]);
+    expect(contentQuestions(some)).toEqual([]);
   });
 });
 

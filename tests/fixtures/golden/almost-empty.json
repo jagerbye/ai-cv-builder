@@ -19,7 +19,9 @@
     "droppedPaths": ["experience[0]"],
     "questions": [
       {"path": "experience[0].employer", "reason": "missing"},
-      {"path": "experience[0].period", "reason": "missing"}
+      {"path": "experience[0].period", "reason": "missing"},
+      {"path": "contact.fullName", "reason": "missing"},
+      {"path": "contact.email", "reason": "missing"}
     ]
   }
 }

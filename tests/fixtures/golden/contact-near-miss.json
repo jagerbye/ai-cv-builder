@@ -16,7 +16,8 @@
     "accepted": {"targetRole": "Backend engineer", "experience": [], "education": [], "skills": []},
     "droppedPaths": ["contact.email"],
     "questions": [
-      {"path": "contact.email", "reason": "unverifiable"}
+      {"path": "contact.email", "reason": "unverifiable"},
+      {"path": "contact.fullName", "reason": "missing"}
     ]
   }
 }

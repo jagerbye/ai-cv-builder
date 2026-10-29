@@ -209,6 +209,15 @@ This is the feature the product is judged on; its mechanism is
         reformatted date; persist stores it as one `contact` item with
         per-field citations, and `GET /api/cvs/:id` serves them as
         `contact.citations` (absent on a hand-edited or intake-only contact).
+  - [ ] **A required contact field compose never drafted is also a question
+        (ADR-030).** `fullName` and `email` are required: when the draft does
+        not carry one, the verifier raises a priority-1 `missing` question on
+        `contact.<field>` even though there is nothing to check. Compose leaves
+        out any field no fact states, so without this rule a source whose name
+        the extract stage missed ships a CV with no name and no question.
+        `phone` and `location` stay optional. Answering a `contact.*` question
+        writes the answer straight into the field, in the same transaction that
+        stores the user fact, and makes no model call.
   - [ ] Every bullet point, every date, and the summary carry the ids of the
         facts they rest on; `GET /api/cvs/:id` exposes them so the UI can show
         the user the source quote behind any line.

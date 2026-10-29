@@ -33,7 +33,9 @@
     "questions": [
       {"path": "experience[0].period", "reason": "missing"},
       {"path": "experience[1].period", "reason": "missing"},
-      {"path": "experience[1].role", "reason": "unverifiable"}
+      {"path": "experience[1].role", "reason": "unverifiable"},
+      {"path": "contact.fullName", "reason": "missing"},
+      {"path": "contact.email", "reason": "missing"}
     ]
   }
 }

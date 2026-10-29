@@ -32,7 +32,9 @@
     },
     "droppedPaths": [],
     "questions": [
-      {"path": "experience[1].period", "reason": "missing"}
+      {"path": "experience[1].period", "reason": "missing"},
+      {"path": "contact.fullName", "reason": "missing"},
+      {"path": "contact.email", "reason": "missing"}
     ]
   }
 }

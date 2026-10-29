@@ -8,8 +8,9 @@ import { prisma, userIds } from './generation-persist.fixtures.js';
 // This test pins the two halves: the draft yields exactly the three questions QA drives, and every path
 // is in the C-006 field-level grammar (ADR-016), so a fixture cannot speak an older dialect than the verifier.
 
+// api-contracts.md C-006: `summary.text` and `contact.*` have one item each and carry no index.
 const FIELD_PATH =
-  /^(summary\.text|experience\[\d+\]\.(employer|period|role)|experience\[\d+\]\.bullets\[\d+\]\.text|education\[\d+\]\.(institution|period)|skills\[\d+\]\.name)$/;
+  /^(summary\.text|contact\.(fullName|email|phone|location)|experience\[\d+\]\.(employer|period|role)|experience\[\d+\]\.bullets\[\d+\]\.text|education\[\d+\]\.(institution|period)|skills\[\d+\]\.name)$/;
 
 describe('QA seed questions come from verify()', () => {
   const { draft, facts } = buildSeedData();

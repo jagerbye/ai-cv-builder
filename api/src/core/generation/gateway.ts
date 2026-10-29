@@ -185,7 +185,10 @@ export function createAnthropicGateway(config: LlmConfig, deps: GatewayDeps = {}
         throw new GatewayError('CONFIG_MISSING');
       }
 
-      const messages: unknown[] = [{ role: 'user', content: req.description }];
+      // The tool description goes in the tools array; the prompt goes here, and only here. Sending one
+      // string as both doubles the input tokens of every call and every schema retry (extract carries
+      // up to 50,000 characters of source text).
+      const messages: unknown[] = [{ role: 'user', content: req.prompt }];
 
       for (let attempt = 1; attempt <= MAX_SCHEMA_ATTEMPTS; attempt++) {
         // The budget is the job's (ADR-021): nothing is sent once the ledger is empty, and a response

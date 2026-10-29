@@ -592,3 +592,112 @@ describe('C-009 answering is bounded by a per-answer ledger (ADR-021 Amendment A
     }
   });
 });
+
+// ADR-030. A contact question asks for the value itself, so the answer IS the field. Before this, the answer
+// was stored as a fact and then handed to a recompose that touches no contact row — the question closed and
+// the CV stayed nameless. These tests pin the write, and pin that no model call is made for it.
+describe('C-009 answering a contact question writes the field without a model call (ADR-030)', () => {
+  let owner: Owner;
+  let cvId: string;
+  let questionId: string;
+  let fake: FakePipeline;
+
+  // A ready CV with an email but no name, and the open question the verifier raises for that.
+  beforeEach(async () => {
+    owner = await seedUser();
+    cvId = randomUUID();
+    questionId = randomUUID();
+    await prisma.cv.create({
+      data: {
+        id: cvId,
+        userId: owner.userId,
+        title: 'Backend Engineer',
+        targetRole: 'Backend Engineer',
+        sourceKind: 'text',
+        sourceText: 'Backend engineer in London. Email ada@example.com.',
+        state: 'ready',
+        version: 2,
+      },
+    });
+    await prisma.cvItem.create({
+      data: {
+        cvId, kind: 'contact', path: 'contact', orderIndex: 0,
+        data: { email: 'ada@example.com', links: [] }, factIds: [], userEdited: false,
+      },
+    });
+    await prisma.question.create({
+      data: { id: questionId, cvId, path: 'contact.fullName', text: 'What is your full name?', reason: 'missing', status: 'open', priority: 1 },
+    });
+    fake = fakePipeline();
+    app = await buildWith(fake.pipeline);
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it('writes the answer into the contact block and returns it', async () => {
+    const res = await answer(owner.cookie, cvId, questionId, { answer: 'Ada Lovelace' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().contact.fullName).toBe('Ada Lovelace');
+    // The field it already had is untouched.
+    expect(res.json().contact.email).toBe('ada@example.com');
+  });
+
+  it('spends nothing on the model: the answer is the value, so there is nothing to recompose', async () => {
+    await answer(owner.cookie, cvId, questionId, { answer: 'Ada Lovelace' });
+
+    expect(fake.composeFacts).toHaveLength(0);
+    expect(fake.verifyCalls).toBe(0);
+  });
+
+  it('stores the answer as a user-sourced contact fact and cites it from the field', async () => {
+    await answer(owner.cookie, cvId, questionId, { answer: 'Ada Lovelace' });
+
+    const facts = await prisma.fact.findMany({ where: { cvId, source: 'user' } });
+    expect(facts).toHaveLength(1);
+    expect(facts[0]).toMatchObject({ kind: 'contact', text: 'Ada Lovelace' });
+    const row = await prisma.cvItem.findFirstOrThrow({ where: { cvId, kind: 'contact' } });
+    expect((row.data as { citations: Record<string, string[]> }).citations.fullName).toEqual([facts[0].id]);
+    // A contact the user has supplied is theirs: a later regeneration leaves it whole (ADR-022 Amendment A).
+    expect(row.userEdited).toBe(true);
+  });
+
+  it('marks the question answered and bumps the version once', async () => {
+    const before = await prisma.cv.findUniqueOrThrow({ where: { id: cvId }, select: { version: true } });
+
+    await answer(owner.cookie, cvId, questionId, { answer: 'Ada Lovelace' });
+
+    expect((await prisma.question.findUniqueOrThrow({ where: { id: questionId } })).status).toBe('answered');
+    const after = await prisma.cv.findUniqueOrThrow({ where: { id: cvId }, select: { version: true } });
+    expect(after.version).toBe(before.version + 1);
+  });
+
+  it('creates the contact row when the CV has none at all', async () => {
+    await prisma.cvItem.deleteMany({ where: { cvId, kind: 'contact' } });
+
+    const res = await answer(owner.cookie, cvId, questionId, { answer: 'Ada Lovelace' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().contact.fullName).toBe('Ada Lovelace');
+  });
+
+  it('rejects a name longer than the PATCH route would accept, and leaves the question open', async () => {
+    const res = await answer(owner.cookie, cvId, questionId, { answer: 'x'.repeat(201) });
+
+    expectEnvelope(res, 400, 'VALIDATION');
+    expect((await prisma.question.findUniqueOrThrow({ where: { id: questionId } })).status).toBe('open');
+    const row = await prisma.cvItem.findFirstOrThrow({ where: { cvId, kind: 'contact' } });
+    expect((row.data as { fullName?: string }).fullName).toBeUndefined();
+  });
+
+  it('answering the same contact question twice is 409 and stores no second fact', async () => {
+    await answer(owner.cookie, cvId, questionId, { answer: 'Ada Lovelace' });
+
+    expectEnvelope(await answer(owner.cookie, cvId, questionId, { answer: 'Grace Hopper' }), 409, 'CONFLICT');
+    expect(await prisma.fact.count({ where: { cvId, source: 'user' } })).toBe(1);
+    const row = await prisma.cvItem.findFirstOrThrow({ where: { cvId, kind: 'contact' } });
+    expect((row.data as { fullName: string }).fullName).toBe('Ada Lovelace');
+  });
+});

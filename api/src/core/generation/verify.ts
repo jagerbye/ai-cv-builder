@@ -50,6 +50,19 @@ export interface PlannedVerification extends VerificationResult {
 
 const INDEXED = /^(experience|education|skills)\[(\d+)\](.*)$/;
 
+const CONTACT_KEYS = ['fullName', 'email', 'phone', 'location'] as const;
+
+// ADR-030. A CV with no name on it is not a CV, and one with no way to reach the person is not usable. These two
+// fields are asked for when the draft does not carry them; phone and location stay optional.
+const REQUIRED_CONTACT_KEYS: readonly (typeof CONTACT_KEYS)[number][] = ['fullName', 'email'];
+
+const MISSING_CONTACT_TEXT: Record<(typeof CONTACT_KEYS)[number], string> = {
+  fullName: 'What is your full name? The source does not state it, so the CV would carry no name.',
+  email: 'What email address should an employer use? The source does not state one.',
+  phone: 'What phone number should an employer use? The source does not state one.',
+  location: 'Where are you based? The source does not state it.',
+};
+
 function bindToAccepted(path: string, dropped: readonly DroppedItem[]): string {
   const m = INDEXED.exec(path);
   if (m === null) return path;
@@ -119,12 +132,20 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
   };
 
   // Contact (ADR-022): strict, per field. A field its own cited facts do not establish is dropped and asked about.
-  if (draft.contact !== undefined) {
+  // ADR-030: a REQUIRED field the draft does not carry AT ALL is asked about too. Compose omits any field no fact
+  // states, so a check that only looks at what the draft contains cannot see the omission — and the CV shipped
+  // without a name, silently and with no question. The absent case and the ungrounded case are one question now.
+  {
     const contact: NonNullable<CvDraft['contact']> = {};
-    for (const key of ['fullName', 'email', 'phone', 'location'] as const) {
-      const field = draft.contact[key];
-      if (field === undefined) continue;
+    for (const key of CONTACT_KEYS) {
+      const field = draft.contact?.[key];
       const path = `contact.${key}`;
+      if (field === undefined) {
+        if (REQUIRED_CONTACT_KEYS.includes(key)) {
+          ask({ path, text: MISSING_CONTACT_TEXT[key], reason: 'missing', impact: 'missing' });
+        }
+        continue;
+      }
       const resolved = resolveCited(field.factIds, byId);
       const failure: Failure | null =
         !('facts' in resolved)

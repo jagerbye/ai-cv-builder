@@ -60,6 +60,31 @@ Format — newest on top, one block per decision:
   so the question beside it is the guarantee and the UI must keep showing it;
   the golden fixtures gain a case for a reformatted date, which is the input
   this build met on its first contact with a real model.
+- **Amendment A (same day, from the review).** Two corrections, both found by
+  attacking the rule rather than reading it.
+  1. **A kept summary must not keep an invented entity.** The
+     prompt-injection fixture went red: the injected "Senior ML engineer with a
+     decade at Google" now survived behind a question, because point 3 keeps
+     every failing summary. The reason for keeping it was that a CV needs a
+     head and a vague phrase is not a lie — but an organisation the person
+     never worked for is. So the same line as everywhere else in this ADR: an
+     unsupported **entity** — an organisation, a number, a named technology
+     that no cited fact holds — drops the summary; unsupported phrasing or
+     derivation keeps it and raises its question.
+  2. **The co-occurrence rule has a blind spot, and it is stated rather than
+     papered over.** One fact reading "Acme Ltd 2019-2021 and Globex Corp
+     2015-2018" lets a draft claim "Acme Ltd, 2015-2018" and pass silently,
+     because both strings occur inside that single fact. This predates ADR-022
+     — it is ADR-013's rule, not this one — but this ADR's claim that
+     mis-pairing always surfaces was false, and the honest fix is at the other
+     end: the extract stage emits **one employment fact per employer**, which
+     keeps the two apart where the rule can see them. A proximity heuristic
+     inside one fact was rejected: it would pass and fail on the distance
+     between two strings, which is not evidence of anything.
+- **Also found by the review and fixed with it:** compose now produces the
+  contact block and `persist.ts` never stored one — `read.ts` reads an item
+  nothing writes — so F-004 was unmet end to end and a `contact.email` question
+  would have pointed at a field the CV does not have.
 
 ---
 

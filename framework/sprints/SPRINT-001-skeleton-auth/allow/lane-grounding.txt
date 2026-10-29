@@ -8,3 +8,6 @@ framework/docs/*
 framework/knowledge/*
 framework/sprints/SPRINT-001-skeleton-auth/*
 .claude/*
+api/src/core/cv/persist*
+api/src/core/cv/read.ts
+api/src/core/cv/types.ts

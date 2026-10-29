@@ -57,6 +57,11 @@ export class FixedWindowLimiter {
     if (w && w.start === start && w.count > 0) w.count -= 1;
   }
 
+  // Test-visible: forgets every counter.
+  reset(): void {
+    this.windows.clear();
+  }
+
   private prune(currentStart: number): void {
     for (const [key, w] of this.windows) {
       if (w.start !== currentStart) this.windows.delete(key);
@@ -75,7 +80,7 @@ interface Reservation {
   start: number;
 }
 
-export function registerRateLimit(api: FastifyInstance, options: { now: () => number }): void {
+export function registerRateLimit(api: FastifyInstance, options: { now: () => number }): () => void {
   const writes = new FixedWindowLimiter(WRITE_LIMIT, MINUTE_MS, options.now);
   const generations = new FixedWindowLimiter(GENERATION_LIMIT, HOUR_MS, options.now);
   const reservations = new WeakMap<FastifyRequest, Reservation>();
@@ -114,4 +119,10 @@ export function registerRateLimit(api: FastifyInstance, options: { now: () => nu
     }
     return payload;
   });
+
+  // Clears all counters. Exposed on the app as `resetRateLimits` for tests; production never calls it.
+  return () => {
+    writes.reset();
+    generations.reset();
+  };
 }

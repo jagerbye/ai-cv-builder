@@ -9,9 +9,8 @@ import type { CvDraft, Fact, GenerationPipeline, VerificationResult } from '../.
 // spec.md F-005 §3.5 and F-006 §3.6. Real Fastify app and real Postgres, sid cookie as in
 // cvs-patch.test.ts. The LLM is mocked at the C-012 seam (GenerationPipeline): no network, no key.
 //
-// Seam (provisional, see report): the route reads the pipeline from the app decorator
-// `generationPipeline`. buildServer() does not yet take a pipeline, so the harness sets it
-// before ready(). The route must use it for the targeted recompose and nothing else.
+// Seam (Architect decision, T-20): buildServer takes { generationPipeline } as an option, the same
+// injection as core/jobs/worker.ts. The route must use that pipeline for the targeted recompose and nothing else.
 //
 // No generation_jobs row is written by these tests (C-009 is synchronous), so the
 // job suite lock (api/src/core/jobs/test-lock.ts, ADR-014) is not taken here.
@@ -170,10 +169,9 @@ function fakePipeline(opts: { composeThrows?: boolean } = {}): FakePipeline {
   return state;
 }
 
-// Builds the app with the given seam. The route reads app.generationPipeline (provisional name).
+// Builds the app with the given seam, passed as the buildServer option (not a decorator).
 async function buildWith(pipeline: GenerationPipeline): Promise<FastifyInstance> {
-  const built = buildServer();
-  built.decorate('generationPipeline', pipeline);
+  const built = buildServer({ generationPipeline: pipeline });
   await built.ready();
   return built;
 }
@@ -312,6 +310,65 @@ describe('C-009 POST /api/cvs/:cvId/questions/:questionId/answer — user fact a
     expect(afterUserBullet.text).toBe('Hand-written bullet the user owns');
   });
 
+  // ADR-015: version is C-008's concurrency token, not content. It bumps on a successful answer so an
+  // open editor holding the old version gets VERSION_CONFLICT instead of overwriting the new section.
+  it('bumps the top-level version strictly, while untouched sections and every userEdited field stay identical (ADR-015)', async () => {
+    const before = (await getCv(owner.cookie, cv.cvId)).json();
+    expect(before.version).toBe(3);
+    const res = await answer(owner.cookie, cv.cvId, cv.ids.qPeriod, { answer: ANSWER });
+    expect(res.statusCode).toBe(200);
+    const after = res.json();
+
+    expect(after.version).toBeGreaterThan(before.version);
+    // The persisted CV carries the same bumped version the response reports.
+    expect((await getCv(owner.cookie, cv.cvId)).json().version).toBe(after.version);
+
+    expect(JSON.stringify(after.contact)).toBe(JSON.stringify(before.contact));
+    expect(JSON.stringify(after.summary)).toBe(JSON.stringify(before.summary));
+    expect(JSON.stringify(after.education)).toBe(JSON.stringify(before.education));
+    expect(JSON.stringify(after.skills)).toBe(JSON.stringify(before.skills));
+    const beforeOther = before.experience.find((e: { id: string }) => e.id === cv.ids.expLow);
+    const afterOther = after.experience.find((e: { id: string }) => e.id === cv.ids.expLow);
+    expect(JSON.stringify(afterOther)).toBe(JSON.stringify(beforeOther));
+    const beforeTarget = before.experience.find((e: { id: string }) => e.id === cv.ids.expHigh);
+    const afterTarget = after.experience.find((e: { id: string }) => e.id === cv.ids.expHigh);
+    const beforeUserBullet = beforeTarget.bullets.find((b: { id: string }) => b.id === cv.ids.bulletUser);
+    const afterUserBullet = afterTarget.bullets.find((b: { id: string }) => b.id === cv.ids.bulletUser);
+    expect(JSON.stringify(afterUserBullet)).toBe(JSON.stringify(beforeUserBullet));
+  });
+
+  // Decision, not accident: a question whose bound item was deleted is still answered. The answer is
+  // stored as a fact, 200 is returned, and no section changes.
+  it('answers 200 and stores the answer when the bound item no longer exists, changing no section', async () => {
+    await prisma.cvItem.deleteMany({ where: { cvId: cv.cvId, parentId: cv.ids.expHigh } });
+    await prisma.cvItem.delete({ where: { id: cv.ids.expHigh } });
+    const before = (await getCv(owner.cookie, cv.cvId)).json();
+    expect(before.experience.find((e: { id: string }) => e.id === cv.ids.expHigh)).toBeUndefined();
+
+    const res = await answer(owner.cookie, cv.cvId, cv.ids.qPeriod, { answer: ANSWER });
+    expect(res.statusCode).toBe(200);
+    const after = res.json();
+    expectC006Shape(after, cv.cvId);
+
+    // ADR-015: the answer succeeded, so the version bumps even though no section changed.
+    expect(after.version).toBeGreaterThan(before.version);
+    expect((await getCv(owner.cookie, cv.cvId)).json().version).toBe(after.version);
+
+    expect(JSON.stringify(after.contact)).toBe(JSON.stringify(before.contact));
+    expect(JSON.stringify(after.summary)).toBe(JSON.stringify(before.summary));
+    expect(JSON.stringify(after.experience)).toBe(JSON.stringify(before.experience));
+    expect(JSON.stringify(after.education)).toBe(JSON.stringify(before.education));
+    expect(JSON.stringify(after.skills)).toBe(JSON.stringify(before.skills));
+    expect(JSON.stringify(after)).not.toContain(SENTINEL);
+    expect(JSON.stringify(after.experience)).not.toContain(ANSWER);
+
+    const userFacts = await prisma.fact.findMany({ where: { cvId: cv.cvId, source: 'user' } });
+    expect(userFacts.map((f) => f.text)).toEqual([ANSWER]);
+    const row = await prisma.question.findUniqueOrThrow({ where: { id: cv.ids.qPeriod } });
+    expect(row.status).toBe('answered');
+    expect(row.answer).toBe(ANSWER);
+  });
+
   it('adds the answer to facts and leaves every earlier fact unchanged', async () => {
     const before = (await getCv(owner.cookie, cv.cvId)).json();
     const after = (await answer(owner.cookie, cv.cvId, cv.ids.qPeriod, { answer: ANSWER })).json();
@@ -347,7 +404,7 @@ describe('C-009 POST /api/cvs/:cvId/questions/:questionId/answer — user fact a
     expectEnvelope(res, 404, 'NOT_FOUND');
     const row = await prisma.question.findUniqueOrThrow({ where: { id: cv.ids.qPeriod } });
     expect(row.status).toBe('open');
-    expect(await prisma.fact.count({ where: { cvId: cv.cvId, source: 'user' } })).toBe(0);
+    expect(await prisma.fact.count({ where: { cvId: cv.cvId, source: 'user', text: ANSWER } })).toBe(0);
   });
 
   it('returns 404 NOT_FOUND when the questionId belongs to a different CV of the same user', async () => {

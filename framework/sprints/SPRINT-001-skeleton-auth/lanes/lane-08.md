@@ -21,3 +21,17 @@
 - Gate lint step is red on `api/src/core/jobs/boundaries.test.ts` and `api/src/core/jobs/jobs.test.ts` (unused `JobTestSuite`, lane 11 files). Not this lane. Lint on my files is clean; api typecheck clean.
 - Docs touched: `framework/docs/architecture.md` §2.1 (rate limits, in-process caveat, session resolver, envelope owner).
 - time: developer not measured.
+
+## FIX-T-21 — limiter reset for the cvs-create suite (developer)
+
+- `FixedWindowLimiter.reset()`; `registerRateLimit` returns a reset function; `buildServer` decorates the app with `resetRateLimits()` (test hook, production never calls it). `tests/contract/cvs-create.test.ts`: added `beforeEach(() => app.resetRateLimits())`, no assertion touched. Limiter stays on under test.
+- Lane gate green 70/70 (src/http, src/routes, hardening, cvs-create).
+
+## FIX-T-21 — review (code-reviewer)
+
+- Verdict: approved. Lane gate green, 70/70 across 6 files. check-lane: no violations in this lane's paths (rateLimit.ts, server.ts, cvs-create.test.ts, lane-08.md); the reported ones belong to other lanes.
+- cvs-create.test.ts: diff is the `beforeEach` import and the `beforeEach(() => app.resetRateLimits())` block only. No assertion changed or removed.
+- Limiter stays on under test. Each test starts with fresh counters, and a single test still hits the limit if it exceeds 60 writes.
+- Non-blocking: `resetRateLimits` is a public decorator on the production app. No route calls it; keep it out of any route. The reset() path itself has no direct test; it is exercised by the cvs-create suite.
+- Non-blocking: plan.md row T-21 still reads `todo`; the Orchestrator updates the board at close.
+- Non-blocking reviewer items from the earlier round: not present in this log (no reviewer section), so they could not be checked or cleared here.

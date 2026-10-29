@@ -112,7 +112,8 @@ function fakePipeline(hooks: FakeHooks = {}) {
       calls.push('extract');
       extractArgs.push(sourceText);
       await hooks.extract?.(sourceText);
-      return [FACT];
+      // A fresh id per run: facts.id is a primary key and the real extract stage mints a uuid per fact.
+      return [{ ...FACT, id: randomUUID() }];
     },
     async compose(facts: Fact[], targetRole: string): Promise<CvDraft> {
       calls.push('compose');
@@ -389,7 +390,7 @@ describe('C-005 / ADR-003: stages, inputs and classified errors', () => {
     await worker.runOnce();
 
     expect(extractArgs).toEqual([seed.sourceText]);
-    expect(composeArgs).toEqual([{ facts: [FACT], targetRole: seed.targetRole }]);
+    expect(composeArgs).toEqual([{ facts: [{ ...FACT, id: composeArgs[0].facts[0].id }], targetRole: seed.targetRole }]);
     worker.stop();
   });
 
@@ -429,6 +430,24 @@ describe('C-005 / ADR-003: stages, inputs and classified errors', () => {
     expect(job.status).toBe('failed');
     expect(job.errorCode).toBe('INTERNAL');
     expect(job.errorMessage).not.toMatch(/\n\s+at /);
+    worker.stop();
+  });
+
+  it('reports the error class, code, job id and attempt of an INTERNAL failure, never its message', async () => {
+    const seed = await seedCv();
+    const jobId = await seedJob(seed);
+    const { pipeline } = fakePipeline({
+      compose: async () => {
+        throw Object.assign(new Error('secret driver detail postgres://u:p@host'), { name: 'DriverError', code: 'P2002' });
+      },
+    });
+    const seen: unknown[] = [];
+    const worker = createJobWorker({ prisma, pipeline, workerId: 'A', leaseMs: 60_000, onError: (i) => seen.push(i) });
+
+    await worker.runOnce();
+
+    expect(seen).toEqual([{ event: 'internal', jobId, attempt: 1, errorName: 'DriverError', errorCode: 'P2002' }]);
+    expect(JSON.stringify(seen)).not.toContain('secret');
     worker.stop();
   });
 });

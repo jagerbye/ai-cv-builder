@@ -50,6 +50,11 @@ export interface JobRowData {
 
 export interface JobTestSuite {
   enqueue(data: JobRowData, tx?: Prisma.TransactionClient): Promise<string>;
+  // Test-only: makes a running job's lease expired, as if its worker died.
+  expireLease(jobId: string): Promise<void>;
+  // Test-only: deletes every non-terminal generation_jobs row, so a scenario that depends on which row
+  // claimNext takes starts from an empty queue. Takes the suite lock first.
+  clearOpenJobs(): Promise<void>;
   lock(): Promise<void>;
   readonly holdsLock: boolean;
   release(): Promise<void>;
@@ -79,6 +84,19 @@ export function openJobTestSuite(prisma: PrismaClient): JobTestSuite {
       const client: Pick<PrismaClient, 'generationJob'> = tx ?? prisma;
       const row = await client.generationJob.create({ data });
       return row.id;
+    },
+    // Test-only: moves a running job's lease into the past, as if its worker had died, so a
+    // successor's claimNext takes the row. Takes the suite lock like enqueue.
+    async expireLease(jobId) {
+      await suite.lock();
+      await prisma.generationJob.updateMany({
+        where: { id: jobId },
+        data: { leasedUntil: new Date(Date.now() - 1_000) },
+      });
+    },
+    async clearOpenJobs() {
+      await suite.lock();
+      await prisma.generationJob.deleteMany({ where: { status: { in: ['queued', 'running'] } } });
     },
     async release() {
       if (acquiring) await acquiring.catch(() => undefined);

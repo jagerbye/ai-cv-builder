@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
-import type { GenerationPipeline, Fact } from '../generation/types.js';
+import type { GenerationPipeline, Fact, VerificationResult } from '../generation/types.js';
+import { persistDraft } from '../cv/persist.js';
 import { ERROR_CODES, type ErrorCode } from '../../http/errors.js';
 
 // T-16 (CVB-8). ADR-004: Postgres is the queue. A lease is a row write (leased_until), claimed
@@ -39,6 +40,16 @@ export interface JobWorkerOptions {
   workerId: string;
   leaseMs: number;
   budgetMs?: number;
+  // Receives every error the worker turns into a row or swallows. Never given a message or content (C-000).
+  onError?: (info: JobErrorInfo) => void;
+}
+
+export interface JobErrorInfo {
+  event: 'internal' | 'lease_lost' | 'budget_exceeded' | 'classified';
+  jobId: string;
+  attempt: number;
+  errorName: string | undefined;
+  errorCode: string | undefined;
 }
 
 // Thrown when this run no longer holds its row: a fenced write matched nothing, the lease
@@ -74,6 +85,7 @@ function classify(err: unknown): { code: ErrorCode; message: string } {
 export function createJobWorker(opts: JobWorkerOptions): JobWorker {
   const { prisma, pipeline, leaseMs } = opts;
   const budgetMs = opts.budgetMs ?? JOB_BUDGET_MS;
+  const onError = opts.onError ?? (() => undefined);
   const renewEvery = Math.max(1, Math.floor(leaseMs / 3));
   let stopped = false;
   const activeRuns = new Set<RunContext>();
@@ -170,13 +182,23 @@ export function createJobWorker(opts: JobWorkerOptions): JobWorker {
     const draft = await pipeline.compose(facts, cv.targetRole);
 
     await setStage(lease, ctx, 'verifying');
-    // The verified result is persisted by core/cv, the owner of CV content; the job row only records the outcome.
-    pipeline.verify(draft, facts);
+    await commitSuccess(lease, ctx, pipeline.verify(draft, facts), facts);
+  }
 
+  // ADR-004 / T-28: the verified draft and the job's success are one transaction. The fenced job update
+  // comes first; if this run no longer owns the row it matches nothing, throws, and rolls back the persist.
+  async function commitSuccess(lease: JobLease, ctx: RunContext, verified: VerificationResult, facts: Fact[]): Promise<void> {
     if (ctx.abandoned || stopped) throw new JobLeaseLost('run abandoned');
-    if (!(await fenced(lease, { status: 'succeeded', stage: null, leasedUntil: null, finishedAt: new Date() }))) {
-      throw new JobLeaseLost('success write fenced out');
-    }
+    await prisma.$transaction(async (tx) => {
+      // Checked again inside the transaction: a stop that lands while the transaction is opening writes nothing.
+      if (ctx.abandoned || stopped) throw new JobLeaseLost('run abandoned');
+      const res = await tx.generationJob.updateMany({
+        where: { id: lease.id, attempt: lease.attempt, status: 'running' },
+        data: { status: 'succeeded', stage: null, leasedUntil: null, finishedAt: new Date() },
+      });
+      if (res.count !== 1) throw new JobLeaseLost('success write fenced out');
+      await persistDraft(tx, lease.cvId, verified.accepted, verified.questions, facts);
+    });
   }
 
   async function writeFailure(lease: JobLease, code: ErrorCode, message: string): Promise<void> {
@@ -190,6 +212,11 @@ export function createJobWorker(opts: JobWorkerOptions): JobWorker {
       errorCode: code,
       errorMessage: message,
     });
+  }
+
+  function report(event: JobErrorInfo['event'], lease: JobLease, err: unknown): void {
+    const e = err as { name?: string; code?: string } | null;
+    onError({ event, jobId: lease.id, attempt: lease.attempt, errorName: e?.name, errorCode: e?.code });
   }
 
   async function execute(lease: JobLease): Promise<void> {
@@ -209,12 +236,17 @@ export function createJobWorker(opts: JobWorkerOptions): JobWorker {
     try {
       await Promise.race([stages(lease, ctx), interrupted]);
     } catch (err) {
-      if (err instanceof JobLeaseLost) return;
+      if (err instanceof JobLeaseLost) {
+        report('lease_lost', lease, err);
+        return;
+      }
       if (err instanceof JobBudgetExceeded) {
+        report('budget_exceeded', lease, err);
         await writeFailure(lease, 'JOB_TIMEOUT', JOB_TIMEOUT_MESSAGE);
         return;
       }
       const { code, message } = classify(err);
+      report(code === 'INTERNAL' ? 'internal' : 'classified', lease, err);
       await writeFailure(lease, code, message);
     } finally {
       clearTimeout(budgetTimer);

@@ -59,7 +59,8 @@ describe('route registry (T-07): server.ts registers all five under /api', () =>
   it.each(ROUTES)('server.ts calls api.register for %s', (name) => {
     const fn = PLUGINS[name];
     expect(code).toMatch(new RegExp(`import\\s*\\{[^}]*\\b${fn}\\b[^}]*\\}\\s*from\\s*'\\./routes/${name}\\.js'`));
-    expect(code).toMatch(new RegExp(`await\\s+api\\.register\\(\\s*${fn}\\s*\\)`));
+    // A plugin may take an options object (cvsRoutes carries the generation pipeline); the call itself is what is pinned.
+    expect(code).toMatch(new RegExp(`await\\s+api\\.register\\(\\s*${fn}\\s*(?:,\\s*\\{[^}]*\\})?\\s*\\)`));
   });
 
   it('registers the route plugins with prefix /api', () => {

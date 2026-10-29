@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { openJobTestSuite, JOB_SUITE_LOCK_WAIT_MS, type JobTestSuite } from '../../api/src/core/jobs/test-lock.js';
 
@@ -114,6 +114,12 @@ function postPdf(pages: string[], targetRole = 'Senior Backend Engineer') {
 async function cvCount(): Promise<number> {
   return app.prisma.cv.count({ where: { userId } });
 }
+
+// One session user makes ~70 writes here; F-010 allows 60/min and 10 generations/h per user.
+// The limiter stays on; each test starts with fresh counters.
+beforeEach(() => {
+  app.resetRateLimits();
+});
 
 beforeAll(async () => {
   app = buildServer();

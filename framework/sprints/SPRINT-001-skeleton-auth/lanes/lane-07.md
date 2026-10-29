@@ -181,3 +181,23 @@ Non-blocking:
 - no generation_jobs row is written by these tests (C-009 is synchronous), so the ADR-014 suite lock is not taken; test-lock.ts untouched.
 - lint: the lane's own file is clean; gate lint is red on web/src/features/cv/testkit.ts (outside lane 07, parsing error at 280:25).
 - production code: none. Nothing committed.
+
+## FIX-T-20 Pin the version bump (developer, ADR-015)
+- tests only: tests/contract/cvs-answer.test.ts, two new cases. answer.ts and server.ts untouched.
+- bump pinned: read CV (version 3), answer, assert `version` strictly greater, equal to the persisted GET version, and in the same test contact/summary/education/skills, the userEdited experience entry and the userEdited bullet byte-identical. A future implementation that drops the bump now fails.
+- edge pinned: bound item deleted (experience[0] and its bullets removed). Today: 200, C-006 shape, answer stored as a user fact, question marked answered, no section changes (experience/other sections byte-identical, no SENTINEL, answer not in experience). Note: the version also bumps here (the bump is in the answer-storage transaction, before the recompose), and that is now asserted (strictly greater, equal to the persisted GET version), per review.
+- reviewer note (limit of C-012, in writing): compose() has no section scope. It takes all facts plus targetRole and returns a whole CvDraft, so the "section-scoped recompose" of C-009 is a full-CV compose call whose result is filtered down to the owning section. Cost and latency are those of a full compose per answer. A real section-scoped compose needs a C-012 change (a section/path argument), which is an architect decision.
+
+### FIX-T-20 review round 2 (developer)
+- item 2 done: the missing-bound-item case now asserts version strictly greater than before and equal to the persisted GET version (ADR-015).
+- item 1 NOT done here, by design: the lane gate is RED on tests/contract/cvs-regenerate.test.ts:389 (`Old Employer` still present). Real cause (confirmed by the reviewer, my earlier queue-contention diagnosis was wrong): nothing in production calls mergeRegenerated. jobs/worker.ts stages() runs extract, compose, verify and only marks the row succeeded; the verified draft is never persisted, so a regenerate never replaces the sibling. The wiring needs a change in api/src/core/jobs/worker.ts (outside lane 07's allowlist) plus a persist function in api/src/core/cv/. It needs its own FIX task and an owner/Architect call on where persistence lives. The regenerate test is not weakened or skipped.
+- gate: lane-scoped result reported RED for cvs-regenerate until that task lands; cvs-answer is green.
+
+## FIX-T-26 Regenerate, now that persistence exists (developer)
+- gate: after T-28 (core/cv/persist.ts, worker wired to it) the lane gate is all green, 5 files / 48 tests, including the merge case ("Old Employer" gone, userEdited entry kept). No assertion changed; the earlier red was the missing persist step, as diagnosed.
+- test: the FIFO loop in tests/contract/cvs-regenerate.test.ts stays; its comment now says the worker claims across the whole queue, so the test drains until it sees its own job id.
+- what regenerate does: POST /api/cvs/:cvId/regenerate (C-010) calls enqueueRegenerate in core/cv/regenerate.ts. In one transaction it checks ownership (foreign or unknown CV reads 404), sets the CV state to 'generating', and inserts one generation_jobs row (status queued, scope full). It returns 202 { jobId }. The worker later persists the verified draft through persist.ts, which applies mergeRegenerated so userEdited entries survive.
+- 409 path: generation_jobs_cv_id_in_flight_key is a partial unique index allowing one non-terminal job per CV. A second regenerate while one is queued or running makes the insert fail with Prisma P2002, which enqueueRegenerate maps to ApiError 409 CONFLICT (never a 500).
+- CV state unchanged on 409: the state update and the insert share one transaction, so the P2002 rolls back the 'generating' write as well; the CV is exactly as before the rejected call.
+- untouched: worker, persist.ts (lane 12).
+- review fix (blocking, done): added a 409 test in tests/contract/cvs-regenerate.test.ts that seeds the CV as 'ready', enqueues a queued job via suite.enqueue, calls regenerate, expects 409 CONFLICT, then asserts prisma.cv state and the GET state are both still 'ready'. This is the test that pins the rollback claim. Lane gate: 5 files, 49 tests, green.

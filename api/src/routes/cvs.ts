@@ -3,6 +3,9 @@ import { getCv } from '../core/cv/read.js';
 import { listCvs } from '../core/cv/list.js';
 import { deleteCv } from '../core/cv/delete.js';
 import { applyCvPatch } from '../core/cv/patch.js';
+import { answerQuestion } from '../core/cv/answer.js';
+import { enqueueRegenerate } from '../core/cv/regenerate.js';
+import type { GenerationPipeline } from '../core/generation/types.js';
 import { requireUser } from '../http/requireUser.js';
 
 // T-17 (CVB-15). C-006 read, C-007 list and delete. T-18 (CVB-16). C-008 PATCH. This plugin owns only these routes.
@@ -17,7 +20,11 @@ function notFound(reply: FastifyReply) {
   return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'CV not found.' } });
 }
 
-export async function cvsRoutes(app: FastifyInstance): Promise<void> {
+export interface CvsRoutesOptions {
+  generationPipeline: GenerationPipeline;
+}
+
+export async function cvsRoutes(app: FastifyInstance, opts: CvsRoutesOptions): Promise<void> {
   app.get('/cvs', { preHandler: requireUser }, async (request) => {
     const userId = sessionUserId(request);
     return { items: await listCvs(app.prisma, userId) };
@@ -43,6 +50,26 @@ export async function cvsRoutes(app: FastifyInstance): Promise<void> {
     return reply.code(409).send({
       error: { code: 'VERSION_CONFLICT', message: 'This CV changed since you loaded it. Reload it and apply your edit again.' },
     });
+  });
+
+  // T-20 (CVB-17). C-009. The pipeline is injected (worker.ts precedent), never read from a decorator.
+  app.post<{ Params: { cvId: string; questionId: string } }>(
+    '/cvs/:cvId/questions/:questionId/answer',
+    { preHandler: requireUser },
+    async (request) => {
+      const userId = sessionUserId(request);
+      const { cvId, questionId } = request.params;
+      return answerQuestion(app.prisma, opts.generationPipeline, userId, cvId, questionId, request.body);
+    },
+  );
+
+  // T-26 (CVB-29). C-010. Enqueues one full job through the shared queue; 409 when one is in flight.
+  app.post<{ Params: { cvId: string } }>('/cvs/:cvId/regenerate', { preHandler: requireUser }, async (request, reply) => {
+    const userId = sessionUserId(request);
+    const { cvId } = request.params;
+    if (!UUID.test(cvId)) return notFound(reply);
+    const { jobId } = await enqueueRegenerate(app.prisma, userId, cvId);
+    return reply.code(202).send({ jobId });
   });
 
   app.delete<{ Params: { cvId: string } }>('/cvs/:cvId', { preHandler: requireUser }, async (request, reply) => {

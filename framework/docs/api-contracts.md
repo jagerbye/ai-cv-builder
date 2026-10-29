@@ -137,6 +137,13 @@ Format:
   `questions[].path` is the only place this grammar applies; the dropped-item
   paths reported by the verifier keep their item-level spelling (`experience[0]`,
   `skills[3]`, `summary`) and are not part of this response.
+- **Question `priority` (ADR-026).** Questions come back ordered by it, lower
+  first, and it means what ignoring the question costs: `1` content is missing
+  from the CV (a dropped entry, education, skill or contact field); `2` content
+  is present but the source does not support it (flagged prose, a kept entry
+  whose period the facts do not state); `3` content is present and vague (a
+  title the facts do not tie to the employer). It is derived in one place from
+  that table and is independent of the question's reason.
 - Errors: `404 NOT_FOUND`
 - Status: **frozen (sprint 2)**; path grammar clarified (sprint 001)
 

@@ -4,7 +4,7 @@ import type { CvDraft, Fact } from './types.js';
 
 // ADR-023: the allowed vocabulary of a generated section is the text of its cited facts plus the target role the user
 // supplied. No list of organisations is consulted. ADR-025: in prose (summary, bullets) an unsupported phrase, figure
-// or duration is KEPT and raises a priority-1 question; structured fields (entries, skills, contact) still drop.
+// or duration is KEPT and raises a priority-2 question; structured fields (entries, skills, contact) still drop.
 
 const fact = (id: string, text: string, kind = 'employment'): Fact => ({
   id,
@@ -37,7 +37,7 @@ describe('ADR-023/025 — an organisation no cited fact names is flagged in pros
     const r = verify(base({ summary: { text: 'Senior engineer with a decade at Stripe', factIds: ['f1'] } }), facts);
     expect(r.accepted.summary).toEqual({ text: 'Senior engineer with a decade at Stripe', factIds: ['f1'] });
     expect(r.dropped).toEqual([]);
-    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 1, text: expect.stringContaining('Stripe') }));
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 2, text: expect.stringContaining('Stripe') }));
   });
 
   it('asks nothing about the same sentence when a cited fact names Stripe and states the decade', () => {
@@ -83,7 +83,7 @@ describe('ADR-023/025 — an organisation no cited fact names is flagged in pros
     expect(r.questions).toContainEqual(expect.objectContaining({ path: 'experience[0].bullets[0].text' }));
     const two = verify(base({ experience: [entryWithBullet('Built Zentrio Quark dashboards')] }), facts);
     expect(two.dropped).toEqual([]);
-    expect(two.questions).toContainEqual(expect.objectContaining({ path: 'experience[0].bullets[0].text', priority: 1 }));
+    expect(two.questions).toContainEqual(expect.objectContaining({ path: 'experience[0].bullets[0].text', priority: 2 }));
   });
 
   it('keeps a made-up product name that a cited fact holds', () => {
@@ -154,7 +154,7 @@ describe('ADR-025 — durations and quantified results in prose are kept and que
     const r = verify(base({ summary: { text: 'Backend engineer with a decade of experience at Acme Ltd', factIds: ['f1'] } }), facts);
     expect(r.dropped).toEqual([]);
     expect(r.accepted.summary).toBeDefined();
-    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 1 }));
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 2 }));
   });
 
   it('keeps a quantified result no cited fact states ("200 engineers") and questions it', () => {
@@ -162,7 +162,7 @@ describe('ADR-025 — durations and quantified results in prose are kept and que
     const r = verify(base({ summary: { text: 'Backend engineer at Acme Ltd who led 200 engineers', factIds: ['f1'] } }), facts);
     expect(r.dropped).toEqual([]);
     expect(r.accepted.summary).toBeDefined();
-    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 1, text: expect.stringContaining('200') }));
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 2, text: expect.stringContaining('200') }));
   });
 
   it('keeps a percentage claim no cited fact states ("99% accuracy") and questions it', () => {
@@ -170,6 +170,6 @@ describe('ADR-025 — durations and quantified results in prose are kept and que
     const r = verify(base({ experience: [entryWithBullet('Reached 99% accuracy on models')] }), facts);
     expect(r.dropped).toEqual([]);
     expect(r.accepted.experience[0].bullets).toHaveLength(1);
-    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'experience[0].bullets[0].text', priority: 1, text: expect.stringContaining('99') }));
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'experience[0].bullets[0].text', priority: 2, text: expect.stringContaining('99') }));
   });
 });

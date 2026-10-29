@@ -76,7 +76,7 @@ describe('golden adversarial fixtures (F-004)', () => {
 });
 
 // ADR-025: what matters about an injection is that it cannot change the output's STRUCTURE and that its claim
-// arrives FLAGGED. The injected summary is prose, so it is kept and questioned (priority 1), no longer deleted; the
+// arrives FLAGGED. The injected summary is prose, so it is kept and questioned (priority 2), no longer deleted; the
 // injected employer entry is structure, so it is still dropped. This test was corrected, not weakened: the old
 // expectation ("summary absent") asserted the deletion mechanism ADR-025 retires.
 describe('prompt-injection fixture keeps the output structure and flags the injected claim', () => {
@@ -116,12 +116,12 @@ describe('prompt-injection fixture keeps the output structure and flags the inje
     expect(serialized).not.toContain('2010');
   });
 
-  it('the injected summary claim arrives flagged: kept as drafted, with a priority-1 question that names it', () => {
+  it('the injected summary claim arrives flagged: kept as drafted, with a priority-2 question that names it', () => {
     const result = verify(structuredClone(fx!.draft), structuredClone(fx!.facts));
     expect(result.accepted.summary).toEqual(fx!.draft.summary);
     expect(result.dropped.map((d) => d.path)).not.toContain('summary');
     const q = result.questions.find((x) => x.path === 'summary.text') as PlannedQuestion | undefined;
-    expect(q).toMatchObject({ reason: 'unverifiable', priority: 1 });
+    expect(q).toMatchObject({ reason: 'unverifiable', priority: 2 });
     expect(q!.text).toContain('Google');
   });
 });

@@ -5,7 +5,7 @@
 // (default 3000, the port docker compose publishes). If /api/health answers, the five run
 // in every gate; if nothing answers they SKIP with a message, and under SMOKE_REQUIRED
 // (CI) an absent stack FAILS, because a skipped test is not evidence.
-import { describe, it, expect, afterAll } from 'vitest';
+import { describe, it, expect, afterAll, beforeEach } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 
 const BASE = (process.env.CONTAINER_API_URL ?? `http://127.0.0.1:${process.env.API_PORT ?? '3000'}`).replace(/\/$/, '');
@@ -55,7 +55,15 @@ function cookieFrom(res: Response): string {
   return sid!.split(';')[0];
 }
 
+// A skipped test is not evidence, and skipIf can be flipped in silence. So the cases that actually STARTED are counted,
+// and the guard at the bottom asserts the count whenever the stack is up: skipIf(up) leaves it at 0 and goes red.
+const EXECUTED_CASES_WITH_STACK_UP = 5;
+let executed = 0;
+
 describe.skipIf(!up)('container: session flow through the running api image (ADR-012)', () => {
+  beforeEach(() => {
+    executed += 1;
+  });
   const email = `cvb-t4ctr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
   let cookie: string;
 
@@ -103,5 +111,13 @@ describe.skipIf(!up)('container: session flow through the running api image (ADR
     expect(wrong.status).toBe(401);
     expect(unknown.status).toBe(401);
     expect(await wrong.text()).toBe(await unknown.text());
+  });
+});
+
+// Declared last: vitest runs a file's tests in order. runIf(up) is the guard's own condition, so flipping the
+// session suite's skipIf cannot also switch the guard off.
+describe.runIf(up)('container: the session flow really ran', () => {
+  it(`executed all ${EXECUTED_CASES_WITH_STACK_UP} cases with the stack up, none skipped`, () => {
+    expect(executed).toBe(EXECUTED_CASES_WITH_STACK_UP);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { planQuestions, followUpFor, MAX_OPEN_QUESTIONS } from './questions.js';
+import { planQuestions, followUpFor, priorityFor, MAX_OPEN_QUESTIONS } from './questions.js';
 import type { PlannedQuestion } from './questions.js';
 
 // T-12 (CVB-12). questions.ts: ordering, cap and follow-up rule (spec §3.5 F-005,
@@ -96,5 +96,11 @@ describe('followUpFor — at most one follow-up per path (F-005)', () => {
     const next = followUpFor(other, [original, fu, other], 'Which years for the second job?');
     expect(next).not.toBeNull();
     expect(next?.path).toBe('experience[1].period');
+  });
+});
+
+describe('priorityFor (ADR-026): what ignoring the question costs', () => {
+  it('maps missing content to 1, unsupported content to 2, vague content to 3', () => {
+    expect([priorityFor('missing'), priorityFor('unsupported'), priorityFor('vague')]).toEqual([1, 2, 3]);
   });
 });

@@ -4,7 +4,7 @@ import { unsupportedPhrase } from './verify-entities.js';
 import type { CvDraft, Fact } from './types.js';
 
 // ADR-024 probes, restated under ADR-025: prose is never deleted. A flagged phrase in a summary or bullet raises a
-// priority-1 question and the drafted text stays; the detector is best-effort and its known limits are documented.
+// priority-2 question and the drafted text stays; the detector is best-effort and its known limits are documented.
 
 const fact = (id: string, text: string): Fact => ({ id, kind: 'employment', text, sourceQuote: text, source: 'document' });
 const base = (over: Partial<CvDraft> = {}): CvDraft => ({ targetRole: 'Senior engineer', experience: [], education: [], skills: [], ...over });
@@ -48,7 +48,7 @@ describe('ADR-024 silent holes', () => {
     const r = summaryOf('Worked with Ørsted Wind Power daily', [fact('f1', 'Platform engineer, 2019')]);
     expect(r.accepted.summary).toBeDefined();
     expect(r.dropped).toEqual([]);
-    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 1 }));
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 2 }));
   });
 
   it('3. TECHNOLOGIES is gone: a lowercase technology name is not claimed to be caught (documented limit)', () => {
@@ -91,7 +91,7 @@ describe('ADR-024 over-fires: a legitimate summary is not deleted', () => {
     const other = summaryOf('Engineer with 10,000 users served', f);
     expect(other.dropped).toEqual([]);
     expect(other.accepted.summary).toBeDefined();
-    expect(other.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 1 }));
+    expect(other.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 2 }));
     const g = [fact('f1', 'Engineer at Acme, 2019, served 1000 users')];
     expect(summaryOf('Engineer with 1,000 users served', g).questions).toEqual([]);
   });
@@ -108,26 +108,26 @@ describe('ADR-025: prose asks, it never drops', () => {
     const r = summaryOf('Engineer at Northwind Payments', [fact('f1', 'Engineer at Acme, 2019')]);
     expect(r.accepted.summary?.text).toBe('Engineer at Northwind Payments');
     expect(r.dropped).toEqual([]);
-    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 1, text: expect.stringContaining('Northwind') }));
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 2, text: expect.stringContaining('Northwind') }));
   });
 
   it('an unsupported acronym is kept and questioned', () => {
     const r = summaryOf('Engineer who built the QXR ledger', [fact('f1', 'Engineer at Acme, 2019')]);
     expect(r.accepted.summary).toBeDefined();
-    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 1 }));
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 2 }));
   });
 
-  it('a doubtful word in a bullet keeps the bullet and raises a priority-1 question', () => {
+  it('a doubtful word in a bullet keeps the bullet and raises a priority-2 question', () => {
     const r = bulletOf('Built Zentrio dashboards', [fact('f1', 'Backend engineer at Acme Ltd, 2019, built dashboards')]);
     expect(r.dropped).toEqual([]);
-    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'experience[0].bullets[0].text', priority: 1 }));
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'experience[0].bullets[0].text', priority: 2 }));
   });
 
   it('"…a decade at Stripe": kept and questioned with no Stripe fact; silent with one that states the duration', () => {
     const none = summaryOf('Senior engineer with a decade at Stripe', [fact('f1', 'Backend engineer at Acme Ltd, 2014-2024')]);
     expect(none.accepted.summary).toBeDefined();
     expect(none.dropped).toEqual([]);
-    expect(none.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 1 }));
+    expect(none.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 2 }));
     const some = summaryOf('Senior engineer with a decade at Stripe', [fact('f1', 'Senior engineer at Stripe, a decade')]);
     expect(some.dropped).toEqual([]);
     expect(some.questions).toEqual([]);
@@ -140,7 +140,7 @@ describe('ADR-025 durations: any duration a fact does not state verbatim is aske
     const r = summaryOf('Engineer with a decade of experience at Acme Ltd', f);
     expect(r.accepted.summary).toBeDefined();
     expect(r.dropped).toEqual([]);
-    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 1 }));
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 2 }));
     expect(unsupportedPhrase('Engineer with a decade at Acme Ltd', ['Engineer at Acme Ltd, 2019-2021'])).toContain('decade');
   });
 
@@ -149,6 +149,6 @@ describe('ADR-025 durations: any duration a fact does not state verbatim is aske
     const r = summaryOf('Engineer with a decade at Acme Ltd', f);
     expect(r.dropped).toEqual([]);
     expect(r.accepted.summary).toBeDefined();
-    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 1 }));
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', priority: 2 }));
   });
 });

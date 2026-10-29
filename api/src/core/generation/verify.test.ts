@@ -12,7 +12,7 @@ import type { CvDraft, Fact } from './types.js';
 //  - named technologies are whole words from the verifier lexicon (Kafka, PostgreSQL, Go, Kubernetes, ...);
 //  - reasons: empty factIds -> 'missing'; unknown factIds -> 'unverifiable'; unmatched employer/period/institution -> 'missing';
 //    any other unmatched entity -> 'unverifiable'; a vague role -> 'vague'.
-//  - priority: missing employer/period/institution = 1, unverifiable = 2, vague = 3 (lower is asked first).
+//  - priority (ADR-026, cost of ignoring): content gone from the CV = 1, present but unsupported = 2, present and vague = 3.
 
 const fact = (id: string, text: string, kind = 'achievement'): Fact => ({
   id,
@@ -31,7 +31,7 @@ const base = (over: Partial<CvDraft> = {}): CvDraft => ({
 });
 
 describe('verify — citation rule (ADR-002)', () => {
-  it('keeps a bullet with empty factIds and raises a priority-1 missing-reason question on its path (ADR-025 Amendment A)', () => {
+  it('keeps a bullet with empty factIds and raises a priority-2 missing-reason question on its path (ADR-026)', () => {
     const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2019, built APIs')];
     const draft = base({
       experience: [
@@ -55,7 +55,7 @@ describe('verify — citation rule (ADR-002)', () => {
       { text: 'Built APIs at Acme Ltd', factIds: ['f1'] },
     ]);
     expect(r.questions).toContainEqual(
-      expect.objectContaining({ path: 'experience[0].bullets[0].text', reason: 'missing', priority: 1 }),
+      expect.objectContaining({ path: 'experience[0].bullets[0].text', reason: 'missing', priority: 2 }),
     );
   });
 
@@ -148,12 +148,12 @@ describe('verify — entity rule against the entry\'s own facts (spec §3.4, ADR
     expect(r.accepted.experience[0].employer).toBe('Acme Ltd');
     expect(r.accepted.experience[0].period).toBe('2019');
     expect(r.questions).toContainEqual(
-      expect.objectContaining({ path: 'experience[0].period', reason: 'missing', priority: 1 }),
+      expect.objectContaining({ path: 'experience[0].period', reason: 'missing', priority: 2 }),
     );
     expect(r.questions.some((q) => q.path === 'experience[0].employer')).toBe(false);
   });
 
-  it('keeps an entry whose period no cited fact states, with the drafted period and a priority-1 period question (ADR-022)', () => {
+  it('keeps an entry whose period no cited fact states, with the drafted period and a priority-2 period question (ADR-022)', () => {
     const facts = [
       fact('f1', 'Intern at Acme Ltd, 2015-2017', 'employment'),
       fact('f2', 'Backend engineer at Globex, 2019', 'employment'),
@@ -170,7 +170,7 @@ describe('verify — entity rule against the entry\'s own facts (spec §3.4, ADR
     expect(r.dropped).toEqual([]);
     expect(r.accepted.experience).toEqual([entry]);
     expect(r.questions).toContainEqual(
-      expect.objectContaining({ path: 'experience[0].period', reason: 'missing', priority: 1 }),
+      expect.objectContaining({ path: 'experience[0].period', reason: 'missing', priority: 2 }),
     );
   });
 
@@ -256,7 +256,7 @@ describe('verify — entity rule against the entry\'s own facts (spec §3.4, ADR
     expect(r.accepted.experience).toHaveLength(2);
     expect(r.accepted.experience[1].period).toBe('2017-2019');
     expect(r.questions).toContainEqual(
-      expect.objectContaining({ path: 'experience[1].period', reason: 'missing', priority: 1 }),
+      expect.objectContaining({ path: 'experience[1].period', reason: 'missing', priority: 2 }),
     );
     expect(r.questions.some((q) => q.path === 'experience[0].period')).toBe(false);
   });
@@ -302,11 +302,11 @@ describe('verify — entity rule against the entry\'s own facts (spec §3.4, ADR
       ],
     });
     const r = verify(draft, facts);
-    // ADR-025: prose is never deleted; the unsupported organisation raises a priority-1 question instead.
+    // ADR-025: prose is never deleted; the unsupported organisation raises a priority-2 question instead.
     expect(r.dropped).toEqual([]);
     expect(r.accepted.experience[0].bullets.map((b) => b.text)).toEqual(['Built billing tools at Google']);
     expect(r.questions).toContainEqual(
-      expect.objectContaining({ path: 'experience[0].bullets[0].text', reason: 'unverifiable', priority: 1, text: expect.stringContaining('Google') }),
+      expect.objectContaining({ path: 'experience[0].bullets[0].text', reason: 'unverifiable', priority: 2, text: expect.stringContaining('Google') }),
     );
   });
 
@@ -331,7 +331,7 @@ describe('verify — entity rule against the entry\'s own facts (spec §3.4, ADR
     expect(r.dropped).toEqual([]);
     expect(r.accepted.experience[0].bullets.map((b) => b.text)).toEqual(['Cut costs by 25%', 'Cut costs by 20 %']);
     expect(r.questions).toContainEqual(
-      expect.objectContaining({ path: 'experience[0].bullets[0].text', reason: 'unverifiable', priority: 1, text: expect.stringContaining('25') }),
+      expect.objectContaining({ path: 'experience[0].bullets[0].text', reason: 'unverifiable', priority: 2, text: expect.stringContaining('25') }),
     );
     expect(r.questions.some((q) => q.path === 'experience[0].bullets[1].text')).toBe(false);
   });
@@ -496,18 +496,18 @@ describe('verify — education is grounded against its own facts', () => {
     expect(r.accepted.education).toEqual([edu]);
     expect(r.dropped).toEqual([]);
   });
-  it('drops an invented school and raises a priority-1 question on its path', () => {
+  it('drops an invented school and raises a priority-2 question on its path', () => {
     const r = verify(base({ education: [{ institution: 'MIT', period: '2010-2014', factIds: ['f1'] }] }), facts);
     expect(r.accepted.education).toEqual([]);
     expect(r.dropped.map((d) => d.path)).toEqual(['education[0]']);
     expect(r.questions).toContainEqual(expect.objectContaining({ path: 'education[0].institution', reason: 'missing', priority: 1 }));
   });
-  it('keeps an education entry with an invented period, keeps the drafted period, and raises education[0].period (priority 1, ADR-022)', () => {
+  it('keeps an education entry with an invented period, keeps the drafted period, and raises education[0].period (priority 2, ADR-022)', () => {
     const edu = { institution: 'Warsaw University', period: '2001-2005', factIds: ['f1'] };
     const r = verify(base({ education: [edu] }), facts);
     expect(r.dropped).toEqual([]);
     expect(r.accepted.education).toEqual([edu]);
-    expect(r.questions).toEqual([expect.objectContaining({ path: 'education[0].period', reason: 'missing', priority: 1 })]);
+    expect(r.questions).toEqual([expect.objectContaining({ path: 'education[0].period', reason: 'missing', priority: 2 })]);
   });
   it('drops an education entry whose institution is in a fact it does not cite', () => {
     const twoFacts = [
@@ -547,7 +547,7 @@ describe('verify — ADR-022: derived quantities, strict contact, co-occurring e
     const r = verify(base({ education: [edu] }), twoFacts);
     expect(r.dropped).toEqual([]);
     expect(r.accepted.education).toEqual([edu]);
-    expect(r.questions).toEqual([expect.objectContaining({ path: 'education[0].period', reason: 'missing', priority: 1 })]);
+    expect(r.questions).toEqual([expect.objectContaining({ path: 'education[0].period', reason: 'missing', priority: 2 })]);
   });
 
   describe('contact is verified strictly, per field, against that field\'s own cited facts', () => {
@@ -679,7 +679,7 @@ describe('verify — ADR-025: an unsupported phrase in the summary is kept and f
     const r = verify(base({ summary: { text, factIds: ['f1', 'f2'] } }), facts);
     expect(r.accepted.summary).toEqual({ text, factIds: ['f1', 'f2'] });
     expect(r.dropped).toEqual([]);
-    expect(r.questions).toEqual([expect.objectContaining({ path: 'summary.text', reason: 'unverifiable', priority: 1, text: expect.stringMatching(detail) })]);
+    expect(r.questions).toEqual([expect.objectContaining({ path: 'summary.text', reason: 'unverifiable', priority: 2, text: expect.stringMatching(detail) })]);
   };
 
   it('keeps and flags a summary naming an organisation no cited fact holds', () => {

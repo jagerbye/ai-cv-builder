@@ -12,7 +12,7 @@ import { createTokenLedger } from './ledger.js';
 
 const FIXTURE_DIR = fileURLToPath(new URL('../../../../tests/fixtures/llm/', import.meta.url));
 
-interface Canned { status: number; body: unknown }
+interface Canned { status: number; body: unknown; headers?: Record<string, string> }
 const fixture = (name: string): Canned => JSON.parse(readFileSync(FIXTURE_DIR + name, 'utf8'));
 
 const PROMPT_SENTINEL = 'PROMPT-SENTINEL-DESCRIPTION-7731';
@@ -48,6 +48,8 @@ const CONFIG: LlmConfig = {
   maxOutputTokens: 32000,
   tokenBudgetPerJob: 1_000_000,
   timeoutMs: 5000,
+  retryBaseMs: 2000,
+  retryBudgetMs: 20_000,
 };
 
 // Scripted transport: step i answers call i; the last step repeats.
@@ -64,7 +66,7 @@ function scriptedFetch(steps: Step[]) {
     }
     return new Response(JSON.stringify(step.body), {
       status: step.status,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...(step.headers ?? {}) },
     });
   };
   return {
@@ -90,9 +92,16 @@ function toolUse(input: unknown, usage = { input_tokens: 120, output_tokens: 40 
 }
 
 let delays: number[];
-const sleep = async (ms: number) => { delays.push(ms); };
+// Date is faked, timers are not: a gateway sleeping through this helper advances the clock the gateway reads
+// (ADR-029), so the retry budget is spent the way it would be in life, without any real waiting.
+const sleep = async (ms: number) => { delays.push(ms); vi.setSystemTime(Date.now() + ms); };
 
-beforeEach(() => { delays = []; });
+beforeEach(() => {
+  delays = [];
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(Date.parse('2026-10-29T12:00:00Z'));
+});
+afterEach(() => { vi.useRealTimers(); });
 
 describe('AnthropicGateway request shape (C-012, ADR-006)', () => {
   it('forces the named tool with its explicit input schema', async () => {
@@ -197,14 +206,116 @@ describe('re-validation and one retry on schema violation (ADR-006, F-010)', () 
 });
 
 describe('provider error classification and backoff (F-010)', () => {
-  it('retries 429 with exponential backoff up to 3 attempts, then fails RATE_LIMITED', async () => {
+  it('retries 429 with exponential backoff while the budget lasts, then fails RATE_LIMITED', async () => {
     const t = scriptedFetch([fixture('error-429.json')]);
     await expect(createAnthropicGateway(CONFIG, { fetch: t.fetch, sleep }).callTool(makeRequest()))
       .rejects.toMatchObject({ code: 'RATE_LIMITED' });
-    expect(t.calls).toHaveLength(3);
-    expect(delays).toHaveLength(2);
+    expect(t.calls.length).toBeGreaterThanOrEqual(3);
+    expect(delays.length).toBe(t.calls.length - 1);
     expect(delays[0]).toBeGreaterThan(0);
     expect(delays[1]).toBeGreaterThan(delays[0]);
+  });
+
+  // ADR-029: the timing is the contract. A controlled clock: sleep advances it, nothing waits for real.
+  function clock(start = Date.parse('2026-10-29T12:00:00Z')) {
+    const c = { t: start, delays: [] as number[] };
+    return {
+      c,
+      now: () => c.t,
+      sleep: async (ms: number) => { c.delays.push(ms); c.t += ms; },
+    };
+  }
+  const retryAfter = (value: string): Canned => ({ ...fixture('error-429.json'), headers: { 'retry-after': value } });
+  const gw = (t: ReturnType<typeof scriptedFetch>, k: ReturnType<typeof clock>, random = () => 0.5, cfg: Partial<LlmConfig> = {}) =>
+    createAnthropicGateway({ ...CONFIG, ...cfg }, { fetch: t.fetch, sleep: k.sleep, now: k.now, random });
+
+  it('waits what Retry-After says (seconds), not the backoff', async () => {
+    const k = clock();
+    const t = scriptedFetch([retryAfter('2'), fixture('tool-ok.json')]);
+    await gw(t, k).callTool(makeRequest());
+    expect(k.c.delays).toEqual([2000]);
+  });
+
+  it('understands the HTTP-date form of Retry-After', async () => {
+    const k = clock();
+    const t = scriptedFetch([retryAfter(new Date(k.c.t + 4000).toUTCString()), fixture('tool-ok.json')]);
+    await gw(t, k).callTool(makeRequest());
+    expect(k.c.delays).toEqual([4000]);
+  });
+
+  it('caps Retry-After at what is left of the budget instead of sleeping on the header', async () => {
+    const k = clock();
+    const t = scriptedFetch([retryAfter('3600'), fixture('tool-ok.json')]);
+    await gw(t, k).callTool(makeRequest());
+    expect(k.c.delays).toEqual([20_000]);
+  });
+
+  it('ignores a garbage or past Retry-After and backs off instead', async () => {
+    for (const v of ['soon', '-5', new Date(Date.parse('2026-10-29T11:00:00Z')).toUTCString()]) {
+      const k = clock();
+      const t = scriptedFetch([retryAfter(v), fixture('tool-ok.json')]);
+      await gw(t, k, () => 0).callTool(makeRequest());
+      expect(k.c.delays).toEqual([2000]);
+    }
+  });
+
+  it('never waits less than the configured base, whatever Retry-After says (0 or negative)', async () => {
+    for (const v of ['0', '-3']) {
+      const k = clock();
+      const t = scriptedFetch([retryAfter(v), fixture('tool-ok.json')]);
+      await gw(t, k, () => 0).callTool(makeRequest());
+      expect(k.c.delays).toHaveLength(1);
+      expect(k.c.delays[0]).toBeGreaterThanOrEqual(CONFIG.retryBaseMs);
+    }
+  });
+
+  it('a 429 without the header backs off from a base in seconds, doubling, with jitter inside the band', async () => {
+    for (const [r, first, second] of [[0, 2000, 4000], [0.999, 2998, 5996]] as const) {
+      const k = clock();
+      const t = scriptedFetch([fixture('error-429.json'), fixture('error-429.json'), fixture('tool-ok.json')]);
+      await gw(t, k, () => r).callTool(makeRequest());
+      expect(k.c.delays[0]).toBeCloseTo(first, -1);
+      expect(k.c.delays[1]).toBeCloseTo(second, -1);
+    }
+  });
+
+  it('jitter differs between callers: two different random draws give two different delays', async () => {
+    const a = clock(); const b = clock();
+    await gw(scriptedFetch([fixture('error-429.json'), fixture('tool-ok.json')]), a, () => 0.1).callTool(makeRequest());
+    await gw(scriptedFetch([fixture('error-429.json'), fixture('tool-ok.json')]), b, () => 0.9).callTool(makeRequest());
+    expect(a.c.delays[0]).not.toBe(b.c.delays[0]);
+  });
+
+  it('stops when the next wait would exceed the budget, with the right code, and the total wait stays inside it', async () => {
+    const k = clock();
+    const t = scriptedFetch([fixture('error-429.json')]);
+    await expect(gw(t, k, () => 0).callTool(makeRequest())).rejects.toMatchObject({ code: 'RATE_LIMITED' });
+    // 2 + 4 + 8 = 14 s waited; the next wait (16 s) would pass the 20 s budget.
+    expect(k.c.delays).toEqual([2000, 4000, 8000]);
+    expect(t.calls).toHaveLength(4);
+    expect(k.c.delays.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(20_000);
+  });
+
+  it('a provider that is down fails with LLM_UNAVAILABLE inside the budget, not after three minutes', async () => {
+    const k = clock();
+    const t = scriptedFetch([fixture('error-500.json')]);
+    await expect(gw(t, k, () => 0.5).callTool(makeRequest())).rejects.toMatchObject({ code: 'LLM_UNAVAILABLE' });
+    expect(k.c.t - Date.parse('2026-10-29T12:00:00Z')).toBeLessThanOrEqual(20_000);
+  });
+
+  it('honours the configured base and budget', async () => {
+    const k = clock();
+    const t = scriptedFetch([fixture('error-429.json')]);
+    await expect(gw(t, k, () => 0, { retryBaseMs: 1000, retryBudgetMs: 5000 }).callTool(makeRequest())).rejects.toMatchObject({ code: 'RATE_LIMITED' });
+    expect(k.c.delays).toEqual([1000, 2000]);
+  });
+
+  it('does not retry a non-retryable failure even when it carries Retry-After', async () => {
+    const k = clock();
+    const t = scriptedFetch([{ ...fixture('error-400.json'), headers: { 'retry-after': '1' } }]);
+    await expect(gw(t, k).callTool(makeRequest())).rejects.toMatchObject({ code: 'LLM_INVALID_REQUEST' });
+    expect(t.calls).toHaveLength(1);
+    expect(k.c.delays).toEqual([]);
   });
 
   it('recovers when a 429 is followed by a success', async () => {
@@ -215,18 +326,18 @@ describe('provider error classification and backoff (F-010)', () => {
     expect(delays).toHaveLength(1);
   });
 
-  it('retries 529 overloaded up to 3 attempts, then fails LLM_UNAVAILABLE', async () => {
+  it('retries 529 overloaded while the budget lasts, then fails LLM_UNAVAILABLE', async () => {
     const t = scriptedFetch([fixture('error-529.json')]);
     await expect(createAnthropicGateway(CONFIG, { fetch: t.fetch, sleep }).callTool(makeRequest()))
       .rejects.toMatchObject({ code: 'LLM_UNAVAILABLE' });
-    expect(t.calls).toHaveLength(3);
+    expect(t.calls.length).toBeGreaterThanOrEqual(3);
   });
 
-  it('retries a 500 up to 3 attempts, then fails LLM_UNAVAILABLE', async () => {
+  it('retries a 500 while the budget lasts, then fails LLM_UNAVAILABLE', async () => {
     const t = scriptedFetch([fixture('error-500.json')]);
     await expect(createAnthropicGateway(CONFIG, { fetch: t.fetch, sleep }).callTool(makeRequest()))
       .rejects.toMatchObject({ code: 'LLM_UNAVAILABLE' });
-    expect(t.calls).toHaveLength(3);
+    expect(t.calls.length).toBeGreaterThanOrEqual(3);
   });
 
   it('fails a 400 invalid request immediately with a code distinct from the retryable ones', async () => {
@@ -256,8 +367,8 @@ describe('provider error classification and backoff (F-010)', () => {
       .callTool(makeRequest()).then(() => null, (e: { code?: string }) => e);
     expect(err).not.toBeNull();
     expect(err?.code).toBe('LLM_UNAVAILABLE');
-    expect(t.calls).toHaveLength(3);
-    expect(delays).toHaveLength(2);
+    expect(t.calls.length).toBeGreaterThanOrEqual(3);
+    expect(delays).toHaveLength(t.calls.length - 1);
   });
 
   it('never exposes the provider error message to the caller', async () => {

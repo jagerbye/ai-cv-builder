@@ -14,6 +14,9 @@ export interface Env {
   // Optional (ADR-021): output cap per response and token budget per job. Validated in llm/config.ts.
   ANTHROPIC_MAX_OUTPUT_TOKENS: string | undefined;
   ANTHROPIC_TOKEN_BUDGET_PER_JOB: string | undefined;
+  // Optional (ADR-029): retry base and waiting budget, in seconds. Validated in llm/config.ts.
+  ANTHROPIC_RETRY_BASE_SECONDS: string | undefined;
+  ANTHROPIC_RETRY_BUDGET_SECONDS: string | undefined;
 }
 
 function optional(value: string | undefined): string | undefined {
@@ -61,6 +64,8 @@ function parseEnv(source: NodeJS.ProcessEnv): Env {
     ANTHROPIC_BASE_URL: parseBaseUrl(optional(source.ANTHROPIC_BASE_URL)),
     ANTHROPIC_MAX_OUTPUT_TOKENS: optional(source.ANTHROPIC_MAX_OUTPUT_TOKENS),
     ANTHROPIC_TOKEN_BUDGET_PER_JOB: optional(source.ANTHROPIC_TOKEN_BUDGET_PER_JOB),
+    ANTHROPIC_RETRY_BASE_SECONDS: optional(source.ANTHROPIC_RETRY_BASE_SECONDS),
+    ANTHROPIC_RETRY_BUDGET_SECONDS: optional(source.ANTHROPIC_RETRY_BUDGET_SECONDS),
   };
 }
 

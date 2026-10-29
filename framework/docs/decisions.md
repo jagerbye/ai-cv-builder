@@ -19,6 +19,49 @@ Format — newest on top, one block per decision:
 
 ---
 
+## ADR-029: A retry policy is dimensioned against an observed failure (2026-10-29, accepted)
+
+- **Context:** the first full run on the current build failed at generation
+  with `RATE_LIMITED`, while a hand-made call to the same provider seconds
+  earlier succeeded. The provider's own message: *"could not verify available
+  credits for this request in time"* — a transient condition on their side,
+  not an exhausted quota and not our request size (1024, 8192 and 32000
+  max_tokens all behaved the same, one failing at random). Our gateway retries
+  a 429 three times with a 500 ms base, so the three attempts span about a
+  second and a half, and the condition outlasts them. The policy satisfied the
+  letter of F-010 — "exponential backoff up to 3 attempts" — and caught
+  nothing, because 500 ms was a guess made when there was no provider to
+  measure against.
+- **Decision:** the policy is sized against what the provider actually does.
+  `Retry-After` is honoured when the response carries one, because the server
+  knows better than our constant. Otherwise exponential backoff with a base in
+  seconds and jitter, and the attempt count bounded by what is left of the
+  job's budget (C-005 allows 180 s; a handful of seconds of waiting is free)
+  rather than by a number chosen for its roundness.
+- **Alternatives rejected:** raising the base and leaving it at that (the same
+  guess, bigger — and it ignores the header the provider sends); retrying
+  until the budget runs out (a provider that is genuinely down then costs the
+  whole budget before failing, and the user waits three minutes for an answer
+  we could give in ten seconds).
+- **Consequences:** F-010's wording gains the detail it lacked; the gateway's
+  tests must drive it with a clock they control rather than real waiting; and
+  the general lesson is already in the template from this build's harvest —
+  a decision about something outside the repository needs a spike against the
+  real thing before it is written down, not after it fails in front of someone.
+- **Amendment A, and it is against this ADR itself.** The reviewer pointed out
+  that this decision was made the way it forbids: nobody measured how long the
+  provider's condition actually lasts, so 2/4/8 seconds is a better guess than
+  500 ms and still a guess. Recorded rather than dressed up. The honest
+  statement of what the policy now buys: it outlasts an interruption of about
+  fourteen seconds where the old one outlasted one and a half, and the number
+  that would replace the guess is the observed duration of a real outage,
+  which this build has not had the opportunity to measure. Also noted: the
+  waiting budget is per provider REQUEST, and `callTool` makes two schema
+  attempts, so one generation can wait roughly twice the budget — still far
+  inside C-005's 180 seconds, and now written down instead of discovered.
+
+---
+
 ## ADR-028: One name-end rule, a strict job title, and the limit written down (2026-10-29, accepted)
 
 - **Context:** the reviewer attacked ADR-027's word boundary. Hyphen and slash leaked through it: employer `Acme`

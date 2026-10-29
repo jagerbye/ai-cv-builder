@@ -6,3 +6,5 @@ framework/docs/*
 framework/knowledge/*
 framework/sprints/SPRINT-002-live-model/*
 .claude/*
+docker-compose.yml
+.env.example

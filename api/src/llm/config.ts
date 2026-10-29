@@ -15,6 +15,12 @@ export const DEFAULT_TOKEN_BUDGET_PER_JOB = 500_000;
 // Wall-clock limit for one provider request attempt.
 export const DEFAULT_TIMEOUT_MS = 60_000;
 
+// ADR-029: the retry policy for a transient provider failure (429, 5xx, transport). Backoff doubles from
+// the base, with jitter, and the retries of one provider request share a waiting budget: nothing is
+// scheduled past it. Defaults: 2 s base (waits of ~2, 4, 8 s) and a 20 s budget, far inside C-005's 180 s.
+export const DEFAULT_RETRY_BASE_SECONDS = 2;
+export const DEFAULT_RETRY_BUDGET_SECONDS = 20;
+
 export interface LlmConfig {
   apiKey?: string;
   // Endpoint of an Anthropic-compatible proxy; undefined means the SDK default (the Anthropic API).
@@ -23,6 +29,8 @@ export interface LlmConfig {
   maxOutputTokens: number;
   tokenBudgetPerJob: number;
   timeoutMs: number;
+  retryBaseMs: number;
+  retryBudgetMs: number;
 }
 
 // The slice of Env this module reads. The parsed Env from env.ts satisfies it.
@@ -32,6 +40,8 @@ export interface LlmEnv {
   ANTHROPIC_BASE_URL?: string | undefined;
   ANTHROPIC_MAX_OUTPUT_TOKENS?: string | undefined;
   ANTHROPIC_TOKEN_BUDGET_PER_JOB?: string | undefined;
+  ANTHROPIC_RETRY_BASE_SECONDS?: string | undefined;
+  ANTHROPIC_RETRY_BUDGET_SECONDS?: string | undefined;
 }
 
 // Names the variable only, never its value. Unset or empty means the default.
@@ -54,5 +64,7 @@ export function readLlmConfig(env: LlmEnv): LlmConfig {
     maxOutputTokens: positiveInt('ANTHROPIC_MAX_OUTPUT_TOKENS', env.ANTHROPIC_MAX_OUTPUT_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS),
     tokenBudgetPerJob: positiveInt('ANTHROPIC_TOKEN_BUDGET_PER_JOB', env.ANTHROPIC_TOKEN_BUDGET_PER_JOB, DEFAULT_TOKEN_BUDGET_PER_JOB),
     timeoutMs: DEFAULT_TIMEOUT_MS,
+    retryBaseMs: positiveInt('ANTHROPIC_RETRY_BASE_SECONDS', env.ANTHROPIC_RETRY_BASE_SECONDS, DEFAULT_RETRY_BASE_SECONDS) * 1000,
+    retryBudgetMs: positiveInt('ANTHROPIC_RETRY_BUDGET_SECONDS', env.ANTHROPIC_RETRY_BUDGET_SECONDS, DEFAULT_RETRY_BUDGET_SECONDS) * 1000,
   };
 }

@@ -3,8 +3,8 @@
 //
 // Per call: tool-use with an explicit input schema, tool_choice forcing that
 // tool, the result re-validated in code (never trusted), one retry on a schema
-// violation with the validation error appended, 3-attempt exponential backoff
-// for rate limit / 5xx / transport failures, and a per-job token budget (ADR-021) through an
+// violation with the validation error appended, Retry-After-aware exponential
+// backoff bounded by a waiting budget (ADR-029) for rate limit / 5xx / transport failures, and a per-job token budget (ADR-021) through an
 // optional ledger. max_tokens is its own setting and bounds one response only.
 
 import Anthropic, { APIConnectionError, APIError } from '@anthropic-ai/sdk';
@@ -49,14 +49,18 @@ export interface GatewayLogger {
 export interface GatewayDeps {
   fetch?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
+  now?: () => number;
+  random?: () => number;
   logger?: GatewayLogger;
 }
 
 const NOOP = (): void => {};
 const NOOP_LOGGER: GatewayLogger = { debug: NOOP, info: NOOP, warn: NOOP, error: NOOP };
 
-const MAX_TRANSIENT_ATTEMPTS = 3;
-const BACKOFF_BASE_MS = 500;
+// A sanity ceiling only (a Retry-After of 0 is floored at the base, so this is not the only brake); the real bound is the budget.
+const MAX_TRANSIENT_ATTEMPTS = 12;
+// Jitter spreads each backoff over [1x, 1.5x) so callers that failed together do not retry together.
+const JITTER_SPREAD = 0.5;
 const MAX_SCHEMA_ATTEMPTS = 2;
 
 const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -76,15 +80,34 @@ interface SentResponse {
 interface Failure {
   code: GatewayErrorCode;
   retryable: boolean;
+  retryAfterMs?: number;
+}
+
+// Retry-After is delta-seconds or an HTTP date (RFC 9110). Anything else, or a date in the past, is no hint.
+function parseRetryAfter(value: string | null | undefined, nowMs: number): number | undefined {
+  if (!value) return undefined;
+  const v = value.trim();
+  if (/^[0-9]+$/.test(v)) return Number(v) * 1000;
+  const at = Date.parse(v);
+  if (Number.isNaN(at) || !/[a-z]/i.test(v)) return undefined;
+  return at > nowMs ? at - nowMs : undefined;
+}
+
+function headerOf(err: APIError): string | null | undefined {
+  const h = err.headers as unknown;
+  if (h && typeof (h as Headers).get === 'function') return (h as Headers).get('retry-after');
+  if (h && typeof h === 'object') return (h as Record<string, string | undefined>)['retry-after'];
+  return undefined;
 }
 
 // Maps an SDK or transport error to a closed code and whether to retry it.
-function classify(err: unknown): Failure {
+function classify(err: unknown, nowMs: number): Failure {
   if (err instanceof APIConnectionError) return { code: 'LLM_UNAVAILABLE', retryable: true };
   if (err instanceof APIError) {
     const status = err.status;
-    if (status === 429) return { code: 'RATE_LIMITED', retryable: true };
-    if (status === undefined || status >= 500) return { code: 'LLM_UNAVAILABLE', retryable: true };
+    const retryAfterMs = parseRetryAfter(headerOf(err), nowMs);
+    if (status === 429) return { code: 'RATE_LIMITED', retryable: true, retryAfterMs };
+    if (status === undefined || status >= 500) return { code: 'LLM_UNAVAILABLE', retryable: true, retryAfterMs };
     if (status === 401 || status === 403) return { code: 'LLM_AUTH_FAILED', retryable: false };
     return { code: 'LLM_INVALID_REQUEST', retryable: false };
   }
@@ -101,6 +124,8 @@ function normalize(message: unknown): SentResponse {
 
 export function createAnthropicGateway(config: LlmConfig, deps: GatewayDeps = {}): AnthropicGateway {
   const sleep = deps.sleep ?? defaultSleep;
+  const now = deps.now ?? Date.now;
+  const random = deps.random ?? Math.random;
   const logger = deps.logger ?? NOOP_LOGGER;
   let client: Anthropic | undefined;
 
@@ -124,19 +149,31 @@ export function createAnthropicGateway(config: LlmConfig, deps: GatewayDeps = {}
       tools: [{ name: req.name, description: req.description, input_schema: req.inputSchema }],
       tool_choice: { type: 'tool' as const, name: req.name },
     };
+    const startedAt = now();
     for (let attempt = 1; ; attempt++) {
       try {
         const message = await client.messages.create(params as unknown as Anthropic.MessageCreateParamsNonStreaming);
         logger.debug({ tool: req.name, attempt, outcome: 'ok' });
         return normalize(message);
       } catch (err) {
-        const failure = classify(err);
+        const failure = classify(err, now());
         logger.debug({ tool: req.name, attempt, code: failure.code });
-        if (!failure.retryable || attempt >= MAX_TRANSIENT_ATTEMPTS) {
+        // ADR-029: the wait is the provider's Retry-After when it sent one (floored at the base, capped at what is left of the
+        // budget), otherwise base * 2^(n-1) with jitter, which must fit in what is left or the call fails now.
+        const left = config.retryBudgetMs - (now() - startedAt);
+        let wait: number | undefined;
+        if (failure.retryable && attempt < MAX_TRANSIENT_ATTEMPTS && left > 0) {
+          if (failure.retryAfterMs !== undefined) wait = Math.min(Math.max(failure.retryAfterMs, config.retryBaseMs), left);
+          else {
+            const backoff = config.retryBaseMs * 2 ** (attempt - 1) * (1 + JITTER_SPREAD * random());
+            if (backoff <= left) wait = backoff;
+          }
+        }
+        if (wait === undefined) {
           logger.warn({ tool: req.name, code: failure.code });
           throw new GatewayError(failure.code);
         }
-        await sleep(BACKOFF_BASE_MS * 2 ** (attempt - 1));
+        await sleep(wait);
       }
     }
   }

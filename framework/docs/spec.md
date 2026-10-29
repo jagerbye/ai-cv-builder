@@ -299,9 +299,16 @@ criteria must become tests.
   - [ ] Every API error response has one shape: `{ error: { code, message,
         details? } }`, with codes from a closed enum; no stack trace, no
         provider message, no prompt content ever reaches the client.
-  - [ ] Anthropic API failures are classified: rate limit and 5xx are retried
-        with exponential backoff up to 3 attempts; invalid-request and auth
-        errors fail the job immediately with a distinct code.
+  - [ ] Anthropic API failures are classified: rate limit, 5xx and transport
+        failures are retried; invalid-request and auth errors fail the job
+        immediately with a distinct code. The retry policy (ADR-029): a
+        `Retry-After` header (seconds or HTTP date) sets the wait, capped at
+        what is left of the retry budget; without one, exponential backoff
+        from a 2 s base (2, 4, 8 s) with up to +50% jitter. Attempts are
+        bounded by a 20 s waiting budget per provider request, not by a count;
+        when the next wait would not fit, the job fails with the failure's
+        code. Configurable: `ANTHROPIC_RETRY_BASE_SECONDS` (default 2) and
+        `ANTHROPIC_RETRY_BUDGET_SECONDS` (default 20).
   - [ ] Model output is parsed against a strict JSON schema; a response that
         does not validate is retried once with the validation error, then the
         job fails — malformed output is never partially trusted.

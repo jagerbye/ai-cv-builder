@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readLlmConfig, DEFAULT_MAX_OUTPUT_TOKENS, DEFAULT_TOKEN_BUDGET_PER_JOB } from './config.js';
+import { readLlmConfig, DEFAULT_MAX_OUTPUT_TOKENS, DEFAULT_TOKEN_BUDGET_PER_JOB, DEFAULT_RETRY_BASE_SECONDS, DEFAULT_RETRY_BUDGET_SECONDS } from './config.js';
 
 // T-09 (CVB-9), C-012 / F-010. Model id comes from configuration, never a code
 // literal; the API key is optional at boot (F-010: app starts without it).
@@ -79,6 +79,34 @@ describe('readLlmConfig: output cap and per-job budget (ADR-021)', () => {
     }
     it(`treats an empty ${name} as unset, not as a bad value`, () => {
       expect(() => readLlmConfig({ [key]: '' })).not.toThrow();
+    });
+  }
+});
+
+// ADR-029: the retry policy is configured like the other settings, in seconds, with stated defaults.
+describe('readLlmConfig retry policy (ADR-029)', () => {
+  it('defaults to a 2 s base and a 20 s budget', () => {
+    const cfg = readLlmConfig({});
+    expect(cfg.retryBaseMs).toBe(2000);
+    expect(cfg.retryBudgetMs).toBe(20_000);
+    expect(DEFAULT_RETRY_BASE_SECONDS).toBe(2);
+    expect(DEFAULT_RETRY_BUDGET_SECONDS).toBe(20);
+  });
+
+  it('reads ANTHROPIC_RETRY_BASE_SECONDS and ANTHROPIC_RETRY_BUDGET_SECONDS, converting to milliseconds', () => {
+    const cfg = readLlmConfig({ ANTHROPIC_RETRY_BASE_SECONDS: '3', ANTHROPIC_RETRY_BUDGET_SECONDS: '45' });
+    expect(cfg.retryBaseMs).toBe(3000);
+    expect(cfg.retryBudgetMs).toBe(45_000);
+  });
+
+  for (const key of ['ANTHROPIC_RETRY_BASE_SECONDS', 'ANTHROPIC_RETRY_BUDGET_SECONDS'] as const) {
+    it(`rejects a bad ${key}, naming it and not echoing the value`, () => {
+      for (const value of ['soon', '0', '-1', '1.5']) {
+        let message = '';
+        try { readLlmConfig({ [key]: value }); } catch (err) { message = (err as Error).message; }
+        expect(message).toContain(key);
+        expect(message).not.toContain(value);
+      }
     });
   }
 });

@@ -1,6 +1,5 @@
 import type { CvBullet, CvEducation, CvExperience, CvSkill } from './types';
 import { Field } from './fields';
-import { TrashIcon } from './trash-icon';
 import { blankBullet, blankEducation, blankExperience, blankSkill, move, remove } from './draft';
 
 // Each list reports its whole new array; the editor decides when that is saved.
@@ -155,11 +154,11 @@ export function SkillList({
               </button>
               <button
                 type="button"
-                className="cv-button cv-icon-button"
+                className="cv-button"
                 aria-label={`Delete skill ${skill.name || 'unnamed'}`}
                 onClick={() => onChange(remove(items, i))}
               >
-                <TrashIcon />
+                Delete
               </button>
             </div>
           </li>

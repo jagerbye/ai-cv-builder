@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import type { GenerationPipeline, Fact, VerificationResult } from '../generation/types.js';
 import { persistDraft } from '../cv/persist.js';
 import { ERROR_CODES, type ErrorCode } from '../../http/errors.js';
@@ -82,6 +82,11 @@ function classify(err: unknown): { code: ErrorCode; message: string } {
   return { code: 'INTERNAL', message: GENERATION_FAILED_MESSAGE };
 }
 
+// QA-10: the CV's state goes to failed; nothing else on the CV or its items changes (no version bump).
+async function markCvFailed(tx: Prisma.TransactionClient, cvId: string): Promise<void> {
+  await tx.cv.update({ where: { id: cvId }, data: { state: 'failed' } });
+}
+
 export function createJobWorker(opts: JobWorkerOptions): JobWorker {
   const { prisma, pipeline, leaseMs } = opts;
   const budgetMs = opts.budgetMs ?? JOB_BUDGET_MS;
@@ -129,6 +134,8 @@ export function createJobWorker(opts: JobWorkerOptions): JobWorker {
               errorMessage: LEASE_EXPIRED_MESSAGE,
             },
           });
+          // QA-10: the CV is told in the same transaction. Its content and version are untouched.
+          await markCvFailed(tx, row.cv_id);
           return 'exhausted' as const;
         }
 
@@ -201,16 +208,26 @@ export function createJobWorker(opts: JobWorkerOptions): JobWorker {
     });
   }
 
+  // QA-10: a terminal failure is written to the job and to the CV in one transaction, and the CV write
+  // happens only if the fenced job write matched. The CV moves to failed; its content and version stay
+  // as they were, so a failed regeneration keeps the draft the user was looking at.
   async function writeFailure(lease: JobLease, code: ErrorCode, message: string): Promise<void> {
     // A stopped worker is a dead process: it records nothing.
     if (stopped) return;
-    await fenced(lease, {
-      status: 'failed',
-      stage: null,
-      leasedUntil: null,
-      finishedAt: new Date(),
-      errorCode: code,
-      errorMessage: message,
+    await prisma.$transaction(async (tx) => {
+      const res = await tx.generationJob.updateMany({
+        where: { id: lease.id, attempt: lease.attempt, status: 'running' },
+        data: {
+          status: 'failed',
+          stage: null,
+          leasedUntil: null,
+          finishedAt: new Date(),
+          errorCode: code,
+          errorMessage: message,
+        },
+      });
+      if (res.count !== 1) return;
+      await markCvFailed(tx, lease.cvId);
     });
   }
 

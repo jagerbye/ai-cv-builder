@@ -6,6 +6,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { screen, waitFor, within, fireEvent, act } from '@testing-library/react';
 import {
+  commit,
   cvA,
   installApi,
   installLayout,
@@ -358,5 +359,39 @@ describe('answer failures are shown truthfully (C-009)', () => {
     mountEditor('/cvs/cv-1');
     await screen.findByRole('group', { name: ACME_Q });
     expect(within(questionCard(ACME_Q)).queryAllByRole('alert')).toHaveLength(0);
+  });
+});
+
+// QA-04 (blocker). A 503 on answer still bumps the CV's version on the server (C-009,
+// ADR-015): the answer is stored and the question is answered. The next edit must
+// carry the version the server now holds and save. A 409 "changed on another device"
+// after the user's own answer is a false conflict that blocks every later save.
+describe('QA-04: a 503 answer must not desync the version or block later saves', () => {
+  it('after a 503 on answer, the next edit saves with no conflict banner and no discarded text', async () => {
+    setViewport(1200);
+    const api = installApi([withQuestions()]);
+    api.planAnswer({ kind: 'recompose-failed' });
+    mountEditor('/cvs/cv-1');
+    await screen.findByRole('group', { name: ACME_Q });
+    typeAnswer(questionCard(ACME_Q), ANSWER);
+    await within(questionCard(ACME_Q)).findByText(/could not update|couldn't update/i);
+    expect(api.current('cv-1').version).toBe(8);
+
+    // The client must follow the server's version on its own. The pause lets a
+    // client that re-reads the CV after the 503 finish before the user edits again.
+    await pause(60);
+    const summary = screen.getByRole('textbox', { name: 'Summary' });
+    commit(summary, 'Edited after the failed recompose.');
+
+    await waitFor(() => expect(api.patches()).toHaveLength(1));
+    await pause(60);
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText(/changed on another device/i)).toBeNull();
+    expect(await screen.findByText('Saved')).toBeTruthy();
+    expect(api.current('cv-1').summary?.text).toBe('Edited after the failed recompose.');
+    expect(api.patches()).toHaveLength(1);
+    expect((screen.getByRole('textbox', { name: 'Summary' }) as HTMLTextAreaElement).value).toBe(
+      'Edited after the failed recompose.',
+    );
   });
 });

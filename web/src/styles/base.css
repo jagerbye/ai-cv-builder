@@ -42,3 +42,40 @@ textarea,
   box-shadow: var(--shadow-focus);
   border-radius: var(--radius-xs);
 }
+
+/* Bare links take the link token, not the browser default blue (design.json colors.text.link). */
+a {
+  color: var(--color-text-link);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+a:hover {
+  color: var(--color-accent-hover);
+}
+
+/* A bare button, such as an unclassed control, takes the design-system surface and
+   border (design.json components.button). Classed buttons restyle on top of this. */
+button {
+  padding: 0 var(--space-4);
+  border: var(--border-hairline) solid var(--color-border-input);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-line-height);
+  font-weight: var(--text-label-weight);
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--color-border-strong);
+}
+
+button:disabled {
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  border-color: var(--color-border-subtle);
+  cursor: default;
+}

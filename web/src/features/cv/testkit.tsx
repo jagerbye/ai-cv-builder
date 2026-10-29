@@ -22,7 +22,8 @@
 //     Education article: textbox 'Institution', 'Degree', 'Period'; buttons
 //     'Move up', 'Move down', 'Delete'.
 //   - Skills: a <ul> of <li>, each with textbox 'Skill', buttons 'Move up',
-//     'Move down' and 'Delete skill <name>' (this is where the trash icon lives).
+//     'Move down' and 'Delete skill <name>'. The delete button shows the word
+//     'Delete', like every other delete in the editor (design.json icons.rule).
 //   - Section buttons: 'Add experience', 'Add education', 'Add skill'.
 //   - A text field commits on blur. Add, delete and move commit at once.
 //     Every commit is one PATCH /api/cvs/:id with body {version, patch}.
@@ -209,8 +210,10 @@ export type PatchPlan =
   | { kind: 'respond'; status: number; body: unknown };
 
 // C-009 answers. 'apply' is the 200 path: the bound path is recomposed (unless its
-// item is userEdited). 'recompose-failed' is the 503 path: the answer is stored,
-// the question is answered, the CV content is unchanged.
+// item is userEdited). 'recompose-failed' is the 503 path, which matches the real
+// server (api/src/core/cv/answer.ts): the answer is stored, the question is answered,
+// the version bumps, the CV content is unchanged, and the 503 body is the error
+// envelope only, with no CV and no version in it.
 export type AnswerPlan =
   | { kind: 'apply' }
   | { kind: 'recompose-failed' }
@@ -241,8 +244,11 @@ function applyPatch(cv: CvDto, req: { version: number; patch: CvPatch }): CvDto 
 // C-009 semantics. The question is answered. For 'apply', the one path it binds to
 // is recomposed with the answer, unless that item is userEdited (never touched).
 // Everything else in the CV is left as it was.
+// The top-level version bumps on every stored answer, 200 or 503 (C-009, ADR-015):
+// it is the concurrency token, so a stored answer that leaves it still is a lie.
 function applyAnswer(cv: CvDto, q: CvQuestion, answer: string, recompose: boolean): CvDto {
   const next = structuredClone(cv);
+  next.version = cv.version + 1;
   next.questions = next.questions.map((x) => (x.id === q.id ? { ...x, status: 'answered' as const } : x));
   if (!recompose) return next;
   const contact = /^contact\.(\w+)$/.exec(q.path);

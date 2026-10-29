@@ -37,7 +37,7 @@
     },
     "droppedPaths": ["experience[0].bullets[2]"],
     "questions": [
-      {"path": "experience[0].bullets[2]", "reason": "unverifiable"}
+      {"path": "experience[0].bullets[2].text", "reason": "unverifiable"}
     ]
   }
 }

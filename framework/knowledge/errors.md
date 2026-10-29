@@ -88,3 +88,15 @@ entry.
 - **Blast radius here:** test fixtures in a local development database; no
   product data, nothing outside this project. Recorded because the next
   database that gets this treatment may not be local.
+
+## E-006 restart-mid-run test flaked across files  (2026-10-29)
+
+- **Symptom:** `jobs.test.ts` "a worker that dies mid-run is replaced by a fresh one" went red now and then
+  in the union run and green alone: the job row was missing or never reclaimed.
+- **Cause:** two things. (1) The test slept a fixed 450 ms against a 300 ms lease, a wall-clock race that
+  loses on a loaded machine. (2) Its `beforeEach` deleted EVERY queued/running `generation_jobs` row, so any
+  writer that reached the table outside the suite lock removed the row mid-run, and the test read a vanished job.
+- **Fix / rule:** wait on the condition (`leased_until` in the past, read from the row), never on a sleep sized
+  to a lease. Cleanup of non-terminal rows is scoped to the suite's own collected user ids (E-005); a
+  cleanup that needs the whole queue empty goes through `suite.clearOpenJobs()`, which takes the suite lock.
+- **Prevention:** three consecutive green lane-gate runs are the acceptance bar for a timing-sensitive test.

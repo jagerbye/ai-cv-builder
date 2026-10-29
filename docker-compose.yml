@@ -46,6 +46,9 @@ services:
     build:
       context: .
       dockerfile: web/Dockerfile
+    environment:
+      # vite preview forwards /api/* to the api over the compose network (QA-01).
+      API_PROXY_TARGET: http://api:3000
     ports:
       # 5173 is the vite default and is routinely taken by another project
       # on this machine; the container keeps 5173, the host gets WEB_PORT.

@@ -135,8 +135,12 @@ beforeAll(async () => {
   await prisma.generationJob.deleteMany({ where: { status: { in: ['queued', 'running'] } } });
 }, JOB_SUITE_LOCK_WAIT_MS);
 
+// Scoped to this suite's own users (E-005: delete by collected identity). The suite lock is held, so no
+// other suite writes meanwhile, and rows of other users are never touched.
 beforeEach(async () => {
-  await prisma.generationJob.deleteMany({ where: { status: { in: ['queued', 'running'] } } });
+  await prisma.generationJob.deleteMany({
+    where: { status: { in: ['queued', 'running'] }, userId: { in: userIds } },
+  });
 });
 
 afterAll(async () => {
@@ -315,8 +319,11 @@ describe('C-005 / ADR-004: restart mid-run', () => {
     await waitFor(async () => (await row(jobId)).status === 'running');
     workerA.stop();
 
-    // Lease lapses with nobody renewing it.
-    await sleep(450);
+    // Lease lapses with nobody renewing it: wait on the row's own leased_until, not on a fixed sleep.
+    await waitFor(async () => {
+      const j = await row(jobId);
+      return j.leasedUntil !== null && j.leasedUntil.getTime() < Date.now();
+    });
 
     const b = fakePipeline();
     const workerB = createJobWorker({ prisma, pipeline: b.pipeline, workerId: 'B', leaseMs: 60_000 });

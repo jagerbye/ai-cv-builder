@@ -48,7 +48,12 @@ git clone <this repo> ai-cv-builder && cd ai-cv-builder
 cp .env.example .env          # optional: put ANTHROPIC_API_KEY in it
 docker compose up -d --build --wait
 curl -s http://127.0.0.1:3000/api/health      # {"ok":true,"db":true}
+curl -s http://127.0.0.1:5273/api/health      # same JSON, through the web origin
 ```
+
+The app is served on the host port `5273` (`WEB_PORT` in `.env`). The web
+container proxies `/api/*` to the api, so the browser uses one origin and
+`http://127.0.0.1:5273/api/health` returns the same JSON as port 3000.
 
 `docker compose up -d --build --wait` builds both images, starts Postgres 16,
 runs `prisma migrate deploy` in the api container before it listens, and waits

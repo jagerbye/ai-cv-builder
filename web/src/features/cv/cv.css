@@ -84,6 +84,12 @@
   line-height: var(--text-body-line-height);
 }
 
+/* Height follows the text (see Field in fields.tsx), so the box never scrolls or clips. */
+.cv-field textarea {
+  overflow: hidden;
+  resize: none;
+}
+
 .cv-field input:hover,
 .cv-field textarea:hover {
   border-color: var(--color-border-strong);
@@ -144,12 +150,6 @@
 .cv-button:focus-visible {
   box-shadow: var(--shadow-focus);
   outline: none;
-}
-
-.cv-icon-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .cv-error {

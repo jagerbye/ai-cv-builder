@@ -52,7 +52,7 @@ describe('verify — citation rule (ADR-002)', () => {
     expect(r.dropped.map((d) => d.path)).toEqual(['experience[0].bullets[0]']);
     expect(r.accepted.experience[0].bullets).toEqual([{ text: 'Built APIs at Acme Ltd', factIds: ['f1'] }]);
     expect(r.questions).toContainEqual(
-      expect.objectContaining({ path: 'experience[0].bullets[0]', reason: 'missing' }),
+      expect.objectContaining({ path: 'experience[0].bullets[0].text', reason: 'missing' }),
     );
   });
 
@@ -69,9 +69,9 @@ describe('verify — citation rule (ADR-002)', () => {
     expect(r.dropped.map((d) => d.path).sort()).toEqual(['skills[0]', 'skills[1]', 'summary']);
     expect(r.accepted.summary).toBeUndefined();
     expect(r.accepted.skills).toEqual([]);
-    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary', reason: 'unverifiable' }));
-    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'skills[0]', reason: 'unverifiable' }));
-    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'skills[1]', reason: 'missing' }));
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text', reason: 'unverifiable' }));
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'skills[0].name', reason: 'unverifiable' }));
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'skills[1].name', reason: 'missing' }));
   });
 
   it('keeps a fully cited summary (positive control)', () => {
@@ -290,7 +290,7 @@ describe('verify — entity rule against the entry\'s own facts (spec §3.4, ADR
     const r = verify(draft, facts);
     expect(r.dropped.map((d) => d.path)).toEqual(['experience[0].bullets[0]']);
     expect(r.questions).toContainEqual(
-      expect.objectContaining({ path: 'experience[0].bullets[0]', reason: 'unverifiable' }),
+      expect.objectContaining({ path: 'experience[0].bullets[0].text', reason: 'unverifiable' }),
     );
   });
 
@@ -315,7 +315,7 @@ describe('verify — entity rule against the entry\'s own facts (spec §3.4, ADR
     expect(r.dropped.map((d) => d.path)).toEqual(['experience[0].bullets[0]']);
     expect(r.accepted.experience[0].bullets.map((b) => b.text)).toEqual(['Cut costs by 20 %']);
     expect(r.questions).toContainEqual(
-      expect.objectContaining({ path: 'experience[0].bullets[0]', reason: 'unverifiable' }),
+      expect.objectContaining({ path: 'experience[0].bullets[0].text', reason: 'unverifiable' }),
     );
   });
 

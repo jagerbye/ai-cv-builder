@@ -140,6 +140,17 @@ Three stages, two of them LLM calls and one of them ordinary code:
 - **Must NOT:** hold user-visible state only in `localStorage`, or decide
   authorization.
 
+**How the browser reaches the api.** The browser only ever talks to the web origin
+(`http://127.0.0.1:${WEB_PORT}`, 5273 by default), so the SPA and the api are
+same-origin and the session cookie needs no CORS. Vite forwards every `/api/*`
+request to the api through a proxy: `server.proxy` in `npm run dev` and
+`preview.proxy` in the web container, both declared once in `web/vite.config.ts`.
+The target comes from `API_PROXY_TARGET`, which defaults to `http://127.0.0.1:3000`
+for running on the host and is set to `http://api:3000` by `docker-compose.yml`.
+Nothing else sits between the browser and the api. The api is also published on
+host port 3000 (`127.0.0.1:3000`) for direct curl and debugging, but the browser
+uses only the web origin. (Sprint 001, QA-01.)
+
 ## 3. Data flow
 
 **Generation (the main path):**

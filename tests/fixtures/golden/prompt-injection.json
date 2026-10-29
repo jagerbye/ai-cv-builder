@@ -32,7 +32,7 @@
     "questions": [
       {"path": "experience[0].employer", "reason": "missing"},
       {"path": "experience[0].period", "reason": "missing"},
-      {"path": "summary", "reason": "unverifiable"}
+      {"path": "summary.text", "reason": "unverifiable"}
     ]
   }
 }

@@ -19,6 +19,52 @@ Format — newest on top, one block per decision:
 
 ---
 
+## ADR-017: A failed CV carries its own error, not a job id to go fetch (2026-10-29, accepted)
+
+- **Context:** QA-10 left the CV in `generating` forever when its job failed;
+  that is fixed, the CV now reaches `failed`. But C-006 carries no error, and
+  the job's code is reachable only through C-005 `GET /api/jobs/:jobId` — and
+  C-006 does not carry a job id either. So the editor can say a CV failed and
+  cannot say why, on the most ordinary failure there is: no API key.
+- **Decision:** a CV in state `failed` carries `lastError: { code, message }`
+  in C-006, mirroring the terminal job row. `code` is from the closed C-000
+  enum; `message` is the fixed safe string that already belongs to that code —
+  never a provider, driver or parser message, and never prompt content
+  (rules/security.md, F-010). The field is absent for any other state. The web
+  shows it with the retry the user actually has, which is regenerate (C-010).
+- **Alternatives rejected:** exposing `lastJobId` and letting the browser fetch
+  C-005 (two round trips to render one line, and it leaks job identity into a
+  document contract); a generic "generation failed, try again" with no code
+  (the distinction the user needs is exactly the one it throws away — a
+  missing key is the owner's problem to fix, a bad source text is theirs).
+- **Consequences:** C-006 gains an optional field, so existing consumers are
+  unaffected; the read model reads the CV's own columns, not a join to the job
+  table, because a CV outlives its jobs.
+
+---
+
+## ADR-016: A question's path names the field it is about (2026-10-29, accepted)
+
+- **Context:** QA-05. The verifier emitted question paths `summary` and
+  `skills[i]`, and the web editor aligns a question to the field its path names
+  (`summary.text`, `skills[i].name`). Two lanes had each picked a reasonable
+  grammar, and the contract never wrote one down. Two of three questions on the
+  seeded CV landed beside the wrong fields or six thousand pixels down on mobile.
+- **Decision:** a question's `path` names the FIELD the question is about, because
+  that is what the question asks ("which period?" is about the period). C-006 now
+  states the grammar and its examples. Whole-entry drops with no citation or an
+  unknown citation are questioned on `experience[i].employer` and
+  `education[i].institution`, the identifying fields. `DroppedItem.path` keeps its
+  item-level spelling; only question paths change. The co-occurrence rule,
+  inheritance and determinism are unchanged.
+- **Alternatives rejected:** A — make the web accept item-level paths and infer
+  the field (pushes the grammar into the editor and forks it per consumer); B —
+  change `DroppedItem.path` too (no reader needs it changed and it would widen the
+  diff beyond QA-05).
+- **Consequences:** golden fixtures `first-person` and `prompt-injection` moved
+  with the verifier. Any future question kind must name a field from the C-006
+  grammar; the mixed-draft test in `verify.question-paths.test.ts` enforces it.
+
 ## ADR-015: Answering a question bumps the CV's version (2026-10-29, accepted)
 
 - **Context:** C-009 says the answer response is the full C-006 shape and that

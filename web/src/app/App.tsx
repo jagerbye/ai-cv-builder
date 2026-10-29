@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { resolveRoute, type RouteEntry } from './routes';
 import { RequireSession, LogoutButton, useSessionUser } from '../features/auth/session';
+import FrontDoor from './FrontDoor';
 import './shell.css';
 
 function currentPath(): string {
@@ -53,7 +54,9 @@ function NotFound() {
 export default function App() {
   const [queryClient] = useState(() => new QueryClient());
   const pathname = usePathname();
-  const route = resolveRoute(pathname);
+  // "/" is not a registry entry: it redirects by session state (QA-02).
+  const isFrontDoor = pathname === '/';
+  const route = isFrontDoor ? undefined : resolveRoute(pathname);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -63,7 +66,7 @@ export default function App() {
           <HeaderActions />
         </header>
         <main className="shell-main">
-          {route ? <Screen route={route} /> : <NotFound />}
+          {isFrontDoor ? <FrontDoor /> : route ? <Screen route={route} /> : <NotFound />}
         </main>
       </div>
     </QueryClientProvider>

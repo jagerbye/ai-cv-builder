@@ -53,11 +53,19 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
   const candidates: PlannedQuestion[] = [];
 
   // Missing and unverifiable drops are priority 2; employer and period drops are priority 1 (see below).
-  const checkItem = (path: string, text: string, factIds: string[], inherited: readonly Fact[] = []): boolean => {
+  // `path` is the dropped item's own spelling (DroppedItem.path). `questionPath` names the FIELD the question is
+  // about (C-006 path grammar), so the editor can align the question beside it.
+  const checkItem = (
+    path: string,
+    text: string,
+    factIds: string[],
+    inherited: readonly Fact[] = [],
+    questionPath: string = path,
+  ): boolean => {
     const f = checkCited(text, factIds, byId, inherited);
     if (f === null) return true;
     dropped.push({ path, reason: f.detail });
-    candidates.push({ path, text: questionText(path, f.reason), reason: f.reason, priority: 2 });
+    candidates.push({ path: questionPath, text: questionText(questionPath, f.reason), reason: f.reason, priority: 2 });
     return false;
   };
 
@@ -74,7 +82,8 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
     const resolved = resolveCited(edu.factIds, byId);
     if (!('facts' in resolved)) {
       dropped.push({ path: p, reason: resolved.detail });
-      candidates.push({ path: p, text: questionText(p, resolved.reason), reason: resolved.reason, priority: 2 });
+      const qp = `${p}.institution`;
+      candidates.push({ path: qp, text: questionText(qp, resolved.reason), reason: resolved.reason, priority: 2 });
       return;
     }
     const citedText = resolved.facts.map((f) => f.text).join('\n');
@@ -109,7 +118,7 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
     }
   });
 
-  if (draft.summary !== undefined && checkItem('summary', draft.summary.text, draft.summary.factIds)) {
+  if (draft.summary !== undefined && checkItem('summary', draft.summary.text, draft.summary.factIds, [], 'summary.text')) {
     accepted.summary = { text: draft.summary.text, factIds: [...draft.summary.factIds] };
   }
 
@@ -120,7 +129,8 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
     const resolved = resolveCited(entry.factIds, byId);
     if (!('facts' in resolved)) {
       dropped.push({ path: p, reason: resolved.detail });
-      candidates.push({ path: p, text: questionText(p, resolved.reason), reason: resolved.reason, priority: 2 });
+      const qp = `${p}.employer`;
+      candidates.push({ path: qp, text: questionText(qp, resolved.reason), reason: resolved.reason, priority: 2 });
       return;
     }
     const citedText = resolved.facts.map((f) => f.text).join('\n');
@@ -162,14 +172,14 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
 
     // A bullet is checked against its own facts plus its parent entry's facts (one level, ADR-002).
     const bullets = entry.bullets
-      .filter((b, j) => checkItem(`${p}.bullets[${j}]`, b.text, b.factIds, resolved.facts))
+      .filter((b, j) => checkItem(`${p}.bullets[${j}]`, b.text, b.factIds, resolved.facts, `${p}.bullets[${j}].text`))
       .map((b) => ({ text: b.text, factIds: [...b.factIds] }));
 
     accepted.experience.push({ ...entry, factIds: [...entry.factIds], bullets });
   });
 
   accepted.skills = draft.skills
-    .filter((s, i) => checkItem(`skills[${i}]`, s.name, s.factIds))
+    .filter((s, i) => checkItem(`skills[${i}]`, s.name, s.factIds, [], `skills[${i}].name`))
     .map((s) => ({ ...s, factIds: [...s.factIds] }));
 
   return { accepted, questions: planQuestions(candidates), dropped };

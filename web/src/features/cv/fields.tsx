@@ -1,4 +1,4 @@
-import { useContext, useEffect, useId, useState } from 'react';
+import { useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { QuestionScopeContext } from './questions';
 
 interface FieldProps {
@@ -17,9 +17,23 @@ export function Field({ label, value, onCommit, multiline = false, path }: Field
   const id = useId();
   const [draft, setDraft] = useState(value);
   const scope = useContext(QuestionScopeContext);
+  const areaRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     setDraft(value);
   }, [value]);
+  // design.json components.textarea: autogrow. A textarea shows the whole text, so
+  // its height follows the content and the width (a narrow screen wraps more lines).
+  useLayoutEffect(() => {
+    const el = areaRef.current;
+    if (!el) return;
+    const fit = () => {
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, [draft, multiline]);
   const common = {
     id,
     value: draft,
@@ -36,7 +50,7 @@ export function Field({ label, value, onCommit, multiline = false, path }: Field
         <label htmlFor={id} className="cv-field-label">
           {label}
         </label>
-        {multiline ? <textarea rows={2} {...common} /> : <input type="text" {...common} />}
+        {multiline ? <textarea ref={areaRef} rows={1} {...common} /> : <input type="text" {...common} />}
       </div>
       {cards}
     </>

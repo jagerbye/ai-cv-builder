@@ -1,0 +1,88 @@
+/* CV list (/cvs). Own file: cv.css belongs to the editor. */
+.cv-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: var(--space-content-max);
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-gutter-mobile);
+}
+
+.cv-list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.cv-list h1 {
+  margin: 0;
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line-height);
+  font-weight: var(--text-h2-weight);
+  letter-spacing: var(--text-h2-letter-spacing);
+}
+
+.cv-list a {
+  color: var(--color-text-link);
+}
+
+.cv-list p {
+  margin: 0;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+  color: var(--color-text-secondary);
+}
+
+.cv-list-error {
+  color: var(--color-danger-text);
+}
+
+.cv-list-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.cv-list-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.cv-list-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) auto;
+  gap: var(--space-1) var(--space-4);
+  align-items: baseline;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.cv-list-title {
+  font-weight: 600;
+}
+
+.cv-list-role,
+.cv-list-updated {
+  color: var(--color-text-secondary);
+  font-size: var(--text-body-size);
+}
+
+.cv-list-state {
+  font-size: var(--text-body-size);
+  color: var(--color-text-muted);
+}
+
+.cv-list-updated {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 599px) {
+  .cv-list-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

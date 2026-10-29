@@ -14,7 +14,8 @@ function api(handler: (method: string, path: string) => Reply) {
       const method = init?.method ?? 'GET';
       const path = url.replace(/^\/api/, '');
       calls.push({ method, path });
-      const reply = handler(method, path);
+      // C-007 (GET /api/cvs) answers an empty list unless a test asks otherwise.
+      const reply: Reply | 'pending' = path === '/cvs' ? { status: 200, body: { items: [] } } : handler(method, path);
       if (reply === 'pending') return new Promise<Response>(() => {});
       if (reply.status === 204) return new Response(null, { status: 204 });
       return new Response(JSON.stringify(reply.body ?? {}), {

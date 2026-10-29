@@ -3,7 +3,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '../../api/client';
-import { navigate } from './navigate';
+import { loginPathFor, navigate } from './navigate';
 
 export interface SessionUser {
   id: string;
@@ -39,13 +39,17 @@ export function useSessionUser() {
 
 // Renders children only for a signed-in user. Nothing is painted while /me is
 // pending, and an anonymous visitor is replaced to /auth/login before any
-// protected content could show.
+// protected content could show. The requested path rides along as ?next=, so
+// sign-in can return the visitor to it (QA-09).
 export function RequireSession({ children }: { children: ReactNode }) {
   const session = useSessionUser();
   const signedOut = session.isError || (session.isSuccess && session.data === null);
 
   useEffect(() => {
-    if (signedOut) navigate('/auth/login', 'replace');
+    if (signedOut) {
+      const requested = window.location.pathname + window.location.search;
+      navigate(loginPathFor(requested), 'replace');
+    }
   }, [signedOut]);
 
   if (session.isSuccess && session.data) return <>{children}</>;

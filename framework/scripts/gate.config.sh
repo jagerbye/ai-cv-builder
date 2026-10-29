@@ -29,6 +29,7 @@ else
     "lint:npm run -s lint"
     "test:npm run -s test"
     "build:npm run -s build"
+    "smoke:npx vitest run --config tests/smoke/vitest.config.ts"
   )
 fi
 

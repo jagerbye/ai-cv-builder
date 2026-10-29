@@ -113,8 +113,22 @@ Format:
     facts:      [ { id, kind, text, sourceQuote, source: "document"|"user" } ] }
   ```
 - `facts` is what lets the UI show "where did this line come from" (F-004).
+- **Question `path` grammar (clarified sprint 001, QA-05, ADR-016).** A question's
+  `path` names the FIELD the question is about, never the item that holds it, so
+  the editor can align the question beside that field. The grammar:
+  `summary.text` | `skills[i].name` | `experience[i].(employer|role|period)` |
+  `experience[i].bullets[j].text` | `education[i].(institution|period)`.
+  Examples: `summary.text`, `skills[3].name`, `experience[1].period`,
+  `experience[0].bullets[2].text`, `education[0].period`. A whole entry that is
+  dropped (no citation, or an unknown citation) is questioned on its identifying
+  field: `experience[i].employer` and `education[i].institution`. Whole items
+  (an entry, a skill, the summary) never appear as a question path. Indices are
+  positions in the drafted arrays, as the verifier emitted them.
+  `questions[].path` is the only place this grammar applies; the dropped-item
+  paths reported by the verifier keep their item-level spelling (`experience[0]`,
+  `skills[3]`, `summary`) and are not part of this response.
 - Errors: `404 NOT_FOUND`
-- Status: **frozen (sprint 2)**
+- Status: **frozen (sprint 2)**; path grammar clarified (sprint 001)
 
 ## C-007 List / delete CVs (owner: core/cv, consumers: web)
 

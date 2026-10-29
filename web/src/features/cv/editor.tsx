@@ -70,6 +70,18 @@ export function CvEditor({ cv, onReload }: { cv: CvDto; onReload: () => void }) 
     }
   }
 
+  // Queued on the save chain, so it runs after any save already in flight and before
+  // any save the user makes next. It only takes the version: the answer's section did
+  // not change when the recompose failed.
+  function resyncVersion() {
+    chain.current = chain.current
+      .then(async () => {
+        const fresh = await apiFetch<CvDto>(`/cvs/${cv.id}`);
+        versionRef.current = fresh.version;
+      })
+      .catch(() => undefined);
+  }
+
   function enqueue(section: Section, value: CvDraft[Section]) {
     setPending((n) => n + 1);
     chain.current = chain.current.then(() => send(section, value)).finally(() => setPending((n) => n - 1));
@@ -104,6 +116,10 @@ export function CvEditor({ cv, onReload }: { cv: CvDto; onReload: () => void }) 
           : err instanceof ApiError && err.status === 503
             ? 'recompose-failed'
             : 'error';
+      // A 503 is still a stored answer, and the server bumped the version before it
+      // recomposed (ADR-015). The 503 body carries no CV, so re-read it to take the
+      // new version. Without this every later PATCH is stale and reports a conflict.
+      if (kind === 'recompose-failed') resyncVersion();
       setAnswers((a) => ({ ...a, [q.id]: kind }));
     } finally {
       answering.current.delete(q.id);

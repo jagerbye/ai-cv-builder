@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '../../api/client';
-import { navigate } from './navigate';
+import { nextPath, navigate } from './navigate';
 import { sessionKey, type SessionUser } from './session';
 import './auth.css';
 
@@ -59,7 +59,8 @@ function AuthForm({ endpoint, submitLabel, passwordAutocomplete, heading, footer
       // Drop a stale in-flight /me so it cannot overwrite the fresh session.
       await queryClient.cancelQueries({ queryKey: sessionKey });
       queryClient.setQueryData(sessionKey, body.user);
-      navigate('/cvs');
+      // Back to the page the visitor asked for before sign-in, else the list.
+      navigate(nextPath(window.location.search), 'replace');
     } catch (err) {
       showError(err);
     } finally {

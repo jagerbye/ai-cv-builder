@@ -1,21 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { ApiError, GENERIC_MESSAGE, apiFetch } from '../../api/client';
 import { CvEditor } from './editor';
+import { CvList } from './list';
 import type { CvDto } from './types';
 import './cv.css';
 
-// /cvs/:id opens the editor. Any other /cvs/* path has no CV to show yet.
+// /cvs is the CV list. /cvs/:id opens the editor; any other /cvs/* path has no
+// CV to show.
 export default function CvRoute() {
   const id = cvIdFromPath(window.location.pathname);
-  if (id === null) {
-    return (
-      <section className="screen-message">
-        <h1>Your CVs</h1>
-        <p>You have no CVs yet.</p>
-        <a href="/cvs/new">Create your first CV</a>
-      </section>
-    );
-  }
+  if (id === null) return <CvList />;
   return <CvPage id={id} />;
 }
 

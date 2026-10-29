@@ -107,6 +107,8 @@ export function createAnthropicGateway(config: LlmConfig, deps: GatewayDeps = {}
     if (!client) {
       client = new Anthropic({
         apiKey: config.apiKey,
+        // Only when set: an unset variable must leave the SDK's default endpoint untouched.
+        ...(config.baseUrl ? { baseURL: config.baseUrl } : {}),
         fetch: deps.fetch,
         maxRetries: 0,
         timeout: config.timeoutMs,

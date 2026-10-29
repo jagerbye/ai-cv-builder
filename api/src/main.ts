@@ -14,7 +14,7 @@ const port = 3000;
 const JOB_LEASE_MS = 60_000;
 const JOB_POLL_MS = 1_000;
 
-const generationPipeline = createGenerationPipeline(process.env);
+const generationPipeline = createGenerationPipeline(env);
 const app = buildServer({ generationPipeline });
 const worker = createJobWorker({
   prisma: app.prisma,

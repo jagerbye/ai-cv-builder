@@ -26,7 +26,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const prisma = new PrismaClient({ datasources: { db: { url: env.DATABASE_URL } } });
   const app = Fastify({ logger: { level: 'info' } });
   const now = options.now ?? (() => Date.now());
-  const generationPipeline = options.generationPipeline ?? createGenerationPipeline(process.env);
+  const generationPipeline = options.generationPipeline ?? createGenerationPipeline(env);
 
   app.decorate('prisma', prisma);
   app.addHook('onClose', async () => {

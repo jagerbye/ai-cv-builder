@@ -23,4 +23,10 @@ describe('readLlmConfig', () => {
     expect(() => readLlmConfig({})).not.toThrow();
     expect(readLlmConfig({}).apiKey).toBeUndefined();
   });
+
+  it('passes ANTHROPIC_BASE_URL through as baseUrl and reports it absent when unset or empty', () => {
+    expect(readLlmConfig({ ANTHROPIC_BASE_URL: 'https://proxy.example.test/api' }).baseUrl).toBe('https://proxy.example.test/api');
+    expect(readLlmConfig({}).baseUrl).toBeUndefined();
+    expect(readLlmConfig({ ANTHROPIC_BASE_URL: '' }).baseUrl).toBeUndefined();
+  });
 });

@@ -28,6 +28,8 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/ai_cv_builder
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-}
     # Migrations first; the server starts listening only if they succeed.
     command: ["sh", "-c", "npx prisma migrate deploy --schema prisma/schema.prisma && node dist/main.js"]
     ports:

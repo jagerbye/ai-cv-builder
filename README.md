@@ -112,6 +112,11 @@ Port conflicts: the compose file binds fixed host ports `5432` (db) and `3000`
 `ANTHROPIC_API_KEY` is optional to boot. Without it the app runs, but every
 generation, regeneration and model-backed answer fails with `CONFIG_MISSING`
 (see Status). With a key, the first real run is the first real evidence.
+Calls go to the Anthropic API unless `ANTHROPIC_BASE_URL` points at an
+Anthropic-compatible proxy; `ANTHROPIC_MODEL` overrides the model id. The base
+URL is a host plus an optional path prefix and does **not** include `/v1` — the
+SDK appends `/v1/messages`, so a base ending in `/v1` asks for
+`/v1/v1/messages`.
 
 Running the tests natively (needs a Postgres on `localhost:5432`, for example
 from `docker compose up -d db`):

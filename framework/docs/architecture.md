@@ -203,12 +203,20 @@ each stage commits its own rows, and a retry starts from `extract`.
 - **Config:** `env.ts` parses `process.env` once against a schema at boot and
   fails loudly on a bad value — except `ANTHROPIC_API_KEY`, which is allowed to
   be absent so the app still boots (F-010).
+  `ANTHROPIC_MODEL` and `ANTHROPIC_BASE_URL` are optional and also parsed there
+  (the base URL must be http(s); a bad one fails boot naming the variable, never
+  the value). The gateway passes the base URL to the SDK client as `baseURL` only
+  when set, so the default endpoint is untouched; it exists for an
+  Anthropic-compatible proxy, the Messages API wire format stays the contract.
+  It is a host plus an optional path prefix and excludes `/v1`: the SDK appends
+  `/v1/messages`, so a base that already ends in `/v1` requests `/v1/v1/messages`.
 - **Time:** all timestamps UTC, `timestamptz`.
 
 ## 5. Constraints
 
 - Node.js backend and a REST API — no GraphQL, no RSC-style server actions.
-- **Every LLM call goes to the Anthropic API.** No other provider, no local
+- **Every LLM call speaks the Anthropic Messages API** (to Anthropic, or to a
+  compatible proxy via `ANTHROPIC_BASE_URL`). No other provider, no local
   model, not even for embeddings — if something needs embeddings, redesign it.
 - PostgreSQL only; no Redis, no S3, no broker. Anything that looks like it
   needs one must be reconsidered (ADR-004).

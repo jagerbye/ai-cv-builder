@@ -60,6 +60,33 @@
 **Outcome: 8 of 11 fixed, 2 still open (QA-05 major, QA-08 visual), 1 fixed with
 a data remnant (QA-10 → QA-14). 3 new findings: QA-12, QA-13, QA-14.**
 
+## Second re-check pass — 2026-10-29 (QA-05, QA-08, QA-12, QA-13, QA-14)
+
+- **Env/URL:** the rebuilt + reseeded stack, driven through the real app on
+  `127.0.0.1:5273` (api `127.0.0.1:3000`). Still **no `ANTHROPIC_API_KEY`**, by
+  design. No proxy, no workaround: the app was used as shipped.
+- **Seed:** `qa.seed@example.test`, CV `992d6775-5826-4a54-a592-7d08c419db2b`.
+- **Scope:** only the five findings named above, each at both viewports, plus a
+  short regression smoke (sign in → list → editor → edit a field → reload) and
+  the read-model ordering check. Not a fresh full pass.
+
+> **Viewport, third time: half solved.** `resize_window` to **1440×900 now
+> genuinely works** — `innerWidth === 1440`, confirmed in page, and every
+> desktop observation below was made there. Two caveats: the first resize of
+> the session drifted back to 1512 on its own and had to be re-issued (measure
+> `innerWidth` after every resize, don't trust the call's "success"), and the
+> window height gives a 723px viewport, not 900.
+> **375px is still not reachable by resizing** — this Chrome clamps the window
+> to a **500×772** viewport, so mobile was again checked in a same-origin
+> **375×772 iframe**, asserting `innerWidth === 375`,
+> `matchMedia('(min-width:900px)') === false` and `scrollWidth === 375` each
+> time. 772 rather than 812 because the window height is clamped too; nothing
+> in these findings depends on the last 40px.
+
+**Outcome: QA-08, QA-12, QA-13, QA-14 fixed. QA-05 fixed as written (all three
+questions now find their field), but one new major, QA-15, replaces its
+remaining symptom on desktop. Smoke clean; ordering deterministic.**
+
 ## Findings
 
 ### QA-01 The shipped web container has no route to the API — the app cannot be used in a browser — severity: blocker
@@ -183,21 +210,26 @@ a data remnant (QA-10 → QA-14). 3 new findings: QA-12, QA-13, QA-14.**
     instead of "Question about Summary" / "Question about Skill".
 - Evidence (broken): `…/qa-screenshots/07-questions-mismatched-paths-beside-contact-desktop.jpg`
   — (working, for contrast): `…/08-question-beside-its-field-desktop.jpg`, `…/09-question-under-its-field-mobile.jpg`
-- Status: **OPEN** — re-checked 2026-10-29, not fixed. The API still emits the
-  bare paths: `GET /api/cvs/:id` → `questions[].path` = `experience[1].period`,
-  **`skills[5]`**, **`summary`** — not `skills[i].name` / `summary.text`. So the
-  web still matches only one of three. Measured in the DOM at 1440-class
-  desktop: `.cv-field-question` count = **1** (Period only); the Terraform card
-  (top 2210) lands beside the *Brightpath bullets* and the Summary card
-  (top 2494) beside *Employer "Ferro Systems"*, while the Summary field itself
-  is at top 722 — 1,772px above its own question. Both still degrade to the
-  fallback eyebrow **"Question about this field"**. At 375×812 it is worse than
-  before: both cards fall into the loose bucket at y=6356 and y=6644 of a
-  7,004px page, after "Add skill", ~5,650px below the fields they ask about.
-  The one matched question is still perfect, which is what makes the other two
-  conspicuous. **This remains the sprint's open major.**
-  After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA05-STILL-OPEN-summary-and-skills-cards-not-beside-fields-desktop.jpg`,
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA05-STILL-OPEN-loose-cards-dumped-at-page-bottom-mobile.jpg`
+- Status: **fixed** 2026-10-29 (second re-check) — *as written*; see **QA-15**
+  for what is left. The seed was the last thing writing the old grammar; it now
+  stores what `verify()` returns and the live API serves
+  `summary.text`, `skills[5].name`, `experience[1].role`. All **3 of 3** cards
+  now find their field: three fields carry the amber left rule
+  (`.cv-field-question` count = 3 — Summary, the Brightpath *Role*, the
+  *Terraform* Skill) and all three eyebrows are specific — "Question about
+  Summary", "Question about Role", "Question about Skill". The fallback
+  "Question about this field" is gone. **0 cards failed to match.**
+  - **Mobile (375px): 3 of 3 correct.** Each card sits directly under its own
+    field, 93px below it in every case (field tops 682 / 2566 / 6232, card tops
+    845 / 2659 / 6325 on a 6836px page). The loose bucket is empty — the
+    "dumped at the bottom" behaviour from the last pass is gone. This is the
+    screen the design doc describes, and on a phone it is now right everywhere.
+  - **Desktop (1440px): 2 of 3 placed.** Summary (field 690 / card 703) and
+    Skill (4498 / 4511) sit level with their fields, exactly as intended. The
+    *Role* card does not — it is filed as **QA-15**.
+  After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA05-summary-question-beside-summary-desktop.jpg`,
+  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA05-skill-question-beside-skill-desktop.jpg`,
+  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA05-role-question-under-role-field-mobile-375.jpg`
 
 ### QA-06 Long content is clipped mid-line in every multiline field — severity: major
 - Where: `/cvs/:id` @ 1440×900 and 375×812
@@ -247,22 +279,30 @@ a data remnant (QA-10 → QA-14). 3 new findings: QA-12, QA-13, QA-14.**
     own control and the browser's locale (here Russian, "Выберите файл") inside an
     otherwise English product.
 - Evidence: `…/qa-screenshots/06-cv-list-says-none-desktop.jpg`, `…/20-generation-failed-honest.jpg`, `…/18-intake-non-pdf-rejected.jpg`
-- Status: **OPEN (partly fixed)** — re-checked 2026-10-29. One of the three
-  is fixed, two are not:
-  - *Fixed:* list links are now the product's teal, not browser blue, and the
-    Regenerate button **on the failed CV editor** carries `class="cv-button"`.
-  - *Still open:* the PDF chooser is still a raw `<input type="file">`. It now
-    has a class (`intake-file`) but is still `display:block; opacity:1`, so the
-    browser paints its own control in the browser's locale — "Выберите файл /
-    Файл не выбран" inside an otherwise English product, at both viewports.
-  - *Still open:* **Regenerate on `/jobs/:id`** is still a class-less bare
-    `<button>` (`className === ""`, background `rgb(255,255,255)`), sitting two
-    screens away from the correctly teal "Generate CV".
-  - *Not re-checked:* the "Create your first CV" link — the seeded account now
-    owns CVs, so the empty state was unreachable this pass.
-  After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA08-PARTIAL-pdf-chooser-still-native-desktop.jpg`,
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA08-STILL-OPEN-native-pdf-chooser-mobile.jpg`,
-  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA10-config-failure-regenerate-desktop.jpg`
+- Status: **fixed** 2026-10-29 (second re-check). Both remaining halves land.
+  - *PDF chooser:* now a styled control. The native input is
+    `.file-picker-input`, visually hidden the correct way (1×1, `clip-path:
+    inset(50%)`, off-flow) but still the element that holds the file; the
+    visible control is a `<label for>` carrying the product's button styles
+    (44px min-height, hairline border, `--radius-sm`) and the English words
+    **"Choose file"**, with **"No file chosen"** beside it. The browser's own
+    Russian-locale control is gone, at both viewports.
+  - *Keyboard:* tabbing from the "Upload PDF" tab lands on the chooser and the
+    product's teal focus ring is painted **on the visible label**, via
+    `.file-picker-input:focus-visible + .file-picker-button`. Reached by keyboard
+    and visible when reached — not just technically focusable.
+  - *Chosen file name:* after selecting a file the slot reads
+    `my-old-resume.pdf` in place of "No file chosen".
+  - *Regenerate on `/jobs/:id`:* no longer a bare `<button>` —
+    `class="cv-button"`, hairline border `rgb(133,127,116)`, 6px radius, 44px
+    min-height. Its white fill is the product's `--color-surface` (the same as
+    "Choose file" and the editor's "Move up"/"Delete"), not the browser default.
+  - *The "Create your first CV" link* was again not reachable — the seeded
+    account owns CVs. Still unverified, carried as a known gap.
+  After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA08-styled-pdf-chooser-mobile-375.jpg`,
+  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA08-choose-file-keyboard-focus-ring-desktop.png`,
+  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA08-chosen-file-name-shown-desktop.png`,
+  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA08-jobs-regenerate-styled-desktop.jpg`
 
 ### QA-09 Sign-in forgets where you were going, and `/auth` stays reachable while signed in — severity: minor
 - Where: `/auth/login`, `/cvs/:id` @ 1440×900
@@ -337,7 +377,17 @@ a data remnant (QA-10 → QA-14). 3 new findings: QA-12, QA-13, QA-14.**
   centred list screen now puts the two conventions one click apart.
 - Evidence: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA02-root-signed-out-to-signin-desktop.jpg`
   (left-hugging) vs `…/after-QA02-QA03-QA07-root-redirects-to-list-desktop.jpg` (centred)
-- Status: open
+- Status: **fixed** 2026-10-29 (second re-check). There is now one `.page`
+  container and every screen sits in it, centred, with a real gutter. Measured
+  at `innerWidth === 1440`: `/auth/login` → `.page auth-screen` left 500 w440;
+  `/cvs/new` → `.page intake` left 500 w440; `/cvs` → `.page cv-list` left 120
+  w1200; `/cvs/:id` → `.page cv-page` left 120 w1200; `/jobs/:id` →
+  `.page screen-message` left 360 w720. The left-hugging `x≈22` start is gone.
+  The three widths are one system, not two apps: narrow for the single-column
+  forms, wide for the two data screens, mid for message screens — all the same
+  primitive, all centred. At 375px all four headings start at x=16 and
+  `scrollWidth === 375` on every one.
+  After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA12-intake-centred-desktop.jpg`
 
 ### QA-13 An untitled CV renders an empty `<h1>` in the editor — severity: minor
 - Where: `/cvs/:id` for any CV whose `title` is `""` @ 1440-class and 375×812
@@ -349,7 +399,13 @@ a data remnant (QA-10 → QA-14). 3 new findings: QA-12, QA-13, QA-14.**
   disagree about the same CV. Introduced with the new failed/untitled states —
   before this wave a failed CV was unreachable (old QA-03), so no screen showed it.
 - Evidence: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA10-failed-cv-editor-banner-and-empty-h1-desktop.jpg`
-- Status: open
+- Status: **fixed** 2026-10-29 (second re-check). Opening any untitled CV —
+  `/cvs/425ef9cc-…` and `/cvs/6c2967f3-…` — renders `<h1>Untitled CV</h1>`, the
+  same fallback the list shows for the same row. The blank heading slot is gone
+  and the two screens now agree about the same CV. Confirmed at 1440 and at
+  375px.
+  After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA13-QA14-untitled-heading-reconciled-ghost-desktop.jpg`,
+  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA13-QA14-untitled-cv-heading-and-retry-mobile-375.jpg`
 
 ### QA-14 The QA-10 fix is forward-only: old CVs are still stuck in `generating` — severity: minor
 - Where: `/cvs` @ 1440-class and 375×812
@@ -362,7 +418,75 @@ a data remnant (QA-10 → QA-14). 3 new findings: QA-12, QA-13, QA-14.**
   QA-03); the list screen is what makes them a user-facing defect. Needs a
   migration, or a UI rule that treats a long-stale `generating` as failed.
 - Evidence: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/after-QA02-QA03-QA07-list-and-header-mobile.jpg`
-- Status: open
+- Status: **fixed** 2026-10-29 (second re-check). **Which way: failed, with a
+  message and a retry** — not absent. The api reconciles stale `generating` rows
+  at startup, and after the restart `GET /api/cvs` returns **no `generating`
+  row at all**; both former ghosts are `state: "failed"` carrying
+  `lastError: {"code":"INTERNAL","message":"The generation was interrupted and
+  did not finish. Regenerate to try again."}`. The list shows them as
+  "Untitled CV … Failed", and opening one shows the red banner with that exact
+  sentence plus a **Regenerate** button, so the row is now something the user
+  can act on. The message names the interruption rather than blaming the user,
+  and it is distinct from the `CONFIG_MISSING` wording on the key-less CV —
+  two different causes, two different sentences.
+  After: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA14-no-generating-ghosts-left-desktop.jpg`,
+  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA13-QA14-untitled-heading-reconciled-ghost-desktop.jpg`
+
+### QA-15 On desktop the question column places cards in API order, so the third card is stranded 2,957px below its field — severity: major
+
+- Where: `/cvs/:id` @ 1440×900 (desktop only — mobile is correct)
+- Repro: open the seeded CV at ≥900px and look for the *Role* question.
+- Expected / actual: expected the "Question about Role" card level with the
+  Brightpath **Role** field, the way the Summary and Skill cards are level with
+  theirs. Actual: the Role field is correctly marked (amber left rule, and the
+  card's eyebrow does say "Question about Role"), but the column beside it is
+  **empty**, and the card is parked at the very bottom of the page, below the
+  Skill card and below the end of the white sheet — field top **1838**, card top
+  **4795**, on a 5034px page. A user who sees the amber rule on Role has no
+  question next to it, and a user who scrolls to the bottom finds a question
+  with no field next to it.
+- Cause (visible from the outside, worth confirming in code): the cards render
+  in the API's `questions[]` order — the DOM order of the eyebrows is
+  **Summary → Skill → Role**, which is exactly the order
+  `GET /api/cvs/:id` returns (`summary.text`, `skills[5].name`,
+  `experience[1].role`) — while the fields they point at run
+  Summary → Role → Skill down the page. The column's measure-and-push places
+  each card at `max(cursor, fieldTop)`, so once the Skill card has pushed the
+  cursor to ~4500 the Role card can never walk back up to 1838. **This is the
+  new deterministic read-model ordering meeting a column that assumes API order
+  equals document order.** Sorting the cards by their field's measured offset
+  before the push would fix it; so would sorting the questions by section order.
+- **Relationship to QA-05:** QA-05 (paths/matching) is genuinely fixed —
+  3 of 3 cards find their field, and on mobile 3 of 3 are placed correctly.
+  This is a different, newer cause with the same user-visible shape on desktop,
+  so it is filed separately rather than reopening QA-05.
+- Evidence: `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA05-role-field-marked-but-column-empty-desktop.jpg`
+  (the marked field with nothing beside it),
+  `framework/sprints/SPRINT-001-skeleton-auth/qa-screenshots/recheck2-QA05-role-card-stranded-below-skills-desktop.jpg`
+  (the card, two screens later, under the Skill card and past the sheet)
+
+## Regression smoke — 2026-10-29 (second re-check)
+
+Ran after the rebuild, looking only for damage from the file control, the
+container rule and the read-model ordering. **No regressions.**
+
+- Sign out → `/auth/login` → sign in with the seeded user → lands on `/cvs`;
+  the list renders all five rows with working `/cvs/<id>` hrefs.
+- Editor opens; Location edited "London, UK" → **"Bristol, UK"**, committed on
+  blur, and still "Bristol, UK" after a full reload.
+- Header, textareas and the trash-icon fix (QA-06, QA-07, QA-11) all still hold
+  on the screens passed through; no horizontal scroll at either viewport.
+- **Console: zero messages of any kind** across list, editor, intake and
+  `/jobs/:id`.
+- **Ordering is deterministic.** Two consecutive reloads of the same CV return
+  the sections, the entries inside them, every bullet and every skill in the
+  **identical** order — asserted by comparing the full ordered label sequence
+  and the full ordered value sequence of all inputs/textareas across reload 1 vs
+  reload 2 (both identical), and a third read of `GET /api/cvs/:id` agreed with
+  the first two (experience Senior Software Engineer → Software Engineer →
+  Junior Developer; skills TypeScript → Go → PostgreSQL → Kubernetes → AWS →
+  Terraform). The ordering change did what it claims — QA-15 is a consequence of
+  *which* order the questions are in, not of it being unstable.
 
 ## What looked good
 
@@ -450,3 +574,33 @@ a data remnant (QA-10 → QA-14). 3 new findings: QA-12, QA-13, QA-14.**
   successful generation, sign-up, A4 export, keyboard-only and screen-reader
   passes, 768×1024, measured colour contrast — plus, new this pass, the
   Regenerate button's actual effect and the `/cvs` empty state.
+
+## Second re-check verdict — 2026-10-29
+
+**The sprint still cannot close, and the one thing blocking it is QA-15.**
+
+- **Four of the five flipped: QA-08, QA-12, QA-13, QA-14 are fixed**, each
+  verified at 1440 and at 375px. The intake screen's first control is now the
+  product's own, keyboard-reachable and in English; every screen sits in one
+  centred container; an untitled CV reads the same in the editor as in the list;
+  and no CV is stuck in `generating` any more — the two ghosts came back as
+  **failed, with a cause and a Regenerate button**.
+- **QA-05 is fixed as it was written.** The seed was indeed the last writer of
+  the old grammar. All three questions now find their field, all three eyebrows
+  are specific, and **on mobile all three cards sit under their own field** —
+  the first time the product's one visual idea works everywhere on a phone.
+- **Blocking close: QA-15 (major, new).** On desktop the third card is stranded
+  2,957px below the field it asks about, because the column places cards in the
+  API's question order and the new deterministic read model orders questions
+  summary → skills → experience, which is not document order. It is a small,
+  well-understood fix (sort the cards by their field's measured offset), but it
+  is the same user-visible defect QA-05 described, on the product's signature
+  screen, at the viewport most people will use it on. Shipping it two times in
+  three is still shipping it broken.
+- **Recommendation:** one `/hotfix` on **QA-15 alone**, then re-check one
+  screen at one viewport — the editor at 1440, counting cards level with their
+  fields. Everything else in this report is closed.
+- **Still not checked** (unchanged): the PDF happy path, a successful
+  generation, sign-up, A4 export, keyboard-only and screen-reader passes beyond
+  the file control, 768×1024, measured colour contrast, the `/cvs` empty state
+  and the "Create your first CV" link, and the Regenerate button's actual effect.

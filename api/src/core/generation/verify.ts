@@ -2,7 +2,7 @@
 // no LLM, no clock, no randomness. Drafts and facts are never mutated.
 import type { CvDraft, DroppedItem, Fact, VerificationResult } from './types.js';
 import { planQuestions, type PlannedQuestion, type QuestionReason } from './questions.js';
-import { containsPeriod, containsText, containsToken, hasDerivedDuration, unsupportedEntity } from './verify-entities.js';
+import { ambiguousName, containsPeriod, containsText, containsToken, hasDerivedDuration, unsupportedEntity } from './verify-entities.js';
 
 interface Failure {
   reason: Exclude<QuestionReason, 'vague'>;
@@ -63,7 +63,15 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
     questionPath: string = path,
   ): boolean => {
     const f = checkCited(text, factIds, byId, inherited, draft.targetRole);
-    if (f === null) return true;
+    if (f === null) {
+      // ADR-024 tier 2: a single ambiguous capitalised word keeps the item and asks. The lie is removed, the doubt shown.
+      const resolved = resolveCited(factIds, byId);
+      const cited = 'facts' in resolved ? [...resolved.facts, ...inherited].map((x) => x.text) : [];
+      if (ambiguousName(text, cited, [draft.targetRole]) !== null) {
+        candidates.push({ path: questionPath, text: questionText(questionPath, 'unverifiable'), reason: 'unverifiable', priority: 2 });
+      }
+      return true;
+    }
     dropped.push({ path, reason: f.detail });
     candidates.push({ path: questionPath, text: questionText(questionPath, f.reason), reason: f.reason, priority: 2 });
     return false;
@@ -141,8 +149,8 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
       // A duration derived from stated periods (ADR-023) is kept and asked about, like any derivation.
       const failure: Failure | null = !('facts' in resolved)
         ? resolved
-        : hasDerivedDuration(draft.summary.text, cited)
-          ? { reason: 'unverifiable', detail: 'derived quantity' }
+        : hasDerivedDuration(draft.summary.text, cited) || ambiguousName(draft.summary.text, cited, [draft.targetRole]) !== null
+          ? { reason: 'unverifiable', detail: 'derived quantity or ambiguous name' }
           : null;
       if (failure !== null) {
         candidates.push({ path: 'summary.text', text: questionText('summary.text', failure.reason), reason: failure.reason, priority: 2 });

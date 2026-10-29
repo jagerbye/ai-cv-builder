@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { unsupportedEntity } from './verify-entities.js';
+import { ambiguousName, unsupportedEntity } from './verify-entities.js';
 
 // ADR-023: the vocabulary is the text of the cited facts. No list of organisations is consulted, so an organisation
 // nobody enumerated is flagged exactly like one everybody has heard of. The stoplist is about English only.
@@ -28,8 +28,8 @@ describe('unsupportedEntity — closed world over the cited facts (ADR-023)', ()
     expect(r).toContain('QXR');
   });
 
-  it('flags a made-up product name that no cited fact contains', () => {
-    const r = unsupportedEntity('Built Zentrio dashboards', ['Built dashboards']);
+  it('flags a made-up product name that no cited fact contains (single word: tier 2, a question)', () => {
+    const r = ambiguousName('Built Zentrio dashboards', ['Built dashboards']);
     expect(r).not.toBeNull();
     expect(r).toContain('Zentrio');
   });

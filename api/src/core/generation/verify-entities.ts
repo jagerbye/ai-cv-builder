@@ -1,21 +1,16 @@
-// Deterministic entity check for the verifier (spec §3.4, ADR-023). No NLP, no LLM: the vocabulary is the text of the
-// cited facts, so an unknown name is never mistaken for a grounded one. TECHNOLOGIES below only normalises case.
+// Deterministic entity check for the verifier (spec §3.4, ADR-023, ADR-024). No NLP, no LLM, no list of known names:
+// the vocabulary is the text of the cited facts. Two tiers: an unsupported multi-token capitalised sequence or an
+// acronym DROPS (unsupportedEntity); a single ambiguous capitalised word raises a QUESTION (ambiguousName).
+// KNOWN LIMIT (ADR-024): a lowercase technology name ("kotlin", "built services in rust") cannot be told from prose by
+// any deterministic rule, so this check does NOT claim to catch one. There is deliberately no technology list.
 
-const TECHNOLOGIES = [
-  'Kafka', 'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'Elasticsearch', 'RabbitMQ', 'GraphQL',
-  'Kubernetes', 'Docker', 'Terraform', 'AWS', 'Azure', 'GCP', 'Java', 'JavaScript', 'TypeScript',
-  'Python', 'Rust', 'React', 'Node.js', 'Django',
-];
-
-// "Go" is matched case-sensitively so the verb "go" is not read as a technology.
-const CASE_SENSITIVE_TECHNOLOGIES = ['Go'];
-
-const LEGAL_SUFFIX = /((?:[A-Z][\w&'.-]*\s+){0,2}[A-Z][\w&'.-]*)\s+(Ltd|Inc|Corp|LLC|GmbH|PLC|Limited|Corporation)\b\.?/g;
+const LEGAL_SUFFIX = /((?:\p{Lu}[\p{L}\p{N}_&'.-]*\s+){0,2}\p{Lu}[\p{L}\p{N}_&'.-]*)\s+(Ltd|Inc|Corp|LLC|GmbH|PLC|Limited|Corporation)\b\.?/gu;
 
 const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+// Unicode-aware word boundaries: \w is ASCII-only and would make every non-Latin name invisible.
 const wholeWord = (term: string, flags: string): RegExp =>
-  new RegExp(`(?<!\\w)${escapeRegExp(term)}(?!\\w)`, flags);
+  new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(term)}(?![\\p{L}\\p{N}_])`, `${flags}u`);
 
 // Dashes (incl. en/em) are hyphens; whitespace collapses; comparison is case-insensitive.
 export const normalize = (s: string): string =>
@@ -34,37 +29,78 @@ export const containsPeriod = (haystack: string, period: string): boolean => {
   return new RegExp(`(?<!\\d)${escapeRegExp(p)}(?!\\d)`).test(h);
 };
 
+// Formatting is not a claim: "1,000" and "1000" are the same figure.
+const normaliseNumber = (t: string): string => (/^\d{1,3}(?:,\d{3})+/.test(t) ? t.replace(/,(?=\d{3})/g, '') : t);
+
 const numberTokens = (text: string): string[] =>
-  (text.match(/\d+(?:[.,]\d+)*(?:\s*%)?/g) ?? []).map((t) => t.replace(/\s+/g, ''));
+  (text.match(/\d+(?:[.,]\d+)*(?:\s*%)?/g) ?? []).map((t) => normaliseNumber(t.replace(/\s+/g, '')));
 
-const technologiesIn = (text: string): Set<string> => {
-  const found = new Set<string>();
-  for (const t of TECHNOLOGIES) if (wholeWord(t, 'i').test(text)) found.add(t);
-  for (const t of CASE_SENSITIVE_TECHNOLOGIES) if (wholeWord(t, '').test(text)) found.add(t);
-  return found;
-};
+// STOPLIST (ADR-023 point 2, ADR-024 point 3). It is about English, not about the world: words capitalised for a
+// reason of the language, carrying no claim. If a proper noun ever lands here, this list has become the COMPANIES
+// list ADR-023 deleted.
+const ENGLISH_STOPLIST: ReadonlySet<string> = new Set([
+  'I', 'CV',
+  'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December',
+]);
 
+// A sentence-initial word is checked against the vocabulary like any other; only a word that is plainly English is
+// exempt: a function word, an irregular verb a CV opens with, or an ASCII word with a regular English ending.
+const ENGLISH_OPENERS: ReadonlySet<string> = new Set([
+  'the', 'a', 'an', 'and', 'or', 'but', 'with', 'at', 'in', 'on', 'for', 'to', 'of', 'by', 'from', 'as', 'my', 'our',
+  'we', 'he', 'she', 'it', 'they', 'this', 'that', 'these', 'those', 'who', 'while', 'when', 'where', 'also', 'both',
+  'built', 'led', 'ran', 'wrote', 'drove', 'grew', 'made', 'taught', 'won', 'cut', 'set', 'got', 'took', 'gave',
+  'brought', 'began', 'kept', 'sold', 'spoke', 'wrote', 'drew', 'held', 'put', 'shaped', 'owned',
+]);
+const ENGLISH_SHAPE = /^[A-Z][a-z]+(?:ed|ing|ly|ful|ous|ive|able)$/;
+const isEnglishOpener = (tok: string): boolean => ENGLISH_OPENERS.has(tok.toLowerCase()) || ENGLISH_SHAPE.test(tok);
 
-// STOPLIST (ADR-023 point 2). It is about English, not about the world: words that are capitalised for a reason
-// of the language and carry no claim. Sentence-initial position is handled structurally (see capitalisedTokens),
-// not by listing words. If a proper noun ever lands here, this list has become the COMPANIES list ADR-023 deleted.
-const ENGLISH_STOPLIST: ReadonlySet<string> = new Set(['I', 'CV']);
+const ACRONYM = /^\p{Lu}[\p{Lu}\p{N}]+$/u;
 
-const ACRONYM = /^[A-Z][A-Z0-9]+$/;
+interface NameRun {
+  tokens: string[];
+  // True when the run stands where an organisation stands ("at X", "for X", "@ X", "joined X"): that position is a
+  // claim of employment, not ambiguity, so a single unsupported word there still DROPS ("a decade at Stripe").
+  employer: boolean;
+}
 
-// Capitalised tokens of `text` that could be a name, an acronym or a product. A single capitalised word that opens a
-// sentence is English, not an entity; an acronym is an entity wherever it stands.
-function capitalisedTokens(text: string): string[] {
-  const out: string[] = [];
-  for (const m of text.matchAll(/(?<![\w])[A-Z][\w&-]*(?:\.\w+)*/g)) {
+const EMPLOYER_POSITION = /(?:^|[\s(])(?:at|for|joined|@)\s*$/i;
+
+// Capitalised tokens of `text` that are not supported by `vocabulary`, grouped into runs of adjacent tokens. A hyphen
+// separates parts ("Stripe-backed" -> "Stripe"). Sentence-initial tokens are checked, not skipped.
+function unsupportedRuns(text: string, vocabulary: string): { runs: NameRun[]; acronym: string | null } {
+  const runs: NameRun[] = [];
+  let acronym: string | null = null;
+  let current: NameRun | null = null;
+  let prevEnd = -1;
+  for (const m of text.matchAll(/(?<![\p{L}\p{N}_])\p{Lu}[\p{L}\p{N}_&']*(?:\.[\p{L}\p{N}_]+)*/gu)) {
     const tok = m[0];
-    if (ENGLISH_STOPLIST.has(tok)) continue;
-    const before = text.slice(0, m.index).trimEnd();
+    const idx = m.index ?? 0;
+    const gap = prevEnd < 0 ? '' : text.slice(prevEnd, idx);
+    prevEnd = idx + tok.length;
+    if (!/^[ \t]+$/.test(gap)) current = null;
+    if (ENGLISH_STOPLIST.has(tok)) {
+      current = null;
+      continue;
+    }
+    const before = text.slice(0, idx).trimEnd();
     const sentenceInitial = before === '' || /[.!?:;\n]$/.test(before);
-    if (sentenceInitial && !ACRONYM.test(tok)) continue;
-    out.push(tok);
+    const isAcronym = ACRONYM.test(tok);
+    if (sentenceInitial && !isAcronym && isEnglishOpener(tok)) {
+      current = null;
+      continue;
+    }
+    if (wholeWord(tok, 'i').test(vocabulary)) {
+      current = null;
+      continue;
+    }
+    if (isAcronym) acronym ??= tok;
+    if (current === null) {
+      current = { tokens: [], employer: EMPLOYER_POSITION.test(before) };
+      runs.push(current);
+    }
+    current.tokens.push(tok);
   }
-  return out;
+  return { runs, acronym };
 }
 
 // --- Durations vs quantified results (ADR-023 closing section) ---------------------------------------------------
@@ -92,28 +128,34 @@ export function durationClaims(text: string): DurationClaim[] {
   for (const m of text.matchAll(DURATION)) {
     const n = m[1] !== undefined ? Number(m[1]) : WORD_NUMBERS[(m[2] ?? m[4]).toLowerCase()];
     const unit = (m[3] ?? m[5]).toLowerCase();
+    // "in a year" / "a month" is idiom, not a claimed career length; only "a decade" is a claim.
+    if (n === 1 && (m[2] ?? m[4])?.toLowerCase() === 'a' && !unit.startsWith('decade')) continue;
     const years = unit.startsWith('decade') ? n * 10 : unit.startsWith('m') ? n / 12 : n;
     claims.push({ phrase: m[0], years });
   }
   return claims;
 }
 
-// Total years the facts' periods span. `open` means a period has no end ("Since 2019", "2019 - Present"); with no
-// clock (ADR-002) its length cannot be computed, so any claim is derivable from it. `null` = no period is stated.
+// Years the facts' periods span, as the ENVELOPE (earliest start to latest end), not the sum (ADR-024): a career
+// with a gap is not shortened and overlapping periods are not counted twice. `open` means a period has no end
+// ("Since 2019", "2019 - Present"); with no clock (ADR-002) its length cannot be computed, so any claim is derivable
+// from it. `null` = no period is stated.
 function statedSpan(cited: string): { years: number; open: boolean } | null {
-  let years = 0;
+  let start = Infinity;
+  let end = -Infinity;
   let found = false;
   let open = false;
   for (const m of cited.matchAll(/(?<!\d)((?:19|20)\d\d)\s*[-‐-―]\s*((?:19|20)\d\d|present|now|current)/gi)) {
     found = true;
-    if (/^\d/.test(m[2])) years += Math.max(0, Number(m[2]) - Number(m[1]));
+    start = Math.min(start, Number(m[1]));
+    if (/^\d/.test(m[2])) end = Math.max(end, Number(m[2]));
     else open = true;
   }
   if (/\bsince\s+(?:19|20)\d\d\b/i.test(cited)) {
     found = true;
     open = true;
   }
-  return found ? { years, open } : null;
+  return found ? { years: end > start ? end - start : 0, open } : null;
 }
 
 // A duration is supported when a cited fact says it verbatim, or the stated periods are long enough to derive it.
@@ -156,16 +198,23 @@ export function unsupportedEntity(text: string, citedTexts: readonly string[], a
     if (!supported) return `organisation "${m[0].trim()}"`;
   }
 
-  for (const tok of capitalisedTokens(rest)) {
-    if (!wholeWord(tok, 'i').test(vocabulary)) return `name "${tok}"`;
-  }
-
-  const citedTech = technologiesIn(vocabulary);
-  for (const t of technologiesIn(rest)) {
-    if (!citedTech.has(t)) return `technology "${t}"`;
-  }
+  // Tier 1 (drop): an acronym, or a run of two or more adjacent unsupported capitalised tokens: the injection shape.
+  const { runs, acronym } = unsupportedRuns(rest, vocabulary);
+  if (acronym !== null) return `name "${acronym}"`;
+  const multi = runs.find((r) => r.tokens.length >= 2 || r.employer);
+  if (multi !== undefined) return `name "${multi.tokens.join(' ')}"`;
 
   return badDuration;
+}
+
+// Tier 2 (question): a single unsupported capitalised word is ambiguous: an invented employer, or just "Senior" or
+// "Remote". The caller keeps the text and asks. Call after unsupportedEntity() returned null.
+export function ambiguousName(text: string, citedTexts: readonly string[], allowed: readonly string[] = []): string | null {
+  const vocabulary = [citedTexts.join('\n'), ...allowed].join('\n');
+  let rest = text;
+  for (const c of durationClaims(text)) rest = rest.replace(c.phrase, ' ');
+  const single = unsupportedRuns(rest, vocabulary).runs.find((r) => !r.employer);
+  return single === undefined ? null : `name "${single.tokens[0]}"`;
 }
 
 // Contact values are matched as whole tokens (ADR-022): "jane@example.co" is not in "jane@example.com" and a

@@ -19,6 +19,54 @@ Format — newest on top, one block per decision:
 
 ---
 
+## ADR-025: Prose asks, structure drops — and the loop stops here (2026-10-29, accepted)
+
+- **Context:** three adversarial rounds on one component. ADR-023 deleted a
+  list of company names; ADR-024 fixed the heuristic that replaced it; the
+  third attack returned fifteen more probes and the reviewer's verdict in four
+  words: *the guarantee does not hold*. `eBay` and `iRobot` hide their capital
+  inside the word; Japanese names have no case for `\p{Lu}` to see; `Fastly`
+  is exempted by its `-ly` ending; numerals written as words are unchecked;
+  possessives miss the vocabulary. And the other way: "Strong Communication
+  skills" deleted, "Python 3" deleted against a fact saying "Python 3.11",
+  "40 percent" deleted against "40%". Each fix spawned two findings. That is
+  the signature of a wrong mechanism, not of insufficient effort — detecting
+  invented entities in free prose is named-entity recognition, and it was being
+  attempted with regular expressions.
+- **Decision:** **prose raises questions; structure drops.**
+  - **Structured fields keep the strong guarantee.** An experience entry, an
+    education entry, a skill, a contact field — each is a discrete claim with
+    its own cited facts, and an entity those facts do not establish still
+    removes it. That is where a CV's factual assertions live, and it is where
+    recombination is caught.
+  - **Prose — the summary and bullet text — is never deleted.** It is checked
+    best-effort, and anything the cited facts do not support raises a
+    priority-1 question beside the field. The injected "decade at Stripe"
+    survives as visible, flagged, unanswered text rather than as a silent
+    deletion of the user's own writing.
+  - The two-tier capitalisation machinery goes with it. Less code, no
+    over-fire class, and no promise the implementation cannot keep.
+- **Why this is not a retreat:** it is what the brief asked for. *"The AI may
+  rephrase and restructure, but must not invent facts. Anything missing or
+  vague becomes a question to the user, and the answer updates the relevant
+  part of the CV."* The product's model is the question. We built a deleter,
+  then spent three rounds fixing the damage it did to legitimate text.
+- **Alternatives rejected:** a fourth round against the seven remaining probes
+  (the eighth would have produced seven more; the mechanism cannot close);
+  shipping ADR-024 as it stands (code carrying a guarantee its own reviewer
+  says is false is worse than code with a stated limit); a model-based entity
+  check (a second model's opinion is not evidence, and ADR-002 requires the
+  verifier to be deterministic).
+- **Consequences:** the guarantee is now stated in two sentences a reader can
+  check — *every structured claim is grounded in a cited fact or it is gone;
+  every unsupported phrase in prose is flagged where the user will see it* —
+  and the spec says so instead of implying something stronger. The golden
+  fixture for prompt injection asserts what actually matters: the injected
+  instruction does not change the output's structure, and its claim arrives
+  flagged.
+
+---
+
 ## ADR-024: Two tiers for prose, and no second closed list (2026-10-29, accepted)
 
 - **Context:** ADR-023 deleted the list of company names and the reviewer

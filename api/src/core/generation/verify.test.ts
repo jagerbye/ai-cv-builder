@@ -330,7 +330,7 @@ describe('verify — entity rule against the entry\'s own facts (spec §3.4, ADR
     );
   });
 
-  it('drops a bullet naming a technology no cited fact names, and matches PostgreSQL case-insensitively', () => {
+  it('questions a bullet naming one unheld capitalised technology (ADR-024 tier 2), and matches PostgreSQL case-insensitively', () => {
     const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2021, stored orders in PostgreSQL')];
     const draft = base({
       experience: [
@@ -348,11 +348,13 @@ describe('verify — entity rule against the entry\'s own facts (spec §3.4, ADR
       ],
     });
     const r = verify(draft, facts);
-    expect(r.dropped.map((d) => d.path)).toEqual(['experience[0].bullets[0]']);
-    expect(r.accepted.experience[0].bullets.map((b) => b.text)).toEqual(['Stored orders in postgresql']);
+    expect(r.dropped).toEqual([]);
+    expect(r.accepted.experience[0].bullets.map((b) => b.text)).toEqual(['Scaled the service on Kafka', 'Stored orders in postgresql']);
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'experience[0].bullets[0].text' }));
+    expect(r.questions.some((q) => q.path === 'experience[0].bullets[1].text')).toBe(false);
   });
 
-  it('does not match a technology inside a longer word ("Go" is not in "Google")', () => {
+  it('does not match a name inside a longer word ("Go" is not in "Google"): the bullet is questioned', () => {
     const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2021, worked at Google')];
     const draft = base({
       experience: [
@@ -367,7 +369,8 @@ describe('verify — entity rule against the entry\'s own facts (spec §3.4, ADR
       ],
     });
     const r = verify(draft, facts);
-    expect(r.dropped.map((d) => d.path)).toEqual(['experience[0].bullets[0]']);
+    expect(r.dropped).toEqual([]);
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'experience[0].bullets[0].text' }));
   });
 
   it('accepts a bullet with no named entity that cites a valid fact (no false positives)', () => {
@@ -681,8 +684,11 @@ describe('verify — ADR-022 Amendment A: an invented entity drops the summary, 
     dropsSummary('Backend engineer formerly at Globex Corp', /Globex Corp/);
   });
 
-  it('drops a summary naming a technology no cited fact holds', () => {
-    dropsSummary('Backend engineer who ships Kubernetes platforms', /Kubernetes/);
+  it('keeps a summary naming one unheld capitalised technology and asks (ADR-024 tier 2; no technology list)', () => {
+    const r = verify(base({ summary: { text: 'Backend engineer who ships Kubernetes platforms', factIds: ['f1', 'f2'] } }), facts);
+    expect(r.dropped).toEqual([]);
+    expect(r.accepted.summary).toBeDefined();
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'summary.text' }));
   });
 
   it('drops a summary stating a figure no cited fact holds', () => {

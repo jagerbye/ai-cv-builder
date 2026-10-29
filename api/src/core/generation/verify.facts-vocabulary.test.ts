@@ -73,10 +73,13 @@ describe('ADR-023 — an organisation no cited fact names is dropped, listed or 
     );
   });
 
-  it('drops a made-up product name that no cited fact contains', () => {
+  it('keeps a bullet with one made-up product name and asks (ADR-024 tier 2); a two-word one drops', () => {
     const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2019, built dashboards')];
     const r = verify(base({ experience: [entryWithBullet('Built Zentrio dashboards')] }), facts);
-    expect(r.dropped.map((d) => d.path)).toEqual(['experience[0].bullets[0]']);
+    expect(r.dropped).toEqual([]);
+    expect(r.questions).toContainEqual(expect.objectContaining({ path: 'experience[0].bullets[0].text' }));
+    const two = verify(base({ experience: [entryWithBullet('Built Zentrio Quark dashboards')] }), facts);
+    expect(two.dropped.map((d) => d.path)).toEqual(['experience[0].bullets[0]']);
   });
 
   it('keeps a made-up product name that a cited fact holds', () => {

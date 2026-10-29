@@ -148,6 +148,22 @@ This is the feature the product is judged on; its mechanism is
         it, which is rejection of a true statement, not protection from a
         false one. Inheritance goes one level only, parent → child, never
         sideways between siblings.
+  - [ ] **Prose is checked in two tiers (ADR-024).** The vocabulary is the text
+        of the cited facts plus the target role. An unsupported acronym, an
+        unsupported run of two or more capitalised words, or an unsupported
+        name standing where an employer stands ("at X", "for X") **drops** the
+        item. A single other unsupported capitalised word ("Senior", "Remote",
+        an unfamiliar product) **keeps** it and raises a question. Month names
+        and plainly English words are exempt, figures are compared after
+        normalising separators ("1,000" = "1000"), non-Latin capitals count
+        (Unicode-aware), and a claimed duration is judged against the envelope
+        (earliest start to latest end) of the stated periods.
+        **Known limit, by design:** a lowercase technology name ("kotlin") or a
+        composite assembled from two facts' tokens ("Northwind" from one fact,
+        "Payments" from another) cannot be caught deterministically in prose;
+        there is no technology list. Employer, period and institution are
+        structured fields with their own cited facts, which is where
+        recombination is caught.
   - [ ] A rejected item never reaches the user as content: it is dropped, and a
         clarifying question (F-005) is raised in its place.
   - [ ] Every bullet point, every date, and the summary carry the ids of the

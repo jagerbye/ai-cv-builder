@@ -1,12 +1,52 @@
 // T-04 reopened (CVB-4), ADR-012. Black-box session flow against the RUNNING API
-// container: register, me, logout, me, login. Runs only when CONTAINER_API_URL is set,
-// e.g. CONTAINER_API_URL=http://127.0.0.1:3000 after `docker compose up -d --build`.
-// It is skipped (not passed) otherwise, so a lane gate on the host does not claim
-// container evidence. The lane log records the command and result.
-import { describe, it, expect } from 'vitest';
+// container: register, me, logout, me, login, wrong password. Follows the smoke suite's
+// pattern (tests/smoke/stack.smoke.test.ts): it PROBES for the stack instead of waiting for
+// an env var nobody sets. The api origin is CONTAINER_API_URL, else http://127.0.0.1:$API_PORT
+// (default 3000, the port docker compose publishes). If /api/health answers, the five run
+// in every gate; if nothing answers they SKIP with a message, and under SMOKE_REQUIRED
+// (CI) an absent stack FAILS, because a skipped test is not evidence.
+import { describe, it, expect, afterAll } from 'vitest';
+import { PrismaClient } from '@prisma/client';
 
-const BASE = process.env.CONTAINER_API_URL;
+const BASE = (process.env.CONTAINER_API_URL ?? `http://127.0.0.1:${process.env.API_PORT ?? '3000'}`).replace(/\/$/, '');
 const PASSWORD = 'correct-horse-battery-container';
+// ADR-019: this drives the REAL stack, so its user lives in the app's database; cleanup deletes by the id
+// the register response returned (E-005), never by prefix.
+const APP_DATABASE_URL =
+  process.env.APP_DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder';
+
+async function stackUp(): Promise<boolean> {
+  try {
+    const r = await fetch(`${BASE}/api/health`, { signal: AbortSignal.timeout(3_000) });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+const up = await stackUp();
+const required = (process.env.SMOKE_REQUIRED ?? '') !== '';
+if (!up && !required) {
+  console.warn(`container session flow: SKIPPED — nothing answers at ${BASE}. Run \`docker compose up -d --wait\` to run it, or set SMOKE_REQUIRED=1 to make its absence a failure.`);
+}
+
+describe.runIf(!up && required)('container: session flow (required)', () => {
+  it('finds the api running', () => {
+    expect.unreachable(`SMOKE_REQUIRED is set and nothing answers at ${BASE}: start the stack before the gate.`);
+  });
+});
+
+const createdUserIds: string[] = [];
+
+afterAll(async () => {
+  if (createdUserIds.length === 0) return;
+  const prisma = new PrismaClient({ datasources: { db: { url: APP_DATABASE_URL } } });
+  try {
+    await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
+  } finally {
+    await prisma.$disconnect();
+  }
+});
 
 function cookieFrom(res: Response): string {
   const raw = res.headers.getSetCookie?.() ?? [];
@@ -15,7 +55,7 @@ function cookieFrom(res: Response): string {
   return sid!.split(';')[0];
 }
 
-describe.skipIf(!BASE)('container: session flow through the running api image (ADR-012)', () => {
+describe.skipIf(!up)('container: session flow through the running api image (ADR-012)', () => {
   const email = `cvb-t4ctr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
   let cookie: string;
 
@@ -31,6 +71,7 @@ describe.skipIf(!BASE)('container: session flow through the running api image (A
     expect(res.status).toBe(201);
     cookie = cookieFrom(res);
     const body = (await res.json()) as { user: { id: string; email: string } };
+    createdUserIds.push(body.user.id);
     expect(body.user.email).toBe(email);
   });
 

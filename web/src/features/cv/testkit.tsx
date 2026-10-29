@@ -94,6 +94,13 @@ export interface CvQuestion {
   text: string;
   status: 'open' | 'answered' | 'dismissed';
 }
+export interface CvFact {
+  id: string;
+  kind: string;
+  text: string;
+  sourceQuote: string;
+  source: 'document' | 'user';
+}
 export interface CvDto {
   id: string;
   title: string;
@@ -107,7 +114,7 @@ export interface CvDto {
   education: CvEducation[];
   skills: CvSkill[];
   questions: CvQuestion[];
-  facts: unknown[];
+  facts: CvFact[];
 }
 export type CvPatch = Partial<Pick<CvDto, 'contact' | 'summary' | 'experience' | 'education' | 'skills'>>;
 

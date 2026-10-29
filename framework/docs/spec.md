@@ -172,6 +172,15 @@ This is the feature the product is judged on; its mechanism is
   - [ ] Every bullet point, every date, and the summary carry the ids of the
         facts they rest on; `GET /api/cvs/:id` exposes them so the UI can show
         the user the source quote behind any line.
+  - [ ] The editor shows that source (B-022): every bullet, the summary and
+        every skill has a "Show source" button under the line. Opened, it lists
+        the verbatim quote of each cited fact, marked "From your document" or
+        "From your answer" (a user fact with no quote shows the user's own
+        text). A line with no citations says "No source cited for this line."; a
+        user-edited line says it is the user's own wording, not the document's,
+        and shows no quote. It sits under the line at every width (the same
+        mechanism as the question cards), is a native button, and Escape closes
+        it and returns focus to the button. It adds no icon and uses no amber.
   - [ ] Given a fixture source that mentions no employer, a generated CV
         contains no employer — asserted by a regression test over a golden set
         of at least 5 adversarial fixtures (empty-ish source, source with a

@@ -1,5 +1,6 @@
 import { useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { QuestionScopeContext } from './questions';
+import { SourceNote, type Citation } from './sources';
 
 interface FieldProps {
   label: string;
@@ -9,11 +10,13 @@ interface FieldProps {
   // The C-006/C-009 path this field holds, e.g. experience[1].period. A question
   // bound to the same path is shown beside (desktop) or under (mobile) this field.
   path?: string;
+  // The facts this line was built from. Present only on generated lines.
+  citation?: Citation;
 }
 
 // A text field that commits on blur. The typed text stays here until then, so a
 // failed or conflicting save never takes it away.
-export function Field({ label, value, onCommit, multiline = false, path }: FieldProps) {
+export function Field({ label, value, onCommit, multiline = false, path, citation }: FieldProps) {
   const id = useId();
   const [draft, setDraft] = useState(value);
   const scope = useContext(QuestionScopeContext);
@@ -52,6 +55,7 @@ export function Field({ label, value, onCommit, multiline = false, path }: Field
         </label>
         {multiline ? <textarea ref={areaRef} rows={1} {...common} /> : <input type="text" {...common} />}
       </div>
+      {citation && <SourceNote citation={citation} />}
       {cards}
     </>
   );

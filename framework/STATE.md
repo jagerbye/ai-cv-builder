@@ -43,4 +43,4 @@
 ## Known, owned by nobody
 
 - 5 container tests skipped until the api image is built
-- Facts are stored and served but no UI shows them (B-022, parked)
+- Facts screen built (B-022): "Show source" under every bullet, summary and skill; contact/header fields carry no factIds so have none

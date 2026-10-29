@@ -29,10 +29,11 @@ export function ExperienceList({ items, onChange }: { items: CvExperience[]; onC
                   multiline
                   path={`experience[${i}].bullets[${j}].text`}
                   value={bullet.text}
+                  citation={bullet}
                   onCommit={(v) =>
                     setBullets(
                       i,
-                      entry.bullets.map((b, m) => (m === j ? { ...b, text: v } : b)),
+                      entry.bullets.map((b, m) => (m === j ? { ...b, text: v, userEdited: true } : b)),
                     )
                   }
                 />
@@ -138,7 +139,8 @@ export function SkillList({
               label="Skill"
               path={`skills[${i}].name`}
               value={skill.name}
-              onCommit={(v) => onChange(items.map((s, k) => (k === i ? { ...s, name: v } : s)))}
+              citation={skill}
+              onCommit={(v) => onChange(items.map((s, k) => (k === i ? { ...s, name: v, userEdited: true } : s)))}
             />
             <div className="cv-actions">
               <button type="button" className="cv-button" disabled={i === 0} onClick={() => onChange(move(items, i, -1))}>

@@ -1,0 +1,7 @@
+api/src/core/generation/verify*
+tests/contract/auth-session-container*
+framework/scripts/*
+.github/*
+framework/docs/*
+framework/sprints/SPRINT-002-live-model/*
+.claude/*

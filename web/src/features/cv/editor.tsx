@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { ApiError, GENERIC_MESSAGE, apiFetch } from '../../api/client';
 import { Field } from './fields';
 import { EducationList, ExperienceList, SkillList } from './entries';
+import { FactsContext } from './sources';
 import { cvDisplayTitle } from './title';
 import { toDraft, toWire } from './draft';
 import {
@@ -31,6 +32,7 @@ export function CvEditor({ cv, onReload }: { cv: CvDto; onReload: () => void }) 
   const [conflict, setConflict] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<Section, SectionError>>>({});
   const [questions, setQuestions] = useState<CvQuestion[]>(cv.questions);
+  const [facts, setFacts] = useState(cv.facts);
   const [answers, setAnswers] = useState<Record<string, AnswerKind>>({});
   const [skipped, setSkipped] = useState<Record<string, true>>({});
   const versionRef = useRef(cv.version);
@@ -108,6 +110,7 @@ export function CvEditor({ cv, onReload }: { cv: CvDto; onReload: () => void }) 
       });
       versionRef.current = next.version;
       setQuestions(next.questions);
+      setFacts(next.facts);
       const section = sectionOf(q.path);
       if (section) setDraft((d) => ({ ...d, [section]: toDraft(next)[section] }) as CvDraft);
       setAnswers((a) => ({ ...a, [q.id]: 'answered' }));
@@ -166,6 +169,7 @@ export function CvEditor({ cv, onReload }: { cv: CvDto; onReload: () => void }) 
   const loose = twoColumn ? [] : visible.filter((q) => !placed.has(q.path));
 
   return (
+    <FactsContext.Provider value={facts}>
     <QuestionScopeContext.Provider value={scope}>
       <div className="page cv-page">
         <header className="cv-header">
@@ -227,8 +231,9 @@ export function CvEditor({ cv, onReload }: { cv: CvDto; onReload: () => void }) 
                 label="Summary"
                 multiline
                 path="summary.text"
+                citation={draft.summary ?? { factIds: [], userEdited: false }}
                 value={draft.summary?.text ?? ''}
-                onCommit={(v) => commit('summary', { ...(draft.summary ?? { factIds: [], userEdited: false }), text: v })}
+                onCommit={(v) => commit('summary', { ...(draft.summary ?? { factIds: [], userEdited: false }), text: v, userEdited: true })}
               />
               <SectionFooter error={errors.summary} onRetry={() => retry('summary')} />
             </section>
@@ -266,6 +271,7 @@ export function CvEditor({ cv, onReload }: { cv: CvDto; onReload: () => void }) 
         {loose.length > 0 && <div className="cv-questions-loose">{loose.map((q) => renderCard(q))}</div>}
       </div>
     </QuestionScopeContext.Provider>
+    </FactsContext.Provider>
   );
 }
 

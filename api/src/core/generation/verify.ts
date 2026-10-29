@@ -53,8 +53,8 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
       path: questionPath,
       text: `The drafted text contains ${phrase}, which the cited source does not support. Is it correct?`,
       reason: 'unverifiable',
-      priority: 1,
-    });
+        priority: 1,
+      });
   };
 
   // A bullet is checked against its own facts plus its parent entry's facts (one level, ADR-002). A bullet that

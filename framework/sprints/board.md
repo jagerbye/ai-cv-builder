@@ -189,7 +189,7 @@ the right question about it.
 | Issue | Backlog | Summary | Why parked |
 |---|---|---|---|
 | CVB-21 | B-021 | SSE progress instead of polling | ADR-003 keeps polling as the source of truth |
-| CVB-22 | B-022 | Source-quote popover per line | data already exposed by C-006; UI only |
+| CVB-22 | B-022 | Source-quote popover per line | built in SPRINT-002 as an inline disclosure (sources.tsx); no longer parked |
 | CVB-23 | B-023 | Session expiry sweep | irrelevant without a deployment |
 
 ## Done

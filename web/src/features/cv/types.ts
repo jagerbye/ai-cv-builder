@@ -50,6 +50,14 @@ export interface CvSummary {
   factIds: string[];
   userEdited: boolean;
 }
+export interface CvFact {
+  id: string;
+  kind: string;
+  text: string;
+  // Verbatim span of the source document; empty for a fact the user gave.
+  sourceQuote: string;
+  source: 'document' | 'user';
+}
 export interface CvDto {
   id: string;
   title: string;
@@ -63,7 +71,7 @@ export interface CvDto {
   education: CvEducation[];
   skills: CvSkill[];
   questions: CvQuestion[];
-  facts: unknown[];
+  facts: CvFact[];
   // C-006, ADR-017: present only when state is 'failed'.
   lastError?: { code: string; message: string };
 }

@@ -19,6 +19,42 @@ Format — newest on top, one block per decision:
 
 ---
 
+## ADR-026: Question priority is what it costs to ignore it (2026-10-29, accepted)
+
+- **Context:** C-006 serves `questions` with a priority, the editor orders by
+  it, and nothing ever defined what the three values mean. A developer asked to
+  make priority follow the question's reason — "1 missing, 2 unverifiable,
+  3 vague" — implemented it, found it broke twenty-one assertions, and brought
+  the conflict back instead of rewriting them. The conflict is real: flagged
+  prose is `unverifiable` and sits at priority 1 because ADR-025 put it there,
+  while an entry dropped for having no citation at all is `missing` and sits
+  at 2. The stated rule does not describe the code and never did; the values
+  were assigned case by case as each path was written.
+- **Decision:** priority is defined by **what it costs the user to ignore the
+  question**, which is the only thing a sort order can usefully mean.
+  - **1 — content is missing from your CV.** A dropped entry, education,
+    skill or contact field. The CV is incomplete and only the user's answer
+    brings it back. Nothing else is more urgent.
+  - **2 — content is present but your source does not support it.** Flagged
+    prose, a kept entry whose period the facts do not state. Ignoring it means
+    sending out a claim that cannot be backed.
+  - **3 — content is present and vague.** The weak form of 2.
+  The reason stays what it is on every path; only the number is derived, in one
+  place, from this table — so the two cannot drift apart again. C-006 states
+  the meanings, because a consumer sorts by them.
+- **This amends ADR-025**, which put flagged prose at priority 1. That was my
+  call and it was made to signal prominence, not urgency. Under this rule a
+  flag is a 2: the text is still in the CV, where a dropped entry is not.
+- **Alternatives rejected:** priority follows the reason (the rule nobody could
+  apply, because `missing` describes both a dropped item and an uncited line
+  that was kept); leaving the values ad hoc (an ordering a consumer relies on
+  and no one can explain is an ordering that will be sorted wrongly).
+- **Consequences:** about twenty assertions move, which is the cost of having
+  never defined this; the editor's question column now puts "something is gone"
+  above "something is unproven", which is the order a user would choose.
+
+---
+
 ## ADR-025: Prose asks, structure drops — and the loop stops here (2026-10-29, accepted)
 
 - **Context:** three adversarial rounds on one component. ADR-023 deleted a

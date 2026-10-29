@@ -104,8 +104,9 @@ M ≈ 1–2 h, L ≈ 2–3 h. A task in a sprint plan is never larger than M
 
 - [ ] B-021 SSE instead of polling for progress — ADR-003 says polling stays
       the source of truth; this is latency polish only
-- [ ] B-022 "Show the source quote" popover on every bullet — the data is
-      already exposed by C-006; only the UI is missing
+- [x] B-022 "Show the source" disclosure on every bullet, the summary and every
+      skill — built in SPRINT-002 (web/src/features/cv/sources.tsx), spec §3.4;
+      an inline disclosure, not a popover, so it works at 375px
 - [ ] B-023 Session expiry sweep job — irrelevant locally
 
 ## Done (moved from queue, newest first)

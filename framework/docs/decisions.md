@@ -19,6 +19,31 @@ Format — newest on top, one block per decision:
 
 ---
 
+## ADR-020: C-009's 503 carries the real code (2026-10-29, accepted)
+
+- **Context:** writing the README against a running key-less stack showed that
+  answering a question reports a missing API key as
+  `503 LLM_UNAVAILABLE — try again later`. A bare `catch` in
+  `core/cv/answer.ts` maps every recompose failure to that one code. "Try again
+  later" is advice that cannot work: nobody will configure the key by waiting,
+  and the one person who can fix it is told nothing. This is the same defect
+  ADR-017 and ADR-018 closed on the job path, left open on the answer path.
+- **Decision:** the status stays 503 — a recompose that cannot run does make
+  the service unavailable, and C-009's status set is frozen — but the envelope
+  carries the code the failure actually had: `CONFIG_MISSING`,
+  `LLM_AUTH_FAILED`, `LLM_INVALID_REQUEST`, or `LLM_UNAVAILABLE` when it really
+  is transient. The answer is still stored and the question still answered,
+  exactly as before.
+- **Alternatives rejected:** a 500 for configuration errors (it is not a fault
+  in the request, and 500 is what we spent ADR-018 getting away from); leaving
+  it (the status is the part a client branches on, and nothing branched wrong —
+  but a human reads the message, and the message was useless).
+- **Consequences:** C-009's error list names the codes rather than the one
+  code; the web already renders an unknown code's message, so nothing on the
+  client needs to know them first.
+
+---
+
 ## ADR-019: The test suite gets its own database (2026-10-29, accepted)
 
 - **Context:** the suite and the running dev stack share one database, and the

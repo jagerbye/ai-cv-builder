@@ -74,9 +74,14 @@ from `docker compose up -d db`):
 ```bash
 npm ci
 npx prisma generate --schema api/prisma/schema.prisma
-npx prisma migrate deploy --schema api/prisma/schema.prisma
-export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ai_cv_builder
+npx prisma migrate deploy --schema api/prisma/schema.prisma   # run once more with DATABASE_URL set to ai_cv_builder_test
+export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test
 ```
+
+Two databases (ADR-019): `ai_cv_builder` is the app's, served by `docker compose up`
+and used by QA and the smoke suite; `ai_cv_builder_test` belongs to the test suite.
+The gate creates and migrates it, and a bare `npx vitest run` in `api/` defaults to
+it, so a running stack never competes with tests for queued jobs.
 
 ## Tests
 

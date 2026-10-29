@@ -14,7 +14,7 @@ import { acquireJobSuiteLock, openJobTestSuite, type JobTestSuite } from './test
 //   JobTestSuite.holdsLock: boolean                    true only while this suite holds the lock
 //   JobTestSuite.release(): Promise<void>              releases the lock if held; idempotent
 
-process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder';
+process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test';
 
 // Same key as LOCK_KEY in test-lock.ts. Probed from a separate connection: advisory locks belong to a
 // session, and a session may always re-take its own lock, so a same-session probe proves nothing.
@@ -36,7 +36,7 @@ function openSuite(): JobTestSuite {
 }
 
 async function lockHeldElsewhere(): Promise<boolean> {
-  const url = new URL(process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder');
+  const url = new URL(process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test');
   url.searchParams.set('connection_limit', '1');
   const probe = new PrismaClient({ datasources: { db: { url: url.toString() } } });
   try {

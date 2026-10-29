@@ -6,7 +6,7 @@ import type { CvDraft, Fact, GenerationPipeline, QuestionDraft, VerificationResu
 // real Fastify app; the LLM is the C-012 seam (GenerationPipeline) with no network. Nothing here
 // asserts behaviour: the suites do that. Enqueueing goes through openJobTestSuite (ADR-014).
 
-process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder';
+process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test';
 
 export const prisma = new PrismaClient();
 export const userIds: string[] = [];
@@ -156,9 +156,22 @@ export function regenerate(app: { inject: (o: object) => Promise<any> }, cookie:
   return app.inject({ method: 'POST', url: `/api/cvs/${cvId}/regenerate`, headers: { cookie } });
 }
 
-// Every item row of a CV, for "nothing stored" and "exactly one draft" checks.
+// Every item row of a CV, for "nothing stored" and "exactly one draft" checks. The order is TOTAL:
+// orderIndex alone ties (contact and summary are both 0, so is every first entry of a section) and
+// Postgres returns ties in whatever order it likes. The tie-break follows C-006's section order
+// (contact, summary, experience, education, skills; a bullet sits with its section's kind rank last
+// within an equal orderIndex), then path, then id.
+const KIND_RANK: Record<string, number> = { contact: 0, summary: 1, experience: 2, education: 3, skill: 4, bullet: 5 };
 export async function itemsOf(cvId: string) {
-  return prisma.cvItem.findMany({ where: { cvId }, orderBy: { orderIndex: 'asc' } });
+  const rows = await prisma.cvItem.findMany({ where: { cvId } });
+  const rank = (kind: string) => KIND_RANK[kind] ?? 99;
+  return rows.sort(
+    (a, b) =>
+      a.orderIndex - b.orderIndex ||
+      rank(a.kind) - rank(b.kind) ||
+      a.path.localeCompare(b.path) ||
+      a.id.localeCompare(b.id),
+  );
 }
 
 // Wraps a Prisma client so a test can hold the worker's persist transaction open. The hold starts

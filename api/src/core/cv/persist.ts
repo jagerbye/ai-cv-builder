@@ -145,7 +145,7 @@ export async function persistDraft(
     });
   }
 
-  const stored = await tx.cvItem.findMany({ where: { cvId }, orderBy: { orderIndex: 'asc' } });
+  const stored = await tx.cvItem.findMany({ where: { cvId }, orderBy: [{ orderIndex: 'asc' }, { path: 'asc' }, { id: 'asc' }] });
   const content = stored.filter((item) => item.kind !== 'contact');
   const childrenOf = new Map<string, CvItem[]>();
   for (const item of content) {

@@ -18,7 +18,7 @@ import { acquireJobSuiteLock, JOB_SUITE_LOCK_WAIT_MS, type JobSuiteLock } from '
 // The counters are in-process (single container); the tests run one app per test so they start empty.
 // Expected to be RED now: no hook exists and no clock option exists.
 
-process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder';
+process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test';
 process.env.ANTHROPIC_API_KEY ??= 'test-key-not-used-by-intake';
 
 const { buildServer } = await import('../../api/src/server.js');

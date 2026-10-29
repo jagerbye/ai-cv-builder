@@ -12,6 +12,11 @@ const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const WEB = (process.env.SMOKE_WEB_URL ?? `http://127.0.0.1:${process.env.WEB_PORT ?? '5273'}`).replace(/\/$/, '');
 const PASSWORD = 'correct-horse-battery-1';
 const EMAIL_TAG = 'cvb-smoke-';
+// ADR-019: this suite drives the REAL stack, so its users live in the app's database. Cleanup
+// connects there (APP_DATABASE_URL, as gate.config.sh exports it), never to the suite-wide
+// DATABASE_URL, which points at ai_cv_builder_test.
+const APP_DATABASE_URL =
+  process.env.APP_DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder';
 
 async function stackUp(): Promise<boolean> {
   try {
@@ -40,7 +45,7 @@ afterAll(async () => {
   const { PrismaClient } = requireFromApi('@prisma/client') as typeof import('@prisma/client');
   const prisma = new PrismaClient({
     datasources: {
-      db: { url: process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder' },
+      db: { url: APP_DATABASE_URL },
     },
   });
   try {

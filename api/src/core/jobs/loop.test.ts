@@ -11,7 +11,7 @@ import type { CvDraft, GenerationPipeline } from '../generation/types.js';
 // flight has reached a terminal status, so an in-flight run is never torn mid-transaction.
 // Real Postgres; the pipeline is a fake at the C-012 seam.
 
-process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder';
+process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test';
 
 const prisma = new PrismaClient();
 const suite: JobTestSuite = openJobTestSuite(prisma);

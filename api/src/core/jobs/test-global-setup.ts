@@ -13,7 +13,7 @@ const UNFINISHED = ['queued', 'running'];
 let before: { users: Set<string>; openJobs: Set<string> } | undefined;
 
 function client(): PrismaClient {
-  process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder';
+  process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test';
   return new PrismaClient();
 }
 

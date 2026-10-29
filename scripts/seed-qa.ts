@@ -110,15 +110,15 @@ const prisma = new PrismaClient({
   datasourceUrl: process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:5432/ai_cv_builder',
 });
 
-async function ensureUser(): Promise<string> {
-  const existing = await prisma.user.findUnique({ where: { email: EMAIL } });
+async function ensureUser(db: PrismaClient, email: string): Promise<string> {
+  const existing = await db.user.findUnique({ where: { email } });
   if (!existing) {
-    const created = await prisma.user.create({ data: { email: EMAIL, passwordHash: await hashPassword(PASSWORD) } });
+    const created = await db.user.create({ data: { email, passwordHash: await hashPassword(PASSWORD) } });
     return created.id;
   }
   // Reuse the row; re-hash only when the known password no longer verifies.
   if (!(await verifyPassword(PASSWORD, existing.passwordHash))) {
-    await prisma.user.update({ where: { id: existing.id }, data: { passwordHash: await hashPassword(PASSWORD) } });
+    await db.user.update({ where: { id: existing.id }, data: { passwordHash: await hashPassword(PASSWORD) } });
   }
   return existing.id;
 }
@@ -164,18 +164,22 @@ export function buildSeedData(): { facts: Array<Fact & { quote: string }>; draft
   return { facts, draft };
 }
 
-async function main(): Promise<void> {
-  const userId = await ensureUser();
+// Writes the seed CV for one user and returns its id. The client, email and title are parameters so a test can
+// run the real seed on its own user and title without touching the QA user's CV (E-005).
+export async function seedQaCv(db: PrismaClient, opts: { email?: string; title?: string } = {}): Promise<{ userId: string; cvId: string }> {
+  const email = opts.email ?? EMAIL;
+  const title = opts.title ?? CV_TITLE;
+  const userId = await ensureUser(db, email);
 
   const { facts, draft } = buildSeedData();
   // E-007: the questions are what the production verifier returns for this draft and these facts, never a literal.
   const verified = verify(draft, facts);
 
-  const cvId = await prisma.$transaction(async (tx) => {
+  const cvId = await db.$transaction(async (tx) => {
     // Idempotent: the previous seed CV goes first; its facts, items and questions cascade.
-    await tx.cv.deleteMany({ where: { userId, title: CV_TITLE } });
+    await tx.cv.deleteMany({ where: { userId, title } });
     const cv = await tx.cv.create({
-      data: { userId, title: CV_TITLE, targetRole: TARGET_ROLE, sourceKind: 'text', sourceText, state: 'ready', version: 1 },
+      data: { userId, title, targetRole: TARGET_ROLE, sourceKind: 'text', sourceText, state: 'ready', version: 1 },
       select: { id: true },
     });
 
@@ -234,7 +238,11 @@ async function main(): Promise<void> {
     });
     return cv.id;
   });
+  return { userId, cvId };
+}
 
+async function main(): Promise<void> {
+  const { cvId } = await seedQaCv(prisma);
   console.log(JSON.stringify({ email: EMAIL, password: PASSWORD, cvId, url: `http://127.0.0.1:5273/cvs/${cvId}` }, null, 2));
 }
 

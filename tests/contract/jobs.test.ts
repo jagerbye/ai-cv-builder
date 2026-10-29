@@ -9,7 +9,7 @@ import type { FastifyInstance } from 'fastify';
 // authenticates with a `sid` cookie whose sha256 is stored as sessions.token_hash (as in cvs-read).
 // Error envelope: { error: { code, message } } (C-000). Another user's job is 404, never 403.
 
-process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder';
+process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test';
 const { buildServer } = await import('../../api/src/server.js');
 
 const prisma = new PrismaClient();

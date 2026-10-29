@@ -17,7 +17,7 @@ import type { CvDraft, Fact, GenerationPipeline, VerificationResult } from '../.
 //
 // Error envelope: { error: { code, message, details? } } (C-000). Another user's CV is 404, never 403.
 
-process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder';
+process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test';
 
 const prisma = new PrismaClient();
 const suite: JobTestSuite = openJobTestSuite(prisma);

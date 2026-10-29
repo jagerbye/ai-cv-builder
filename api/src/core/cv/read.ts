@@ -28,9 +28,10 @@ export async function getCv(prisma: PrismaClient, userId: string, cvId: string):
   const cv = await prisma.cv.findFirst({
     where: { id: cvId },
     include: {
-      items: { orderBy: { orderIndex: 'asc' } },
-      facts: { orderBy: { createdAt: 'asc' } },
-      questions: { orderBy: [{ priority: 'asc' }, { createdAt: 'asc' }] },
+      // orderIndex alone ties across kinds and after a PATCH; path then id make the read total (C-006).
+      items: { orderBy: [{ orderIndex: 'asc' }, { path: 'asc' }, { id: 'asc' }] },
+      facts: { orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] },
+      questions: { orderBy: [{ priority: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }] },
     },
   });
   assertOwnership(userId, cv);

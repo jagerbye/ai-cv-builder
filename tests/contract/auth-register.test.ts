@@ -18,7 +18,7 @@ import { verifyPassword } from '../../api/src/core/auth/password';
 //    tokenHash belong to T-04 (login, sessions).
 
 const ORIGINAL_DB_URL = process.env.DATABASE_URL;
-const LIVE_URL = ORIGINAL_DB_URL ?? 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder';
+const LIVE_URL = ORIGINAL_DB_URL ?? 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test';
 const EMAIL_TAG = 'cvb-t3-';
 const VALID_PASSWORD = 'correct-horse-battery-1';
 const ERROR_CODES = [

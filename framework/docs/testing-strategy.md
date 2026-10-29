@@ -84,11 +84,12 @@ Lane-scoped commands, for use in lane briefs while other lanes are in flight
 | web | `npm -w web run test -- --run <path glob>` |
 | e2e | `npm run test:e2e` (Integrator and CI only) |
 
-`DATABASE_URL` must be set for the api suites: `gate.config.sh` exports it, so
-`gate.sh` always works, but running `npx vitest run` by hand from `api/`
-without it fails three contract suites at import time in `env.ts` — a
-configuration error, not a test failure. Use the gate, or export the compose
-default first.
+**Which database is which (ADR-019).** `ai_cv_builder` is the app's: `docker compose up`
+serves it, QA clicks through it, and the smoke suite runs against it because its subject
+is the real stack. `ai_cv_builder_test` is the suite's: `gate.sh` creates and migrates it
+and forces `DATABASE_URL` to it, CI does the same by running the gate, and a bare
+`npx vitest run` from `api/` defaults to it. The suite lock, leak guard and delete-by-id
+rule stay, since parallel suites still share the test database.
 
 Any test that commits a **non-terminal** `generation_jobs` row goes through
 the job-queue helper, which takes the suite lock for you (ADR-014, E-002).

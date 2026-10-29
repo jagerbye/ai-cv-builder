@@ -27,7 +27,9 @@ jobs:
           --health-retries 10
     env:
       CI: 'true'
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_cv_builder
+      # The gate forces its own DATABASE_URL (ai_cv_builder_test, ADR-019), then creates
+      # and migrates it, so CI and local runs do exactly the same thing.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

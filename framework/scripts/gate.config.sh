@@ -3,9 +3,17 @@
 # Used identically by the Stop hook, CI, the Integrator and humans.
 # docs/testing-strategy.md §Commands points here.
 
-export DATABASE_URL="${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/ai_cv_builder}"
+# ADR-019: the suite has its own database. `docker compose up` serves
+# ai_cv_builder (app + QA + smoke); tests run against ai_cv_builder_test.
+# DATABASE_URL is forced, not defaulted: an exported app URL must not reach the suite.
+export APP_DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ai_cv_builder"
+export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test"
 
-GATE_DB_UP='docker compose ps --status running --format "{{.Service}}" | grep -qx db || docker compose up -d --wait db'
+# Start the db service, create the test database if missing, migrate it.
+GATE_DB_UP='{ docker compose ps --status running --format "{{.Service}}" | grep -qx db || docker compose up -d --wait db; } \
+  && { docker compose exec -T db psql -U postgres -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '"'"'ai_cv_builder_test'"'"'" | grep -q 1 \
+       || docker compose exec -T db psql -U postgres -d postgres -c "CREATE DATABASE ai_cv_builder_test"; } \
+  && npx prisma migrate deploy --schema api/prisma/schema.prisma'
 
 # --- Wave mode (knowledge/errors.md E-001) -----------------------------------
 # While parallel lanes share one tree, the UNION of typecheck/test/build is red

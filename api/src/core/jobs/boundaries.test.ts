@@ -12,7 +12,7 @@ import { PrismaClient, Prisma } from '@prisma/client';
 const here = dirname(fileURLToPath(import.meta.url));
 const apiRoot = join(here, '..', '..', '..');
 
-process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder';
+process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test';
 
 const prisma = new PrismaClient();
 const suite = openJobTestSuite(prisma);

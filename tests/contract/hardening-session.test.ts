@@ -11,7 +11,7 @@ import { acquireJobSuiteLock, JOB_SUITE_LOCK_WAIT_MS, type JobSuiteLock } from '
 // Expected to be RED now on the message and source-level assertions; the status-code
 // assertions are regression guards and should already pass.
 
-process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder';
+process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test';
 process.env.ANTHROPIC_API_KEY ??= 'test-key-not-used-by-intake';
 
 const { buildServer } = await import('../../api/src/server.js');

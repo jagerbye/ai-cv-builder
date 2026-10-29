@@ -11,6 +11,13 @@ import { prisma, userIds, seedUser, seedCv } from './generation-persist.fixtures
 // pattern (E-005). Every assertion is on ids this test created.
 
 const suite: JobTestSuite = openJobTestSuite(prisma);
+// Every job id this file enqueues; afterEach deletes exactly these (E-005).
+const jobIds: string[] = [];
+const enqueue: JobTestSuite['enqueue'] = async (data, tx) => {
+  const id = await suite.enqueue(data, tx);
+  jobIds.push(id);
+  return id;
+};
 
 // Never reached by these tests: no queued job of ours is claimable.
 const idlePipeline: GenerationPipeline = {
@@ -30,6 +37,8 @@ beforeAll(async () => {
 }, JOB_SUITE_LOCK_WAIT_MS);
 
 afterEach(async () => {
+  const jobs = jobIds.splice(0);
+  if (jobs.length > 0) await prisma.generationJob.deleteMany({ where: { id: { in: jobs } } });
   const ids = userIds.splice(0);
   if (ids.length > 0) await prisma.user.deleteMany({ where: { id: { in: ids } } });
 });
@@ -46,10 +55,9 @@ const cvRow = (id: string) =>
   });
 
 async function seedScenario() {
-  const liveStatus = 'queued' as 'queued' | 'running';
   const owner = await seedUser();
   const terminalCv = await seedCv(owner.userId);
-  await suite.enqueue({
+  await enqueue({
     cvId: terminalCv,
     userId: owner.userId,
     status: 'failed',
@@ -59,13 +67,9 @@ async function seedScenario() {
   });
   const noJobCv = await seedCv(owner.userId);
   const liveCv = await seedCv(owner.userId);
-  const liveJob = await suite.enqueue(
-    liveStatus === 'queued'
-      ? { cvId: liveCv, userId: owner.userId, status: 'queued' }
-      : { cvId: liveCv, userId: owner.userId, status: 'running', attempt: 1, startedAt: new Date(), leasedUntil: new Date(Date.now() + 300_000) },
-  );
+  const liveJob = await enqueue({ cvId: liveCv, userId: owner.userId, status: 'queued' });
   const runningCv = await seedCv(owner.userId);
-  await suite.enqueue({
+  await enqueue({
     cvId: runningCv,
     userId: owner.userId,
     status: 'running',
@@ -103,15 +107,19 @@ describe('QA-14 reconcile: a generating CV with no live job of its own', () => {
 
   it('is idempotent: a second run changes nothing, and a ready or failed CV is never touched', async () => {
     const owner = await seedUser();
+    const orphanCv = await seedCv(owner.userId);
     const readyCv = await seedCv(owner.userId);
     await prisma.cv.update({ where: { id: readyCv }, data: { state: 'ready', version: 2 } });
     const failedCv = await seedCv(owner.userId);
     await prisma.cv.update({ where: { id: failedCv }, data: { state: 'failed', lastErrorCode: 'CONFIG_MISSING', lastErrorMessage: 'The server is not configured for this request.' } });
     const worker = createJobWorker({ prisma, pipeline: idlePipeline, workerId: 'reconcile-idem', leaseMs: 300_000 });
 
-    expect(await worker.reconcile([readyCv, failedCv])).toBe(0);
-    expect(await worker.reconcile([readyCv, failedCv])).toBe(0);
+    const ids = [orphanCv, readyCv, failedCv];
+    // The orphan is a generating CV with no job of its own: the first run fails it, the second finds nothing.
+    expect(await worker.reconcile(ids)).toBe(1);
+    expect(await worker.reconcile(ids)).toBe(0);
 
+    expectOrphanFailed(await cvRow(orphanCv));
     expect(await cvRow(readyCv)).toMatchObject({ state: 'ready', version: 2, lastErrorCode: null });
     expect(await cvRow(failedCv)).toMatchObject({ state: 'failed', lastErrorCode: 'CONFIG_MISSING' });
   });

@@ -11,7 +11,7 @@ export interface JobSuiteLock {
 }
 
 export async function acquireJobSuiteLock(): Promise<JobSuiteLock> {
-  const url = new URL(process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder');
+  const url = new URL(process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test');
   url.searchParams.set('connection_limit', '1');
   const client = new PrismaClient({ datasources: { db: { url: url.toString() } } });
   const deadline = Date.now() + JOB_SUITE_LOCK_WAIT_MS - 5_000;

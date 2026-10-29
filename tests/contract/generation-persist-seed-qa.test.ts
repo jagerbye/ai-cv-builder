@@ -1,6 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { buildSeedData } from '../../scripts/seed-qa.js';
+import { describe, it, expect, afterAll } from 'vitest';
+import { randomUUID } from 'node:crypto';
+import { buildSeedData, seedQaCv } from '../../scripts/seed-qa.js';
 import { verify } from '../../api/src/core/generation/verify.js';
+import { prisma, userIds } from './generation-persist.fixtures.js';
 
 // E-007. The QA seed stores the questions verify() returns for its draft; it never writes a path by hand.
 // This test pins the two halves: the draft yields exactly the three questions QA drives, and every path
@@ -27,5 +29,28 @@ describe('QA seed questions come from verify()', () => {
     const paths = questions.map((q) => q.path);
     expect(paths).not.toContain('summary');
     expect(paths.some((p) => /^skills\[\d+\]$/.test(p))).toBe(false);
+  });
+});
+
+describe('the seed STORES what verify() returned', () => {
+  afterAll(async () => {
+    // Deletes by the id the seed returned (E-005); the user's CV, items and questions cascade.
+    const ids = userIds.splice(0);
+    if (ids.length > 0) await prisma.user.deleteMany({ where: { id: { in: ids } } });
+    await prisma.$disconnect();
+  });
+
+  it('writes one stored question row per verify() question, with its path, text, reason and priority', async () => {
+    const id = randomUUID();
+    const { userId, cvId } = await seedQaCv(prisma, { email: `seed-qa-${id}@example.test`, title: `seed-qa-test-${id}` });
+    userIds.push(userId);
+
+    const { draft, facts } = buildSeedData();
+    const expected = verify(draft, facts).questions.map((q) => ({ path: q.path, text: q.text, reason: q.reason, priority: q.priority, status: 'open' }));
+    const stored = await prisma.question.findMany({ where: { cvId }, select: { path: true, text: true, reason: true, priority: true, status: true } });
+
+    expect(expected).toHaveLength(3);
+    const byPath = (a: { path: string }, b: { path: string }) => a.path.localeCompare(b.path);
+    expect([...stored].sort(byPath)).toEqual([...expected].sort(byPath));
   });
 });

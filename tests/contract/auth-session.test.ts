@@ -18,7 +18,7 @@ import { installErrorEnvelope } from '../../api/src/http/errors';
 //    gap is closed by the T-04 developer step, and the register suite covers the 201.
 
 const ORIGINAL_DB_URL = process.env.DATABASE_URL;
-const LIVE_URL = ORIGINAL_DB_URL ?? 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder';
+const LIVE_URL = ORIGINAL_DB_URL ?? 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test';
 const TAG = 'cvb-t4-';
 const PASSWORD = 'correct-horse-battery-4';
 const THIRTY_DAYS_S = 30 * 24 * 60 * 60;

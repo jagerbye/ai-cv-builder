@@ -7,7 +7,7 @@ import { openJobTestSuite, JOB_SUITE_LOCK_WAIT_MS, type JobTestSuite } from '../
 // persistence and the 2-second budget are part of the criteria.
 // Error envelope (C-000): { error: { code, message } }.
 
-process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder';
+process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test';
 process.env.ANTHROPIC_API_KEY ??= 'test-key-not-used-by-intake';
 
 const { buildServer } = await import('../../api/src/server.js');

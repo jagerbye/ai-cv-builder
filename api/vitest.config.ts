@@ -1,5 +1,9 @@
 import { defineConfig } from 'vitest/config';
 
+// ADR-019: a bare `npx vitest run` must reach the TEST database, never the app's. Set here (main
+// process and workers inherit it) when the caller has not chosen one.
+process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test';
+
 export default defineConfig({
   test: {
     environment: 'node',

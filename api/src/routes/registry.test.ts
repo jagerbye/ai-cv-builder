@@ -33,7 +33,7 @@ const serverSource = readFileSync(
 );
 
 const ORIGINAL_DB_URL = process.env.DATABASE_URL;
-const DB_URL = ORIGINAL_DB_URL ?? 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder';
+const DB_URL = ORIGINAL_DB_URL ?? 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test';
 
 afterEach(() => {
   if (ORIGINAL_DB_URL === undefined) delete process.env.DATABASE_URL;

@@ -9,7 +9,7 @@ const ORIGINAL_KEY = process.env.ANTHROPIC_API_KEY;
 // Captured once, before any test mutates process.env (loadServer overwrites
 // DATABASE_URL). Fallback matches the db service in docker-compose.yml.
 const ORIGINAL_DB_URL = process.env.DATABASE_URL;
-const LIVE_URL = ORIGINAL_DB_URL ?? 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder';
+const LIVE_URL = ORIGINAL_DB_URL ?? 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test';
 
 afterEach(() => {
   if (ORIGINAL_DB_URL === undefined) delete process.env.DATABASE_URL;

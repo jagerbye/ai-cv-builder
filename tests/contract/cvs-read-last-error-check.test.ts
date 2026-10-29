@@ -57,6 +57,7 @@ describe('cvs.last_error_code CHECK', () => {
   it('includes the two provider failures of ADR-018', () => {
     expect(ERROR_CODES).toContain('LLM_AUTH_FAILED');
     expect(ERROR_CODES).toContain('LLM_INVALID_REQUEST');
+    expect(ERROR_CODES).toContain('LLM_BUDGET_EXCEEDED');
   });
 
   it('accepts every enum code and NULL', async () => {
@@ -66,7 +67,7 @@ describe('cvs.last_error_code CHECK', () => {
   });
 
   it('rejects a code outside the enum, including a gateway-internal one and a lowercase spelling', async () => {
-    for (const code of ['LLM_BUDGET_EXCEEDED', 'internal', '', 'ECONNREFUSED']) {
+    for (const code of ['LLM_TOKEN_LIMIT', 'internal', '', 'ECONNREFUSED']) {
       expect(await tryInsert(code), code).toBe('rejected');
     }
   });

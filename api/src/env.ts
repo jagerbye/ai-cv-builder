@@ -11,6 +11,9 @@ export interface Env {
   ANTHROPIC_MODEL: string | undefined;
   // Optional: endpoint of an Anthropic-compatible proxy. Absent means the Anthropic API itself.
   ANTHROPIC_BASE_URL: string | undefined;
+  // Optional (ADR-021): output cap per response and token budget per job. Validated in llm/config.ts.
+  ANTHROPIC_MAX_OUTPUT_TOKENS: string | undefined;
+  ANTHROPIC_TOKEN_BUDGET_PER_JOB: string | undefined;
 }
 
 function optional(value: string | undefined): string | undefined {
@@ -56,6 +59,8 @@ function parseEnv(source: NodeJS.ProcessEnv): Env {
     ANTHROPIC_API_KEY: key && key.length > 0 ? key : undefined,
     ANTHROPIC_MODEL: optional(source.ANTHROPIC_MODEL),
     ANTHROPIC_BASE_URL: parseBaseUrl(optional(source.ANTHROPIC_BASE_URL)),
+    ANTHROPIC_MAX_OUTPUT_TOKENS: optional(source.ANTHROPIC_MAX_OUTPUT_TOKENS),
+    ANTHROPIC_TOKEN_BUDGET_PER_JOB: optional(source.ANTHROPIC_TOKEN_BUDGET_PER_JOB),
   };
 }
 

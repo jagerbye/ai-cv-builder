@@ -7,6 +7,7 @@ import type {
   QuestionDraft,
   VerificationResult,
 } from './types.js';
+import type { TokenLedger } from './ledger.js';
 
 // T-07 (CVB-24). C-012 interfaces, declaration-only. Types are erased at
 // runtime, so the type criteria are proven by `tsc` (the typecheck gate), and
@@ -16,13 +17,13 @@ import type {
 
 describe('C-012 GenerationPipeline (types only)', () => {
   it('extract takes the raw source text and returns facts', () => {
-    expectTypeOf<GenerationPipeline['extract']>().parameters.toEqualTypeOf<[sourceText: string]>();
+    expectTypeOf<GenerationPipeline['extract']>().parameters.toEqualTypeOf<[sourceText: string, ledger?: TokenLedger | undefined]>();
     expectTypeOf<GenerationPipeline['extract']>().returns.toEqualTypeOf<Promise<Fact[]>>();
   });
 
-  it('compose takes exactly facts and a target role and returns a CvDraft', () => {
+  it('compose takes facts, a target role and an optional ledger, and returns a CvDraft', () => {
     expectTypeOf<GenerationPipeline['compose']>().parameters.toEqualTypeOf<
-      [facts: Fact[], targetRole: string]
+      [facts: Fact[], targetRole: string, ledger?: TokenLedger | undefined]
     >();
     expectTypeOf<GenerationPipeline['compose']>().returns.toEqualTypeOf<Promise<CvDraft>>();
   });

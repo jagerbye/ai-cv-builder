@@ -6,6 +6,9 @@ import { GatewayError } from '../../api/src/core/generation/gateway.js';
 import { safeMessage } from '../../api/src/http/errors.js';
 import { buildServer } from '../../api/src/server.js';
 import type { CvDraft, Fact, GenerationPipeline, VerificationResult } from '../../api/src/core/generation/types.js';
+import type { TokenLedger } from '../../api/src/core/generation/ledger.js';
+import { readLlmConfig } from '../../api/src/llm/config.js';
+import { env } from '../../api/src/env.js';
 
 // T-20 (CVB-17). Contract tests for C-009 (POST /api/cvs/:cvId/questions/:questionId/answer),
 // spec.md F-005 §3.5 and F-006 §3.6. Real Fastify app and real Postgres, sid cookie as in
@@ -114,19 +117,32 @@ async function seedCv(userId: string): Promise<Seeded> {
 interface FakePipeline {
   pipeline: GenerationPipeline;
   composeFacts: Fact[][];
+  // The ledger each compose() call was handed (ADR-021, Amendment A), and its balance at the moment of the call.
+  ledgers: Array<TokenLedger | undefined>;
+  balances: Array<number | undefined>;
   verifyCalls: number;
 }
 
-function fakePipeline(opts: { composeThrows?: boolean; composeError?: Error } = {}): FakePipeline {
+// spendPerCall stands in for the gateway: it spends from the ledger it is handed and, like the real gateway,
+// throws LLM_BUDGET_EXCEEDED once the balance is gone. A compose() handed no ledger spends nothing and is never refused.
+function fakePipeline(opts: { composeThrows?: boolean; composeError?: Error; spendPerCall?: number } = {}): FakePipeline {
   const state: FakePipeline = {
     composeFacts: [],
+    ledgers: [],
+    balances: [],
     verifyCalls: 0,
     pipeline: {
       async extract() {
         throw new Error('extract is not part of the answer path');
       },
-      async compose(facts: Fact[], targetRole: string): Promise<CvDraft> {
+      async compose(facts: Fact[], targetRole: string, ledger?: TokenLedger): Promise<CvDraft> {
         state.composeFacts.push(facts);
+        state.ledgers.push(ledger);
+        state.balances.push(ledger?.remaining());
+        if (ledger && opts.spendPerCall !== undefined) {
+          ledger.spend(opts.spendPerCall);
+          if (ledger.remaining() < 0) throw new GatewayError('LLM_BUDGET_EXCEEDED');
+        }
         if (opts.composeError) throw opts.composeError;
         if (opts.composeThrows) throw new Error('upstream exploded: sk-test-leak');
         const userFact = facts.find((f) => f.source === 'user');
@@ -173,8 +189,8 @@ function fakePipeline(opts: { composeThrows?: boolean; composeError?: Error } = 
 }
 
 // Builds the app with the given seam, passed as the buildServer option (not a decorator).
-async function buildWith(pipeline: GenerationPipeline): Promise<FastifyInstance> {
-  const built = buildServer({ generationPipeline: pipeline });
+async function buildWith(pipeline: GenerationPipeline, tokenBudgetPerJob?: number): Promise<FastifyInstance> {
+  const built = buildServer({ generationPipeline: pipeline, ...(tokenBudgetPerJob === undefined ? {} : { tokenBudgetPerJob }) });
   await built.ready();
   return built;
 }
@@ -508,4 +524,71 @@ describe('C-009 503 carries the real code (ADR-020)', () => {
       }
     });
   }
+});
+
+// ADR-021 Amendment A: a call without a ledger is bounded by nothing, so the answer path must hand one over.
+describe('C-009 answering is bounded by a per-answer ledger (ADR-021 Amendment A, F-010)', () => {
+  it('with a tiny balance answers 503 LLM_BUDGET_EXCEEDED, not a generic code, and the answer survives (ADR-020)', async () => {
+    const owner = await seedUser();
+    const cv = await seedCv(owner.userId);
+    const fake = fakePipeline({ spendPerCall: 50 });
+    app = await buildWith(fake.pipeline, 10);
+    try {
+      const res = await answer(owner.cookie, cv.cvId, cv.ids.qPeriod, { answer: ANSWER });
+      const body = expectEnvelope(res, 503, 'LLM_BUDGET_EXCEEDED');
+      expect(body.error.message).toBe(safeMessage('LLM_BUDGET_EXCEEDED'));
+      const userFacts = await prisma.fact.findMany({ where: { cvId: cv.cvId, source: 'user' } });
+      expect(userFacts.map((f) => f.text)).toEqual([ANSWER]);
+      const row = await prisma.question.findUniqueOrThrow({ where: { id: cv.ids.qPeriod } });
+      expect(row.status).toBe('answered');
+      expect(row.answer).toBe(ANSWER);
+      // The sections were not touched by the failed recompose.
+      expect((await getCv(owner.cookie, cv.cvId)).json().experience.map((e: { period: string }) => e.period)).not.toContain(ANSWER);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('hands the recompose a ledger sized by the configured budget', async () => {
+    const owner = await seedUser();
+    const cv = await seedCv(owner.userId);
+    const fake = fakePipeline();
+    app = await buildWith(fake.pipeline, 777);
+    try {
+      expect((await answer(owner.cookie, cv.cvId, cv.ids.qPeriod, { answer: ANSWER })).statusCode).toBe(200);
+      expect(fake.ledgers).toHaveLength(1);
+      expect(fake.ledgers[0]).toBeDefined();
+      expect(fake.balances).toEqual([777]);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('sizes the ledger like a job when no override is given: the configured per-job budget', async () => {
+    const owner = await seedUser();
+    const cv = await seedCv(owner.userId);
+    const fake = fakePipeline();
+    app = await buildWith(fake.pipeline);
+    try {
+      expect((await answer(owner.cookie, cv.cvId, cv.ids.qPeriod, { answer: ANSWER })).statusCode).toBe(200);
+      expect(fake.balances).toEqual([readLlmConfig(env).tokenBudgetPerJob]);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('creates a fresh ledger per answer, so one answer cannot spend the next one\'s allowance', async () => {
+    const owner = await seedUser();
+    const cv = await seedCv(owner.userId);
+    const fake = fakePipeline({ spendPerCall: 40 });
+    app = await buildWith(fake.pipeline, 100);
+    try {
+      expect((await answer(owner.cookie, cv.cvId, cv.ids.qPeriod, { answer: ANSWER })).statusCode).toBe(200);
+      expect((await answer(owner.cookie, cv.cvId, cv.ids.qEdu, { answer: '2011 – 2014' })).statusCode).toBe(200);
+      expect(fake.balances).toEqual([100, 100]);
+      expect(fake.ledgers[0]).not.toBe(fake.ledgers[1]);
+    } finally {
+      await app.close();
+    }
+  });
 });

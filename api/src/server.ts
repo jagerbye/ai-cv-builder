@@ -11,6 +11,7 @@ import { cvsRoutes } from './routes/cvs.js';
 import { exportRoutes } from './routes/export.js';
 import type { GenerationPipeline } from './core/generation/types.js';
 import { createGenerationPipeline } from './core/generation/pipeline.js';
+import { readLlmConfig } from './llm/config.js';
 
 // Builds the Fastify app without listening. Entry point: src/main.ts.
 // Each routes/*.ts plugin is owned by exactly one lane (ADR-011); this file is
@@ -20,6 +21,8 @@ export interface BuildServerOptions {
   now?: () => number;
   // C-012 seam. Omitted in production, where the gateway-backed pipeline is built from the environment.
   generationPipeline?: GenerationPipeline;
+  // Spend budget of one answer's recompose. Omitted in production: the per-job setting (ADR-021).
+  tokenBudgetPerJob?: number;
 }
 
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
@@ -27,6 +30,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const app = Fastify({ logger: { level: 'info' } });
   const now = options.now ?? (() => Date.now());
   const generationPipeline = options.generationPipeline ?? createGenerationPipeline(env);
+  const tokenBudget = options.tokenBudgetPerJob ?? readLlmConfig(env).tokenBudgetPerJob;
 
   app.decorate('prisma', prisma);
   app.addHook('onClose', async () => {
@@ -47,7 +51,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       await api.register(authRoutes);
       await api.register(cvsCreateRoutes);
       await api.register(jobsRoutes);
-      await api.register(cvsRoutes, { generationPipeline });
+      await api.register(cvsRoutes, { generationPipeline, tokenBudget });
       await api.register(exportRoutes);
     },
     { prefix: '/api' },

@@ -1,6 +1,8 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import type { GenerationPipeline, Fact, VerificationResult } from '../generation/types.js';
+import { createTokenLedger } from '../generation/ledger.js';
 import { persistDraft } from '../cv/persist.js';
+import { DEFAULT_TOKEN_BUDGET_PER_JOB } from '../../llm/config.js';
 import { ERROR_CODES, safeMessage, type ErrorCode } from '../../http/errors.js';
 
 // T-16 (CVB-8). ADR-004: Postgres is the queue. A lease is a row write (leased_until), claimed
@@ -45,6 +47,8 @@ export interface JobWorkerOptions {
   workerId: string;
   leaseMs: number;
   budgetMs?: number;
+  // ADR-021 / F-010: tokens one run may spend across all its model calls. Defaults to the configured value.
+  tokenBudgetPerJob?: number;
   // Receives every error the worker turns into a row or swallows. Never given a message or content (C-000).
   onError?: (info: JobErrorInfo) => void;
 }
@@ -99,6 +103,7 @@ async function markCvFailed(tx: Prisma.TransactionClient, cvId: string, code: Er
 export function createJobWorker(opts: JobWorkerOptions): JobWorker {
   const { prisma, pipeline, leaseMs } = opts;
   const budgetMs = opts.budgetMs ?? JOB_BUDGET_MS;
+  const tokenBudgetPerJob = opts.tokenBudgetPerJob ?? DEFAULT_TOKEN_BUDGET_PER_JOB;
   const onError = opts.onError ?? (() => undefined);
   const renewEvery = Math.max(1, Math.floor(leaseMs / 3));
   let stopped = false;
@@ -191,11 +196,14 @@ export function createJobWorker(opts: JobWorkerOptions): JobWorker {
       select: { sourceText: true, targetRole: true },
     });
 
+    // One ledger per run, the same one for every stage (ADR-021).
+    const ledger = createTokenLedger(tokenBudgetPerJob);
+
     await setStage(lease, ctx, 'extracting');
-    const facts: Fact[] = await pipeline.extract(cv.sourceText);
+    const facts: Fact[] = await pipeline.extract(cv.sourceText, ledger);
 
     await setStage(lease, ctx, 'composing');
-    const draft = await pipeline.compose(facts, cv.targetRole);
+    const draft = await pipeline.compose(facts, cv.targetRole, ledger);
 
     await setStage(lease, ctx, 'verifying');
     await commitSuccess(lease, ctx, pipeline.verify(draft, facts), facts);

@@ -55,6 +55,16 @@ Format — newest on top, one block per decision:
 - **Consequences:** the enum's CHECK constraint covers the new code; the web's
   copy of the enum follows, enforced by the sync test; the budget's default is
   a configuration decision an operator can make without touching code.
+- **Amendment A (same day, after review).** The first draft called the ledger
+  parameter "optional, so a stage called without one behaves exactly as
+  before". That was wrong in the direction that matters: before this ADR every
+  call was bounded at 4096, and a call without a ledger is now bounded by
+  **nothing**. The reviewer found a production caller in that state — the
+  C-009 answer recompose. So: the parameter is optional in the type and
+  mandatory in practice. Every production call site passes a ledger, the answer
+  path gets one per answer sized like a job's, and a guard test fails any
+  production call that omits it. The optional shape exists for tests, which
+  genuinely do not want a bound.
 
 ---
 

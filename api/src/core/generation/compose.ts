@@ -5,6 +5,7 @@
 // Verification of cited facts is the verifier's job, not this stage's.
 
 import type { AnthropicGateway, CvDraft, Fact, ToolCallRequest } from './types.js';
+import type { TokenLedger } from './ledger.js';
 import { buildComposeDescription, COMPOSE_TOOL_NAME } from './prompts/compose.js';
 
 export const BULLET_MAX_CHARS = 240;
@@ -109,14 +110,14 @@ function periodYears(period: string): { end: number; start: number } {
 }
 
 export interface ComposeStage {
-  compose(facts: Fact[], targetRole: string): Promise<CvDraft>;
+  compose(facts: Fact[], targetRole: string, ledger?: TokenLedger): Promise<CvDraft>;
 }
 
 const MIN_COPY_QUOTE = 40;
 
 export function createComposeStage(gateway: AnthropicGateway): ComposeStage {
   return {
-    async compose(facts: Fact[], targetRole: string): Promise<CvDraft> {
+    async compose(facts: Fact[], targetRole: string, ledger?: TokenLedger): Promise<CvDraft> {
       // No facts means nothing to compose from. Make no call and invent nothing.
       if (facts.length === 0) return { targetRole, experience: [], education: [], skills: [] };
 
@@ -218,7 +219,7 @@ export function createComposeStage(gateway: AnthropicGateway): ComposeStage {
         inputSchema: COMPOSE_SCHEMA,
         parse,
       };
-      const raw = await gateway.callTool(req);
+      const raw = await gateway.callTool(req, ledger);
 
       // Relevance first, recency as tie-break (a "present" end date is the newest).
       const experience = [...raw.experience].sort((a, b) => {

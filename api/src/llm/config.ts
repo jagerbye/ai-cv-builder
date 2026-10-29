@@ -6,8 +6,11 @@
 // Default model id. Overridden by ANTHROPIC_MODEL; no call site names a model.
 export const DEFAULT_ANTHROPIC_MODEL = 'claude-sonnet-5-5';
 
-// Per-call token budget: caps max_tokens and bounds the reported usage (ADR-006).
-export const DEFAULT_TOKEN_BUDGET_PER_CALL = 4096;
+// ADR-021: two numbers. The output cap bounds ONE response (max_tokens), sized so a full CV fits.
+export const DEFAULT_MAX_OUTPUT_TOKENS = 32_000;
+
+// The spend budget is per JOB (F-010): input + output across extract, compose and any schema retry.
+export const DEFAULT_TOKEN_BUDGET_PER_JOB = 500_000;
 
 // Wall-clock limit for one provider request attempt.
 export const DEFAULT_TIMEOUT_MS = 60_000;
@@ -17,7 +20,8 @@ export interface LlmConfig {
   // Endpoint of an Anthropic-compatible proxy; undefined means the SDK default (the Anthropic API).
   baseUrl?: string;
   model: string;
-  tokenBudgetPerCall: number;
+  maxOutputTokens: number;
+  tokenBudgetPerJob: number;
   timeoutMs: number;
 }
 
@@ -26,6 +30,17 @@ export interface LlmEnv {
   ANTHROPIC_API_KEY?: string | undefined;
   ANTHROPIC_MODEL?: string | undefined;
   ANTHROPIC_BASE_URL?: string | undefined;
+  ANTHROPIC_MAX_OUTPUT_TOKENS?: string | undefined;
+  ANTHROPIC_TOKEN_BUDGET_PER_JOB?: string | undefined;
+}
+
+// Names the variable only, never its value. Unset or empty means the default.
+function positiveInt(name: string, value: string | undefined, fallback: number): number {
+  if (value === undefined || value.length === 0) return fallback;
+  if (!/^[0-9]+$/.test(value) || Number(value) < 1 || !Number.isSafeInteger(Number(value))) {
+    throw new Error(`Invalid environment: ${name} must be a positive whole number`);
+  }
+  return Number(value);
 }
 
 export function readLlmConfig(env: LlmEnv): LlmConfig {
@@ -36,7 +51,8 @@ export function readLlmConfig(env: LlmEnv): LlmConfig {
     apiKey: key && key.length > 0 ? key : undefined,
     baseUrl: baseUrl && baseUrl.length > 0 ? baseUrl : undefined,
     model: model && model.length > 0 ? model : DEFAULT_ANTHROPIC_MODEL,
-    tokenBudgetPerCall: DEFAULT_TOKEN_BUDGET_PER_CALL,
+    maxOutputTokens: positiveInt('ANTHROPIC_MAX_OUTPUT_TOKENS', env.ANTHROPIC_MAX_OUTPUT_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS),
+    tokenBudgetPerJob: positiveInt('ANTHROPIC_TOKEN_BUDGET_PER_JOB', env.ANTHROPIC_TOKEN_BUDGET_PER_JOB, DEFAULT_TOKEN_BUDGET_PER_JOB),
     timeoutMs: DEFAULT_TIMEOUT_MS,
   };
 }

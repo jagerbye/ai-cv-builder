@@ -103,13 +103,14 @@ describe('ADR-004 / C-012 seam: the jobs module depends on the pipeline interfac
     expect(sourceFiles().length).toBeGreaterThan(0);
   });
 
-  it('imports from core/generation only types.js', () => {
+  // ADR-021: ledger.js is part of the C-012 seam (the per-job balance the worker creates), a pure module with no SDK.
+  it('imports from core/generation only types.js and ledger.js', () => {
     const offending: string[] = [];
     for (const file of sourceFiles()) {
       const text = readFileSync(file, 'utf8');
       const specs = [...text.matchAll(/(?:import|export)[^'"]*from\s+['"]([^'"]+)['"]/g)].map((m) => m[1]);
       for (const spec of specs) {
-        if (spec.includes('generation') && !/generation\/types(\.js)?$/.test(spec)) {
+        if (spec.includes('generation') && !/generation\/(types|ledger)(\.js)?$/.test(spec)) {
           offending.push(`${file}: ${spec}`);
         }
       }

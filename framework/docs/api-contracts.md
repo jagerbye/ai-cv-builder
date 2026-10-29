@@ -40,7 +40,8 @@ Format:
 - Error code enum (closed): `VALIDATION`, `UNAUTHENTICATED`, `NOT_FOUND`,
   `CONFLICT`, `VERSION_CONFLICT`, `PAYLOAD_TOO_LARGE`, `UNSUPPORTED_SOURCE`,
   `RATE_LIMITED`, `LLM_UNAVAILABLE`, `LLM_INVALID_OUTPUT`, `LLM_AUTH_FAILED`,
-  `LLM_INVALID_REQUEST`, `JOB_TIMEOUT`, `CONFIG_MISSING`, `INTERNAL`.
+  `LLM_INVALID_REQUEST`, `LLM_BUDGET_EXCEEDED`, `JOB_TIMEOUT`, `CONFIG_MISSING`, `INTERNAL`.
+  `LLM_BUDGET_EXCEEDED` (the job spent its token budget) was added by ADR-021, with its own fixed safe message.
   `LLM_AUTH_FAILED` (the provider rejected the configured API key) and
   `LLM_INVALID_REQUEST` (the provider rejected the request) were added by
   ADR-018; each has its own fixed safe message, never the provider's text.
@@ -209,13 +210,14 @@ with no network and no key.
 
 ```ts
 interface AnthropicGateway {           // the ONLY place the SDK is imported
-  callTool<T>(req: ToolCallRequest<T>): Promise<T>   // validated against the schema
+  callTool<T>(req: ToolCallRequest<T>, ledger?: TokenLedger): Promise<T>   // validated against the schema
 }
 interface GenerationPipeline {
-  extract(sourceText: string): Promise<Fact[]>
-  compose(facts: Fact[], targetRole: string): Promise<CvDraft>   // never sees sourceText
+  extract(sourceText: string, ledger?: TokenLedger): Promise<Fact[]>
+  compose(facts: Fact[], targetRole: string, ledger?: TokenLedger): Promise<CvDraft>   // never sees sourceText
   verify(draft: CvDraft, facts: Fact[]): VerificationResult      // pure, no I/O
 }
+type TokenLedger = { remaining(): number; spend(tokens: number): void }   // ADR-021
 type VerificationResult = { accepted: CvDraft; questions: QuestionDraft[]; dropped: DroppedItem[] }
 ```
 
@@ -223,4 +225,15 @@ type VerificationResult = { accepted: CvDraft; questions: QuestionDraft[]; dropp
   no randomness — that is what makes the golden fixtures meaningful.
 - `compose` receiving `sourceText` is a contract violation; the type makes it
   impossible and a test asserts the gateway was never called with it.
+- **Per-job token budget (amendment, ADR-021).** The optional `ledger` is one balance
+  for one job; the job worker creates one per run and passes the same object to every
+  stage, so extract, compose and any schema retry spend from it (F-010). A call made
+  without a ledger is bounded by nothing: the optional shape exists for tests, and every
+  production call passes one (ADR-021 Amendment A). The answer path (C-009) creates one ledger
+  per answer, sized by the same per-job budget; a recompose that runs it dry fails C-009's 503
+  with `LLM_BUDGET_EXCEEDED`. A guard test fails any production call that omits it. The gateway sends
+  nothing once the balance is gone, and a response that overdraws it is discarded
+  unexamined; both throw `LLM_BUDGET_EXCEEDED`. `max_tokens` is a separate setting
+  (`ANTHROPIC_MAX_OUTPUT_TOKENS`) bounding one response; the budget is
+  `ANTHROPIC_TOKEN_BUDGET_PER_JOB`. The change is additive.
 - Status: **frozen (sprint 2)**

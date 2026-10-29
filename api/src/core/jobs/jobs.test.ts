@@ -16,6 +16,7 @@ import type { GenerationPipeline, Fact, CvDraft, VerificationResult } from '../g
 //   JOB_BUDGET_MS = 180_000
 
 import { createJobWorker, JOB_BUDGET_MS } from './worker.js';
+import type { TokenLedger } from '../generation/ledger.js';
 
 process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder_test';
 
@@ -524,5 +525,36 @@ describe('domain-model GenerationJob: terminal immutability', () => {
     expect(after.finishedAt!.getTime()).toBe(before.finishedAt!.getTime());
     expect(calls.length).toBe(callsBefore);
     worker.stop();
+  });
+});
+
+// ADR-021. The worker creates one ledger per run, sized by its per-job budget, and hands that same ledger to
+// every stage of the run. A stage that receives no ledger would be unbounded: the test would see undefined.
+describe('ADR-021: one ledger per run, handed to the stages', () => {
+  it('hands the same ledger, sized by tokenBudgetPerJob, to extract and to compose', async () => {
+    const seed = await seedCv();
+    const jobId = await seedJob(seed);
+    const base = fakePipeline().pipeline;
+    const seen: TokenLedger[] = [];
+    const pipeline: GenerationPipeline = {
+      ...base,
+      extract: async (sourceText, ledger) => {
+        seen.push(ledger as TokenLedger);
+        return base.extract(sourceText);
+      },
+      compose: async (facts, targetRole, ledger) => {
+        seen.push(ledger as TokenLedger);
+        return base.compose(facts, targetRole);
+      },
+    };
+    const worker = createJobWorker({ prisma, pipeline, workerId: 'ledger', leaseMs: 60_000, tokenBudgetPerJob: 5000 });
+
+    expect(await worker.runOnce()).toBe(jobId);
+    worker.stop();
+
+    expect(seen).toHaveLength(2);
+    expect(seen[0]).toBe(seen[1]);
+    expect(seen[0].remaining()).toBe(5000);
+    expect((await row(jobId)).status).toBe('succeeded');
   });
 });

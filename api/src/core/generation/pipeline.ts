@@ -14,8 +14,8 @@ export function createGenerationPipeline(env: LlmEnv): GenerationPipeline {
   const extract = createExtractStage(gateway);
   const compose = createComposeStage(gateway);
   return {
-    extract: (sourceText) => extract.extract(sourceText),
-    compose: (facts, targetRole) => compose.compose(facts, targetRole),
+    extract: (sourceText, ledger) => extract.extract(sourceText, ledger),
+    compose: (facts, targetRole, ledger) => compose.compose(facts, targetRole, ledger),
     verify,
   };
 }

@@ -1,5 +1,6 @@
 import { buildServer } from './server.js';
 import { env } from './env.js';
+import { readLlmConfig } from './llm/config.js';
 import { createGenerationPipeline } from './core/generation/pipeline.js';
 import { createJobWorker } from './core/jobs/worker.js';
 import { startJobLoop } from './core/jobs/loop.js';
@@ -21,6 +22,7 @@ const worker = createJobWorker({
   pipeline: generationPipeline,
   workerId: `api-${process.pid}`,
   leaseMs: JOB_LEASE_MS,
+  tokenBudgetPerJob: readLlmConfig(env).tokenBudgetPerJob,
   onError: (info) => app.log.warn(info, 'job run ended in an error'),
 });
 // QA-14: before the first claim, fail every CV that says generating but has no live job of its own (what a

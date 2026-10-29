@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { createAnthropicGateway } from './gateway.js';
 import type { LlmConfig } from '../../llm/config.js';
 import type { ToolCallRequest } from './types.js';
+import { createTokenLedger } from './ledger.js';
 
 // T-09 (CVB-9). C-012 / ADR-006 / F-010. The SDK's HTTP transport is faked via
 // the SDK's own `fetch` option; the gateway itself is real. No network, no key.
@@ -44,7 +45,8 @@ function makeRequest(): ToolCallRequest<Facts> {
 const CONFIG: LlmConfig = {
   apiKey: KEY,
   model: 'model-from-config-test',
-  tokenBudgetPerCall: 1000,
+  maxOutputTokens: 32000,
+  tokenBudgetPerJob: 1_000_000,
   timeoutMs: 5000,
 };
 
@@ -107,9 +109,9 @@ describe('AnthropicGateway request shape (C-012, ADR-006)', () => {
     expect(body.tool_choice).toEqual({ type: 'tool', name: 'record_facts' });
   });
 
-  it('sends the model from configuration and max_tokens from the token budget', async () => {
+  it('sends the model from configuration and max_tokens from the output cap', async () => {
     const t = scriptedFetch([fixture('tool-ok.json')]);
-    await createAnthropicGateway({ ...CONFIG, model: 'model-gamma-test', tokenBudgetPerCall: 777 }, { fetch: t.fetch, sleep })
+    await createAnthropicGateway({ ...CONFIG, model: 'model-gamma-test', maxOutputTokens: 777 }, { fetch: t.fetch, sleep })
       .callTool(makeRequest());
     expect(t.body(0).model).toBe('model-gamma-test');
     expect(t.body(0).max_tokens).toBe(777);
@@ -262,35 +264,97 @@ describe('provider error classification and backoff (F-010)', () => {
   });
 });
 
-describe('per-call token budget (ADR-006, F-010)', () => {
-  it('succeeds when the reported usage is within the budget', async () => {
-    const t = scriptedFetch([fixture('tool-ok.json')]);
-    await expect(createAnthropicGateway({ ...CONFIG, tokenBudgetPerCall: 1000 }, { fetch: t.fetch, sleep })
+describe('output cap is separate from the spend budget (ADR-021)', () => {
+  it('accepts a compose-sized exchange whose input plus output exceeds the old 4096', async () => {
+    const t = scriptedFetch([toolUse({ items: ['Led a team of 4', 'Python'] }, { input_tokens: 3000, output_tokens: 2500 })]);
+    await expect(createAnthropicGateway({ ...CONFIG, maxOutputTokens: 32000 }, { fetch: t.fetch, sleep })
       .callTool(makeRequest())).resolves.toEqual({ items: ['Led a team of 4', 'Python'] });
   });
 
-  it('fails rather than returning a result when reported usage exceeds the budget', async () => {
-    const t = scriptedFetch([fixture('over-budget.json')]);
-    const outcome = await createAnthropicGateway({ ...CONFIG, tokenBudgetPerCall: 1000 }, { fetch: t.fetch, sleep })
-      .callTool(makeRequest())
-      .then((v) => ({ resolved: v }), (e: { code?: string }) => ({ rejected: e.code }));
-    expect(outcome).toEqual({ rejected: 'LLM_INVALID_OUTPUT' });
-    expect(t.calls).toHaveLength(1);
+  it('sends the same max_tokens on the schema retry, never a shrinking one', async () => {
+    const t = scriptedFetch([fixture('schema-violation.json'), fixture('tool-ok.json')]);
+    await createAnthropicGateway({ ...CONFIG, maxOutputTokens: 32000 }, { fetch: t.fetch, sleep }).callTool(makeRequest());
+    expect(t.body(0).max_tokens).toBe(32000);
+    expect(t.body(1).max_tokens).toBe(32000);
   });
 });
 
-describe('token budget across the schema retry', () => {
-  it('lets the retry spend only what is left, and refuses to send once nothing is left', async () => {
-    const t = scriptedFetch([fixture('schema-violation.json'), fixture('tool-ok.json')]);
-    await createAnthropicGateway({ ...CONFIG, tokenBudgetPerCall: 1000 }, { fetch: t.fetch, sleep })
-      .callTool(makeRequest());
-    expect(t.body(0).max_tokens).toBe(1000);
-    expect(t.body(1).max_tokens).toBe(850);
+describe('the spend budget is per job, through an optional ledger (ADR-021, C-012, F-010)', () => {
+  // The optional shape exists for TESTS. A call without a ledger is unbounded by construction, which is why
+  // tests/guard/ledger-passed.guard.test.ts fails any production call that omits it (ADR-021 Amendment A).
+  it('a call without a ledger is unbounded by construction: the shape for tests, never for production', async () => {
+    const t = scriptedFetch([toolUse({ items: ['Python'] }, { input_tokens: 5000, output_tokens: 5000 })]);
+    await expect(createAnthropicGateway(CONFIG, { fetch: t.fetch, sleep }).callTool(makeRequest()))
+      .resolves.toEqual({ items: ['Python'] });
+  });
 
-    const t2 = scriptedFetch([fixture('schema-violation.json'), fixture('tool-ok.json')]);
-    await expect(createAnthropicGateway({ ...CONFIG, tokenBudgetPerCall: 150 }, { fetch: t2.fetch, sleep })
-      .callTool(makeRequest())).rejects.toMatchObject({ code: 'LLM_INVALID_OUTPUT' });
-    expect(t2.calls).toHaveLength(1);
+  it('a ledger with a small balance bounds the job: the second call fails with LLM_BUDGET_EXCEEDED', async () => {
+    const ledger = createTokenLedger(200);
+    const t = scriptedFetch([fixture('tool-ok.json')]);
+    const gateway = createAnthropicGateway(CONFIG, { fetch: t.fetch, sleep });
+    await expect(gateway.callTool(makeRequest(), ledger)).resolves.toEqual({ items: ['Led a team of 4', 'Python'] });
+    const err = await gateway.callTool(makeRequest(), ledger).then(() => null, (e: { code?: string }) => e);
+    expect(err).not.toBeNull();
+    expect(err?.code).toBe('LLM_BUDGET_EXCEEDED');
+  });
+
+  it('refuses to send once the job balance is gone', async () => {
+    const ledger = createTokenLedger(200);
+    const t = scriptedFetch([fixture('tool-ok.json')]);
+    const gateway = createAnthropicGateway(CONFIG, { fetch: t.fetch, sleep });
+    await gateway.callTool(makeRequest(), ledger);
+    await gateway.callTool(makeRequest(), ledger).catch(() => undefined);
+    const err = await gateway.callTool(makeRequest(), ledger).then(() => null, (e: { code?: string }) => e);
+    expect(err?.code).toBe('LLM_BUDGET_EXCEEDED');
+    expect(t.calls).toHaveLength(2);
+  });
+
+  it('fails with LLM_BUDGET_EXCEEDED, and returns nothing, when one response overdraws the balance', async () => {
+    const ledger = createTokenLedger(1000);
+    const t = scriptedFetch([fixture('over-budget.json')]);
+    const outcome = await createAnthropicGateway(CONFIG, { fetch: t.fetch, sleep })
+      .callTool(makeRequest(), ledger)
+      .then((v) => ({ resolved: v }), (e: { code?: string }) => ({ rejected: e.code }));
+    expect(outcome).toEqual({ rejected: 'LLM_BUDGET_EXCEEDED' });
+    expect(t.calls).toHaveLength(1);
+  });
+
+  it('the schema retry spends from the same ledger, so the retry can overdraw the job', async () => {
+    const ledger = createTokenLedger(200);
+    const t = scriptedFetch([fixture('schema-violation.json'), fixture('tool-ok.json')]);
+    const err = await createAnthropicGateway(CONFIG, { fetch: t.fetch, sleep })
+      .callTool(makeRequest(), ledger).then(() => null, (e: { code?: string }) => e);
+    expect(err?.code).toBe('LLM_BUDGET_EXCEEDED');
+    expect(t.calls).toHaveLength(2);
+  });
+});
+
+describe('the validation problem is logged, never the model text (ADR-021)', () => {
+  function recordingLogger() {
+    const logged: { level: string; args: unknown[] }[] = [];
+    const rec = (level: string) => (...args: unknown[]) => { logged.push({ level, args }); };
+    return { logged, logger: { debug: rec('debug'), info: rec('info'), warn: rec('warn'), error: rec('error') } };
+  }
+
+  it('logs our validation message on the retry and on the final failure', async () => {
+    const { logged, logger } = recordingLogger();
+    const t = scriptedFetch([fixture('schema-violation.json')]);
+    await createAnthropicGateway(CONFIG, { fetch: t.fetch, sleep, logger }).callTool(makeRequest()).catch(() => undefined);
+    const problems = logged
+      .flatMap((l) => l.args)
+      .filter((a): a is { problem: unknown } => typeof a === 'object' && a !== null && 'problem' in a)
+      .map((a) => a.problem);
+    expect(problems).toEqual([SCHEMA_ERROR, SCHEMA_ERROR]);
+  });
+
+  it('logs no prompt, no provider output and no key', async () => {
+    const { logged, logger } = recordingLogger();
+    const t = scriptedFetch([fixture('schema-violation.json')]);
+    await createAnthropicGateway(CONFIG, { fetch: t.fetch, sleep, logger }).callTool(makeRequest()).catch(() => undefined);
+    const text = JSON.stringify(logged);
+    expect(text).not.toContain(PROMPT_SENTINEL);
+    expect(text).not.toContain('Led a team of 4');
+    expect(text).not.toContain(KEY);
   });
 });
 

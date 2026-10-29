@@ -30,6 +30,8 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-}
+      ANTHROPIC_MAX_OUTPUT_TOKENS: ${ANTHROPIC_MAX_OUTPUT_TOKENS:-}
+      ANTHROPIC_TOKEN_BUDGET_PER_JOB: ${ANTHROPIC_TOKEN_BUDGET_PER_JOB:-}
     # Migrations first; the server starts listening only if they succeed.
     command: ["sh", "-c", "npx prisma migrate deploy --schema prisma/schema.prisma && node dist/main.js"]
     ports:

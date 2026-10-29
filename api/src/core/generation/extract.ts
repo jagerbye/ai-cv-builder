@@ -5,6 +5,7 @@
 
 import { randomUUID } from 'node:crypto';
 import type { AnthropicGateway, Fact, ToolCallRequest } from './types.js';
+import type { TokenLedger } from './ledger.js';
 import { buildExtractDescription, EXTRACT_TOOL_NAME } from './prompts/extract.js';
 
 // Domain kinds from domain-model.md (Fact.kind). Pinned in the schema and checked in parse.
@@ -66,12 +67,12 @@ function parseFacts(raw: unknown): RawFact[] {
 const normalise = (s: string): string => s.replace(/\s+/g, ' ').trim();
 
 export interface ExtractStage {
-  extract(sourceText: string): Promise<Fact[]>;
+  extract(sourceText: string, ledger?: TokenLedger): Promise<Fact[]>;
 }
 
 export function createExtractStage(gateway: AnthropicGateway): ExtractStage {
   return {
-    async extract(sourceText: string): Promise<Fact[]> {
+    async extract(sourceText: string, ledger?: TokenLedger): Promise<Fact[]> {
       const req: ToolCallRequest<RawFact[]> = {
         name: EXTRACT_TOOL_NAME,
         // The untrusted source travels in the description: ToolCallRequest has no user-message field yet (T-09 gap).
@@ -79,7 +80,7 @@ export function createExtractStage(gateway: AnthropicGateway): ExtractStage {
         inputSchema: EXTRACT_SCHEMA,
         parse: parseFacts,
       };
-      const raw = await gateway.callTool(req);
+      const raw = await gateway.callTool(req, ledger);
       const haystack = normalise(sourceText);
 
       const facts: Fact[] = [];

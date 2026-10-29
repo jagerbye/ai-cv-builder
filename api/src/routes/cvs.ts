@@ -22,6 +22,8 @@ function notFound(reply: FastifyReply) {
 
 export interface CvsRoutesOptions {
   generationPipeline: GenerationPipeline;
+  // The spend budget of one answer's recompose, the same setting a job uses (ADR-021).
+  tokenBudget: number;
 }
 
 export async function cvsRoutes(app: FastifyInstance, opts: CvsRoutesOptions): Promise<void> {
@@ -59,7 +61,7 @@ export async function cvsRoutes(app: FastifyInstance, opts: CvsRoutesOptions): P
     async (request) => {
       const userId = sessionUserId(request);
       const { cvId, questionId } = request.params;
-      return answerQuestion(app.prisma, opts.generationPipeline, userId, cvId, questionId, request.body);
+      return answerQuestion(app.prisma, opts.generationPipeline, userId, cvId, questionId, request.body, opts.tokenBudget);
     },
   );
 

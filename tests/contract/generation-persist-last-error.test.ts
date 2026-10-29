@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { openJobTestSuite, JOB_SUITE_LOCK_WAIT_MS, type JobTestSuite } from '../../api/src/core/jobs/test-lock.js';
-import { GatewayError } from '../../api/src/core/generation/gateway.js';
+import { GatewayError, createAnthropicGateway } from '../../api/src/core/generation/gateway.js';
+import { createExtractStage } from '../../api/src/core/generation/extract.js';
+import { createComposeStage } from '../../api/src/core/generation/compose.js';
+import { ERROR_CODES, safeMessage } from '../../api/src/http/errors.js';
 import { createJobWorker } from '../../api/src/core/jobs/worker.js';
 import type { Fact, GenerationPipeline } from '../../api/src/core/generation/types.js';
 import {
@@ -340,4 +343,80 @@ describe('ADR-018: provider auth and invalid-request failures keep their own cod
       expect(cvRes.json().lastError).toEqual({ code, message });
     });
   }
+});
+
+// ADR-021. A job whose stages overdraw the per-job ledger fails as LLM_BUDGET_EXCEEDED. The stages are the real
+// extract and compose over a scripted provider. The provider's text carries a marker that must reach no CV and no job row.
+const OVERSPEND_MARKER = 'PROVIDER-OVERSPEND-TEXT-5530';
+
+function overspendingPipeline(): { pipeline: GenerationPipeline; providerCalls: () => number } {
+  let providerCalls = 0;
+  const fetchFn = async (): Promise<Response> => {
+    providerCalls += 1;
+    const body = {
+      id: 'msg_overspend',
+      type: 'message',
+      role: 'assistant',
+      model: 'fixture-model',
+      stop_reason: 'tool_use',
+      content: [
+        { type: 'text', text: OVERSPEND_MARKER },
+        { type: 'tool_use', id: 'toolu_overspend', name: 'record_facts', input: { items: ['Led a team of 4'] } },
+      ],
+      usage: { input_tokens: 120, output_tokens: 40 },
+    };
+    return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+  const gateway = createAnthropicGateway(
+    { apiKey: 'sk-ant-overspend-test-key', model: 'model-overspend-test', maxOutputTokens: 32000, tokenBudgetPerJob: 100, timeoutMs: 5000 },
+    { fetch: fetchFn as unknown as typeof fetch, sleep: async () => undefined },
+  );
+  const extract = createExtractStage(gateway);
+  const compose = createComposeStage(gateway);
+  return {
+    pipeline: {
+      ...fakePipeline(TOKEN_A),
+      extract: (sourceText, ledger) => extract.extract(sourceText, ledger),
+      compose: (facts, targetRole, ledger) => compose.compose(facts, targetRole, ledger),
+    },
+    providerCalls: () => providerCalls,
+  };
+}
+
+describe('ADR-021: LLM_BUDGET_EXCEEDED is a C-000 code with its own safe message', () => {
+  it('joins the enum and is neither INTERNAL nor reported as invalid output', () => {
+    expect(ERROR_CODES).toContain('LLM_BUDGET_EXCEEDED');
+    expect(safeMessage('LLM_BUDGET_EXCEEDED')).not.toBe(safeMessage('LLM_INVALID_OUTPUT'));
+    expect(safeMessage('LLM_BUDGET_EXCEEDED')).not.toBe(safeMessage('INTERNAL'));
+  });
+});
+
+describe('ADR-021: a job over its per-job budget fails as LLM_BUDGET_EXCEEDED, and the provider text stays out', () => {
+  it('the CV ends failed with lastError LLM_BUDGET_EXCEEDED and its safe message; the provider text appears nowhere', async () => {
+    const owner = await seedUser();
+    const cvId = await seedCv(owner.userId);
+    const jobId = await enqueueFresh(owner, cvId);
+    const { pipeline, providerCalls } = overspendingPipeline();
+
+    const worker = createJobWorker({ prisma, pipeline, workerId: 'budget-job', leaseMs: LEASE_MS, tokenBudgetPerJob: 100 });
+    expect(await worker.runOnce()).toBe(jobId);
+    worker.stop();
+
+    expect(providerCalls()).toBe(1);
+    const message = safeMessage('LLM_BUDGET_EXCEEDED');
+    expect(await cvRow(cvId)).toEqual({
+      state: 'failed',
+      version: 1,
+      lastErrorCode: 'LLM_BUDGET_EXCEEDED',
+      lastErrorMessage: message,
+    });
+    const job = await prisma.generationJob.findUniqueOrThrow({
+      where: { id: jobId },
+      select: { status: true, errorCode: true, errorMessage: true },
+    });
+    expect(job).toEqual({ status: 'failed', errorCode: 'LLM_BUDGET_EXCEEDED', errorMessage: message });
+    const cv = (await getCv(app, owner.cookie, cvId)).json();
+    expect(cv.lastError).toEqual({ code: 'LLM_BUDGET_EXCEEDED', message });
+    expect(JSON.stringify(cv) + JSON.stringify(job)).not.toContain(OVERSPEND_MARKER);
+  });
 });

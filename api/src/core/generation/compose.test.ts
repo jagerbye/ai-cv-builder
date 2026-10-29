@@ -50,9 +50,9 @@ describe('compose stage (T-11)', () => {
   it('takes facts and target role only (the signature is the guarantee): one gateway call, no sentinel in the request', async () => {
     const { calls, gateway } = fakeGateway(fixture.toolInput);
     const stage = createComposeStage(gateway);
-    // The signature (facts, targetRole) is what keeps the source out; the sentinel check below
+    // The signature (facts, targetRole, optional ledger: ADR-021) is what keeps the source out; the sentinel check below
     // only guards the request builder against inventing a source of its own.
-    expect(stage.compose.length).toBe(2);
+    expect(stage.compose.length).toBe(3);
 
     await stage.compose(FACTS, ROLE);
 

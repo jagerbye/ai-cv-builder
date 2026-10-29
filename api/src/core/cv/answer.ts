@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { CvItem, Prisma, PrismaClient } from '@prisma/client';
 import { ApiError, safeMessage, type ErrorCode } from '../../http/errors.js';
 import { GatewayError } from '../generation/gateway.js';
+import { createTokenLedger } from '../generation/ledger.js';
 import type { CvDraft, Fact, GenerationPipeline } from '../generation/types.js';
 import { getCv } from './read.js';
 import type { CvResponse } from './types.js';
@@ -19,7 +20,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BOUND_PATH = /^(experience|education)\[(\d+)\]\.period$/;
 
 // Gateway failures that keep their own code on the 503; everything else reads as transient.
-const NON_TRANSIENT: readonly ErrorCode[] = ['CONFIG_MISSING', 'LLM_AUTH_FAILED', 'LLM_INVALID_REQUEST'];
+const NON_TRANSIENT: readonly ErrorCode[] = ['CONFIG_MISSING', 'LLM_AUTH_FAILED', 'LLM_INVALID_REQUEST', 'LLM_BUDGET_EXCEEDED'];
 
 const FACT_KIND: Record<string, string> = { experience: 'employment', education: 'education' };
 
@@ -54,6 +55,7 @@ export async function answerQuestion(
   cvId: string,
   questionId: string,
   body: unknown,
+  tokenBudget: number,
 ): Promise<CvResponse> {
   if (!UUID.test(cvId) || !UUID.test(questionId)) throw notFound();
   const answer = parseAnswer(body);
@@ -94,7 +96,8 @@ export async function answerQuestion(
   let accepted: CvDraft;
   try {
     const facts = (await prisma.fact.findMany({ where: { cvId }, orderBy: { createdAt: 'asc' } })).map(toFact);
-    const draft = await pipeline.compose(facts, cv.targetRole);
+    // One ledger per answer, sized like a job's (ADR-021 Amendment A): a call without one is bounded by nothing.
+    const draft = await pipeline.compose(facts, cv.targetRole, createTokenLedger(tokenBudget));
     accepted = pipeline.verify(draft, facts).accepted;
   } catch (err) {
     // ADR-020: always 503, but the envelope carries the failure's real code when it is one nobody fixes by waiting.

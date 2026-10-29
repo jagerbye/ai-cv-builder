@@ -284,7 +284,10 @@ criteria must become tests.
   - [ ] Per-user rate limits: 10 generations/hour, 60 writes/minute; exceeding
         returns 429 with `Retry-After`.
   - [ ] A per-job token budget is enforced; exceeding it fails the job rather
-        than spending unboundedly.
+        than spending unboundedly. Every path that can call the model carries
+        one, not only the job runner: answering a question (C-009) gets its own
+        ledger per answer, and a guard test fails any production call that
+        omits one (ADR-021 Amendment A).
   - [ ] The app starts and serves the auth pages even when `ANTHROPIC_API_KEY`
         is absent — generation then fails with a clear configuration error
         instead of crashing the container at boot.

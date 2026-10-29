@@ -1,3 +1,5 @@
+import type { TokenLedger } from './ledger.js';
+
 // C-012 (api-contracts.md). Declaration-only: no implementation in this file.
 // ADR-002, structural half: compose() takes facts and a target role and nothing
 // else, so the raw source text cannot reach it at compile time.
@@ -12,7 +14,7 @@ export interface ToolCallRequest<T> {
 
 // The ONLY surface the Anthropic SDK is imported behind (C-012).
 export interface AnthropicGateway {
-  callTool<T>(req: ToolCallRequest<T>): Promise<T>;
+  callTool<T>(req: ToolCallRequest<T>, ledger?: TokenLedger): Promise<T>;
 }
 
 // An atomic fact extracted from the source; sourceQuote is verbatim.
@@ -60,7 +62,7 @@ export interface VerificationResult {
 }
 
 export interface GenerationPipeline {
-  extract(sourceText: string): Promise<Fact[]>;
-  compose(facts: Fact[], targetRole: string): Promise<CvDraft>;
+  extract(sourceText: string, ledger?: TokenLedger): Promise<Fact[]>;
+  compose(facts: Fact[], targetRole: string, ledger?: TokenLedger): Promise<CvDraft>;
   verify(draft: CvDraft, facts: Fact[]): VerificationResult;
 }

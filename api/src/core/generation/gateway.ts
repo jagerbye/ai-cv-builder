@@ -4,17 +4,19 @@
 // Per call: tool-use with an explicit input schema, tool_choice forcing that
 // tool, the result re-validated in code (never trusted), one retry on a schema
 // violation with the validation error appended, 3-attempt exponential backoff
-// for rate limit / 5xx / transport failures, and a per-call token budget.
+// for rate limit / 5xx / transport failures, and a per-job token budget (ADR-021) through an
+// optional ledger. max_tokens is its own setting and bounds one response only.
 
 import Anthropic, { APIConnectionError, APIError } from '@anthropic-ai/sdk';
 import type { LlmConfig } from '../../llm/config.js';
 import { safeMessage, type ErrorCode } from '../../http/errors.js';
 import type { AnthropicGateway, ToolCallRequest } from './types.js';
+import type { TokenLedger } from './ledger.js';
 
 // Every code the gateway throws is a member of the closed C-000 enum (ADR-018). The list is checked
 // against ERROR_CODES at compile time: a code added here that the enum lacks is a type error, not a
 // silent INTERNAL downstream. Messages are errors.ts's fixed safe ones: no provider text, no prompt,
-// no key (F-010). A token-budget overrun is an unusable result, so it throws LLM_INVALID_OUTPUT.
+// no key (F-010). Running out of the job's token budget is its own code, LLM_BUDGET_EXCEEDED (ADR-021).
 export const GATEWAY_ERROR_CODES = [
   'RATE_LIMITED',
   'LLM_UNAVAILABLE',
@@ -22,6 +24,7 @@ export const GATEWAY_ERROR_CODES = [
   'CONFIG_MISSING',
   'LLM_AUTH_FAILED',
   'LLM_INVALID_REQUEST',
+  'LLM_BUDGET_EXCEEDED',
 ] as const satisfies readonly ErrorCode[];
 
 export type GatewayErrorCode = (typeof GATEWAY_ERROR_CODES)[number];
@@ -139,28 +142,28 @@ export function createAnthropicGateway(config: LlmConfig, deps: GatewayDeps = {}
   }
 
   return {
-    async callTool<T>(req: ToolCallRequest<T>): Promise<T> {
+    async callTool<T>(req: ToolCallRequest<T>, ledger?: TokenLedger): Promise<T> {
       if (!config.apiKey) {
         logger.warn({ tool: req.name, code: 'CONFIG_MISSING' });
         throw new GatewayError('CONFIG_MISSING');
       }
 
       const messages: unknown[] = [{ role: 'user', content: req.description }];
-      let usedTokens = 0;
 
       for (let attempt = 1; attempt <= MAX_SCHEMA_ATTEMPTS; attempt++) {
-        // The budget is per callTool, across the schema retry: the retry may
-        // only spend what is left, and nothing is sent once it is gone.
-        const remaining = config.tokenBudgetPerCall - usedTokens;
-        if (remaining <= 0) {
-          logger.warn({ tool: req.name, code: 'LLM_INVALID_OUTPUT' });
-          throw new GatewayError('LLM_INVALID_OUTPUT');
+        // The budget is the job's (ADR-021): nothing is sent once the ledger is empty, and a response
+        // that overdraws it is discarded unexamined. Without a ledger nothing bounds the spend: tests only, a guard keeps production calls honest.
+        if (ledger && ledger.remaining() <= 0) {
+          logger.warn({ tool: req.name, code: 'LLM_BUDGET_EXCEEDED' });
+          throw new GatewayError('LLM_BUDGET_EXCEEDED');
         }
-        const response = await send(req as ToolCallRequest<unknown>, messages, remaining);
-        usedTokens += response.tokens;
-        if (usedTokens > config.tokenBudgetPerCall) {
-          logger.warn({ tool: req.name, code: 'LLM_INVALID_OUTPUT' });
-          throw new GatewayError('LLM_INVALID_OUTPUT');
+        const response = await send(req as ToolCallRequest<unknown>, messages, config.maxOutputTokens);
+        if (ledger) {
+          ledger.spend(response.tokens);
+          if (ledger.remaining() < 0) {
+            logger.warn({ tool: req.name, code: 'LLM_BUDGET_EXCEEDED' });
+            throw new GatewayError('LLM_BUDGET_EXCEEDED');
+          }
         }
 
         // Re-validate the provider result against the same schema (ADR-006).
@@ -176,6 +179,8 @@ export function createAnthropicGateway(config: LlmConfig, deps: GatewayDeps = {}
           }
         }
 
+        // Our own validation text, never the provider's or the prompt's: what was invalid, for the server log.
+        logger.warn({ tool: req.name, code: 'LLM_INVALID_OUTPUT', attempt, problem });
         if (attempt === MAX_SCHEMA_ATTEMPTS) break;
 
         // Retry once with the validation error appended (F-010).

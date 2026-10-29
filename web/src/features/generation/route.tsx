@@ -5,6 +5,7 @@
 import { useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ApiError, apiFetch } from '../../api/client';
+import { GenerationSteps } from './stepper';
 
 type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed';
 type JobStage = 'extracting' | 'composing' | 'verifying';
@@ -106,6 +107,7 @@ export default function GenerationRoute() {
     return (
       <section className="page screen-message">
         <h1>Generation failed</h1>
+        <GenerationSteps status="failed" stage={data.stage} />
         <p role="alert">{data.error ? data.error.message : FALLBACK_MESSAGE}</p>
         <p>Your source text is kept, so you can try again.</p>
         <button
@@ -134,6 +136,7 @@ export default function GenerationRoute() {
   if (data.status === 'queued') {
     return (
       <section className="page screen-message">
+        <GenerationSteps status="queued" stage={null} />
         <p role="status">Queued. It will start shortly.</p>
         {attemptNote}
       </section>
@@ -142,6 +145,7 @@ export default function GenerationRoute() {
 
   return (
     <section className="page screen-message">
+      <GenerationSteps status="running" stage={data.stage} />
       <p role="status" aria-live="polite">
         {data.stage ? STAGE_COPY[data.stage] : 'Starting…'}
       </p>

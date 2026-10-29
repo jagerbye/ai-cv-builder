@@ -10,7 +10,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-4);
+  /* Wraps rather than overflows: at 375px Log out drops to its own row instead
+     of being covered by the nav (QA-07). DOM order is also tab order. */
+  flex-wrap: wrap;
+  gap: 0 var(--space-4);
   min-height: var(--layout-mobile-header-height);
   padding: 0 var(--space-gutter-mobile);
   background: var(--color-surface);
@@ -23,6 +26,43 @@
   line-height: var(--text-label-line-height);
   font-weight: var(--text-label-weight);
   color: var(--color-text-primary);
+}
+
+.shell-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-4);
+  min-width: 0;
+}
+
+.shell-header .auth-logout {
+  margin-inline-start: auto;
+}
+
+/* Current location: weight and an underline, so it reads without colour. */
+.shell-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--color-text-primary);
+  font-size: var(--text-label-size);
+  font-weight: var(--text-label-weight);
+  text-decoration: none;
+  border-bottom: var(--border-emphasis) solid transparent;
+}
+
+.shell-nav a:hover {
+  border-bottom-color: var(--color-border-default);
+}
+
+.shell-nav a[aria-current] {
+  font-weight: 600;
+  border-bottom-color: var(--color-text-primary);
+}
+
+.shell-nav a:focus-visible {
+  box-shadow: var(--shadow-focus);
+  outline: none;
 }
 
 .shell-main {

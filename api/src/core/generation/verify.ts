@@ -20,9 +20,12 @@ function resolveCited(factIds: string[], byId: Map<string, Fact>): { facts: Fact
   return { facts: factIds.map((id) => byId.get(id)!) };
 }
 
+const ROLE_UNTIED_TEXT = 'Which job title did you hold? The cited source mentions this title but does not tie it to this employer.';
+
 function questionText(path: string, reason: QuestionReason): string {
   if (path.endsWith('.employer')) return 'Which employer did this role happen at? The drafted name is not in the cited source.';
   if (path.endsWith('.period')) return 'What were the exact dates of this role? The drafted dates are not in the cited source.';
+  if (path.endsWith('.role') && reason === 'vague') return ROLE_UNTIED_TEXT;
   if (path.endsWith('.role')) return 'Which job title did you hold? The drafted title is not in the cited source.';
   if (reason === 'missing') return 'Which source fact supports this item? It cites none.';
   return 'Which source fact supports this item? The drafted text is not confirmed by the cited source.';
@@ -183,10 +186,15 @@ export function verify(draft: CvDraft, facts: readonly Fact[]): PlannedVerificat
       ask({ path: `${p}.period`, text: questionText(`${p}.period`, 'missing'), reason: 'missing', impact: 'unsupported' });
     }
 
-    // The title must occur in a cited fact that also names the employer. Otherwise the entry is kept and the
-    // title is asked about (vague, priority 3): a source often puts employer and title in separate sentences.
+    // The title must occur in a cited fact that also names the employer (ADR-026). One no cited fact holds is
+    // unsupported content (priority 2); one held only by facts that do not name the employer is vague (priority 3):
+    // a source often puts employer and title in separate sentences. The entry is kept either way.
     if (!someFactHolds(resolved.facts, (t) => containsText(t, entry.role) && containsText(t, entry.employer))) {
-      ask({ path: `${p}.role`, text: questionText(`${p}.role`, 'vague'), reason: 'vague', impact: 'vague' });
+      if (someFactHolds(resolved.facts, (t) => containsText(t, entry.role))) {
+        ask({ path: `${p}.role`, text: questionText(`${p}.role`, 'vague'), reason: 'vague', impact: 'vague' });
+      } else {
+        ask({ path: `${p}.role`, text: questionText(`${p}.role`, 'unverifiable'), reason: 'unverifiable', impact: 'unsupported' });
+      }
     }
 
     const bullets = entry.bullets.map((b, j) => {

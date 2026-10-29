@@ -138,11 +138,30 @@ describe('verify — question paths name the field (QA-05, C-006 path grammar)',
     expect(r.questions[0]).toMatchObject({ reason: 'unverifiable' });
   });
 
-  it('vague role keeps the entry and raises experience[0].role (vague, priority 3)', () => {
+  it('role in NO cited fact keeps the entry and raises role as unsupported (priority 2, text says the source lacks it)', () => {
     const r = verify(base({ experience: [{ ...validEntry, role: 'Platform engineer' }] }), facts);
     expect(r.dropped).toEqual([]);
     expect(pathsOf(r)).toEqual(['experience[0].role']);
-    expect(r.questions[0]).toMatchObject({ reason: 'vague', priority: 3 });
+    expect(r.questions[0]).toMatchObject({
+      reason: 'unverifiable',
+      priority: 2,
+      text: 'Which job title did you hold? The drafted title is not in the cited source.'
+    });
+  });
+
+  it('role in a cited fact that does not name the employer stays vague (priority 3, text says the source does not tie it)', () => {
+    const split = [fact('f3', 'Acme Ltd, 2019'), fact('f4', 'Senior developer, remote')];
+    const r = verify(
+      base({ experience: [{ ...validEntry, role: 'Senior developer', factIds: ['f3', 'f4'] }] }),
+      split
+    );
+    expect(r.dropped).toEqual([]);
+    expect(pathsOf(r)).toEqual(['experience[0].role']);
+    expect(r.questions[0]).toMatchObject({
+      reason: 'vague',
+      priority: 3,
+      text: 'Which job title did you hold? The cited source mentions this title but does not tie it to this employer.'
+    });
   });
 
   it('every question path in a mixed draft matches the C-006 field grammar', () => {

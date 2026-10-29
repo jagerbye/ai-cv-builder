@@ -25,9 +25,30 @@ function ProtectedBranch({ children }: { children: ReactNode }) {
   return <RequireSession>{children}</RequireSession>;
 }
 
-function HeaderActions() {
+// aria-current="page" only on the exact page; inside a CV (/cvs/:id) the list is
+// the section the user is in, which is "true", not "page".
+function navCurrent(pathname: string, target: '/cvs' | '/cvs/new'): 'page' | 'true' | undefined {
+  const path = pathname.replace(/\/+$/, '') || '/';
+  if (target === '/cvs/new') return path === '/cvs/new' ? 'page' : undefined;
+  if (path === '/cvs') return 'page';
+  return path.startsWith('/cvs/') && path !== '/cvs/new' ? 'true' : undefined;
+}
+
+// Shown only with a session (useSessionUser is the one source of that state), so a
+// signed-out visitor sees the brand and nothing to click. Plain links: a full
+// load, like every other link here. No icons (design.json icons.needed is empty).
+function HeaderActions({ pathname }: { pathname: string }) {
   const session = useSessionUser();
-  return session.data ? <LogoutButton /> : null;
+  if (!session.data) return null;
+  return (
+    <>
+      <nav className="shell-nav" aria-label="Main">
+        <a href="/cvs" aria-current={navCurrent(pathname, '/cvs')}>My CVs</a>
+        <a href="/cvs/new" aria-current={navCurrent(pathname, '/cvs/new')}>New CV</a>
+      </nav>
+      <LogoutButton />
+    </>
+  );
 }
 
 function Screen({ route }: { route: RouteEntry }) {
@@ -63,7 +84,7 @@ export default function App() {
       <div className="shell">
         <header className="shell-header">
           <span className="shell-brand">AI CV Builder</span>
-          <HeaderActions />
+          <HeaderActions pathname={pathname} />
         </header>
         <main className="shell-main">
           {isFrontDoor ? <FrontDoor /> : route ? <Screen route={route} /> : <NotFound />}

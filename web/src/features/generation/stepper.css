@@ -1,0 +1,54 @@
+/* Steps stack on mobile and sit in a row from 600px. Text states carry meaning;
+   the ring and weight are reinforcement, never the only signal. No amber, no icons. */
+.steps {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-2);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-hairline) solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-line-height);
+}
+
+.step[data-state="done"] {
+  color: var(--color-text-primary);
+}
+
+/* Static 2px accent ring (design.json motion.stage_pulse reduced-motion form). */
+.step[data-state="current"] {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  border-color: var(--color-accent-default);
+  box-shadow: 0 0 0 var(--border-emphasis) var(--color-accent-default);
+}
+
+.step[data-state="failed"] {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  border-color: var(--color-border-strong);
+  border-width: var(--border-emphasis);
+}
+
+.step-state {
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+@media (min-width: 600px) {
+  .steps {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

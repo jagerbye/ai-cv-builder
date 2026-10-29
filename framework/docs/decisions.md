@@ -19,6 +19,52 @@ Format — newest on top, one block per decision:
 
 ---
 
+## ADR-027: A question binds to the item it is about, and "named" means a word (2026-10-29, accepted)
+
+- **Context:** the owner was about to sign off the groundedness guarantee, so
+  it was attacked rather than reviewed. Three breaks, each of a sentence the
+  specification actually promises.
+- **Decision 1 — a question belongs to an item, not to a position.** The
+  verifier numbers its paths against the **drafted** arrays; persist stores the
+  **accepted** ones, with dropped entries removed; read re-sorts by relevance;
+  the editor aligns by position in the response. So the moment anything is
+  dropped, every later index means a different job. The prompt-injection
+  fixture demonstrates it: drafted `[Google, Costa Cafe]`, accepted
+  `[Costa Cafe]`, and `experience[0].employer` — "not in the cited source" —
+  now sits beside the user's real employer. A question against the wrong line
+  is worse than no question: it tells the user their true job is unverified.
+  A stored question therefore **binds to the item id it is about**, and C-006's
+  `path` is derived at read time from where that item currently sits. A
+  question about something that was dropped binds to no item and names its
+  section, never an index that now means something else.
+- **Decision 2 — "a cited fact must name it" means a word, not a substring.**
+  `containsText` is a case-insensitive substring test, so an employer `Amazon`
+  is grounded by "Deployed on Amazon Web Services", an institution `MIT` by
+  "Submitted 40 patches", and the skills `Go`, `C` and `SQL` by "Wrote
+  JavaScript at Google; trusted with NoSQL". Contact fields already use
+  `containsToken`, which respects word boundaries; the rest of the structured
+  fields use the loose one. They all use the strict one now. This is the strong
+  half of the guarantee and it was weaker than the sentence describing it.
+- **Decision 3 — answering a priority-1 question restores what is missing.**
+  ADR-026 defines priority 1 as "content is missing from the CV; only the
+  user's answer brings it back", and the answer path discards the re-verify's
+  questions and refreshes only an employer and a role. So the promise was
+  false, and so was the brief's own sentence: *"the answer updates the relevant
+  part of the CV"*. The answer's facts go back through verify, and an item the
+  new evidence supports is restored.
+- **Alternatives rejected:** re-indexing paths at persist time (it survives one
+  transformation and breaks at the next — read already re-sorts); forbidding
+  the re-sort (the ordering is a product decision and the questions must follow
+  the data, not constrain it); keeping the substring test with a longer list of
+  exceptions (the project has already paid three rounds to learn what lists
+  cost — ADR-023).
+- **Consequences:** a schema change for the question's item binding and a
+  C-006 clarification of how `path` is produced; stricter matching will drop
+  entries that the loose test accepted, which is the point, and a few fixtures
+  move with it.
+
+---
+
 ## ADR-026: Question priority is what it costs to ignore it (2026-10-29, accepted)
 
 - **Context:** C-006 serves `questions` with a priority, the editor orders by

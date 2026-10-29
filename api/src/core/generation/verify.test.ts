@@ -11,7 +11,7 @@ import type { CvDraft, Fact } from './types.js';
 //  - period is matched as one token, so "2017-2019" is not supported by facts that mention 2017 and 2019 separately;
 //  - named technologies are whole words from the verifier lexicon (Kafka, PostgreSQL, Go, Kubernetes, ...);
 //  - reasons: empty factIds -> 'missing'; unknown factIds -> 'unverifiable'; unmatched employer/period/institution -> 'missing';
-//    any other unmatched entity -> 'unverifiable'; a vague role -> 'vague'.
+//    any other unmatched entity -> 'unverifiable'; a role no cited fact holds -> 'unverifiable'; a role held only by facts that omit the employer -> 'vague'.
 //  - priority (ADR-026, cost of ignoring): content gone from the CV = 1, present but unsupported = 2, present and vague = 3.
 
 const fact = (id: string, text: string, kind = 'achievement'): Fact => ({
@@ -422,7 +422,7 @@ describe('verify — questions (spec §3.5)', () => {
     }
   });
 
-  it('ranks a missing employer above a vague role, and keeps the vague entry rather than deleting it', () => {
+  it('ranks a missing employer above an unsupported role, and keeps that entry rather than deleting it', () => {
     const facts = [fact('f1', 'Backend engineer at Acme Ltd, 2019')];
     const draft = base({
       experience: [
@@ -447,7 +447,8 @@ describe('verify — questions (spec §3.5)', () => {
     const r = verify(draft, facts);
     const employer = r.questions.find((x) => x.path === 'experience[0].employer') as { priority: number };
     const vague = r.questions.find((x) => x.path === 'experience[1].role') as { priority: number; reason: string };
-    expect(vague.reason).toBe('vague');
+    expect(vague.reason).toBe('unverifiable');
+    expect(vague.priority).toBe(2);
     expect(employer.priority).toBeLessThan(vague.priority);
     expect(r.questions[0].path).toBe('experience[0].employer');
     expect(r.accepted.experience.map((e) => e.role)).toEqual(['Lead Engineer']);

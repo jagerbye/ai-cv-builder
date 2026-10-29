@@ -150,11 +150,13 @@ describe('progress view — polling (C-005, ADR-003, CVB-14)', () => {
   });
 });
 
+// The stepper (stepper.test.tsx) names all four stages by design, so these assert the
+// status sentence, which is the one place the current stage is spelled out.
 describe('progress view — named stage, no fake percentage (spec §3.3)', () => {
   it.each([
-    ['extracting', /extracting/i],
-    ['composing', /composing/i],
-    ['verifying', /verifying/i],
+    ['extracting', /extracting facts/i],
+    ['composing', /composing the draft/i],
+    ['verifying', /verifying every line/i],
   ])('shows the server stage "%s" by name', async (stage, label) => {
     serverJob = { ...baseJob, stage: stage as JobBody['stage'] };
     mockNetwork();
@@ -166,7 +168,7 @@ describe('progress view — named stage, no fake percentage (spec §3.3)', () =>
     serverJob = { ...baseJob, stage: 'composing' };
     mockNetwork();
     const { container } = mount();
-    await screen.findByText(/composing/i);
+    await screen.findByText(/composing the draft/i);
     expect(container.textContent ?? '').not.toMatch(/\d\s*%/);
   });
 
@@ -174,9 +176,9 @@ describe('progress view — named stage, no fake percentage (spec §3.3)', () =>
     serverJob = { ...baseJob, stage: 'extracting' };
     mockNetwork();
     mount();
-    await screen.findByText(/extracting/i);
-    expect(screen.queryByText(/verifying/i)).toBeNull();
-    expect(screen.queryByText(/composing/i)).toBeNull();
+    await screen.findByText(/extracting facts/i);
+    expect(screen.queryByText(/verifying every line/i)).toBeNull();
+    expect(screen.queryByText(/composing the draft/i)).toBeNull();
   });
 });
 
@@ -185,14 +187,14 @@ describe('progress view — reload safety (spec §3.3, ADR-003)', () => {
     serverJob = { ...baseJob, stage: 'extracting' };
     const fetchMock = mockNetwork();
     const first = mount();
-    await screen.findByText(/extracting/i);
+    await screen.findByText(/extracting facts/i);
     first.unmount();
 
     // The job moved on while the page was gone.
     serverJob = { ...baseJob, stage: 'verifying' };
     mount();
-    expect(await screen.findByText(/verifying/i)).toBeTruthy();
-    expect(screen.queryByText(/extracting/i)).toBeNull();
+    expect(await screen.findByText(/verifying every line/i)).toBeTruthy();
+    expect(screen.queryByText(/extracting facts/i)).toBeNull();
     expect(jobCalls(fetchMock)).toBe(2);
   });
 
@@ -201,7 +203,7 @@ describe('progress view — reload safety (spec §3.3, ADR-003)', () => {
     serverJob = { ...baseJob, stage: 'composing' };
     mockNetwork();
     mount();
-    await screen.findByText(/composing/i);
+    await screen.findByText(/composing the draft/i);
     expect(setLocal).not.toHaveBeenCalled();
   });
 });
@@ -218,7 +220,7 @@ describe('progress view — failed job (spec §3.3 criterion 5)', () => {
     mockNetwork();
     mount();
     expect(await screen.findByText(/longer than 180 seconds/i)).toBeTruthy();
-    expect(screen.queryByText(/extracting|composing|verifying/i)).toBeNull();
+    expect(screen.queryByText(/extracting facts|composing the draft|verifying every line/i)).toBeNull();
   });
 
   it('offers regenerate and POSTs it for the job CV', async () => {

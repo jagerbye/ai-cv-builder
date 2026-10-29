@@ -1,0 +1,6 @@
+web/src/app/*
+web/src/features/generation/*
+web/src/features/auth/session*
+web/src/styles/*
+framework/sprints/SPRINT-002-live-model/*
+.claude/*

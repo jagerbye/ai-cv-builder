@@ -5,3 +5,6 @@ framework/scripts/*
 framework/docs/*
 framework/sprints/SPRINT-002-live-model/*
 .claude/*
+tests/fixtures/golden/*
+api/prisma/*
+api/src/core/cv/*

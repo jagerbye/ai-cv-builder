@@ -35,6 +35,11 @@ Test command for THIS lane: <exact lane-scoped command — never the bare
   union runner while other lanes are in flight; see framework/knowledge/errors.md E-001>
 Do NOT: touch other files, weaken tests, install deps, change contracts.
 Before coding: grep framework/knowledge/errors.md for <relevant keywords>.
+If you cannot proceed: set blockedOn (code | brief | decision | dependency),
+  say exactly what you need, and stop — reporting a block is a successful
+  step, and you do not write yourself an ADR. A block is valid only for what
+  your allowlist or this brief cannot settle: a defect in a file you own,
+  including your own test files, is your task (patterns.md P-007).
 Report to: framework/sprints/<sprint>/lanes/lane-NN.md (append your task block).
 ```
 
@@ -44,10 +49,23 @@ Report to: framework/sprints/<sprint>/lanes/lane-NN.md (append your task block).
 test-engineer: write failing tests from acceptance criteria  → RED verified
 developer:     write code until tests pass                   → GREEN
 gates:         typecheck + lint + full lane test run         → green or loop
-reviewer:      diff vs criteria + spot-run                   → approve / fix-list
-on repeat failure: escalation ladder (model-routing.md), log the error+fix
-                   candidate in the lane report
+reviewer:      diff vs criteria + spot-run + THE MUTATION     → approve / fix-list
+on blockedOn=code: escalation ladder (model-routing.md); any other blockedOn
+                   returns to the Orchestrator and does not change model tier
+                   (patterns.md P-007). Log the error+fix candidate in the lane
+                   report either way.
 ```
+
+**The reviewer's two mechanical checks** (reading is not either of them):
+- *The mutation* — for each criterion, name the line of production code its
+  test exists for, delete or invert it, run the test, require RED, restore,
+  and write the mutation performed into the fix-list. A suite that stays green
+  under the mutation is decoration (`.claude/rules/testing.md`,
+  framework/knowledge/errors.md E-010, patterns.md P-004).
+- *Test ownership* — run the files each new test names against the lane's
+  allowlist. An assertion about a file another lane owns must quote a frozen
+  contract, never a literal shape; nothing downstream of the lane gate can
+  catch this (errors.md E-003, patterns.md P-006).
 
 Each agent flips the task's row on the plan's status board as it finishes its
 step (`red` / `green` / `done`); a task whose dependencies are not `done` does
@@ -67,6 +85,14 @@ see `framework/process/task-lifecycle.md`.
 - Worktree lanes: see merge-policy.md.
 - Any conflict resolution that changes behavior → note in the sprint report;
   if it reveals a contract gap → ADR.
+- **The union is not the product.** Suites that call the server in-process and
+  suites that mock `fetch` are each correct and neither instantiates the seam
+  between them, so a fully green union can ship something nobody can open. The
+  full gate therefore carries a `smoke` step that drives the composed stack
+  over real HTTP (patterns.md P-003); it never runs in wave mode. A seam no
+  component owns — how the browser reaches the api, who starts the worker — is
+  named in `architecture.md` at planning time, or every lane assumes another
+  lane had it.
 
 ## 4.5 Manual QA (qa-engineer, per framework/process/qa-playbook.md)
 
@@ -87,5 +113,13 @@ see `framework/process/task-lifecycle.md`.
   never edited retroactively.
 - Run `/retro`: harvest errors→`framework/knowledge/errors.md`, reusable solutions→
   `framework/knowledge/patterns.md`, recurring brief problems→fix this playbook.
+- **The contended-resource pass** (the retro's one non-obvious step): list every
+  fix of the sprint that added or tightened a coordination mechanism — a lock,
+  a cleanup rule, a guard, an ordering convention, a "remember to" — and group
+  them by the resource they protect, not by their symptom. Two mechanisms over
+  one resource is not two entries: it is an isolation decision, and it goes to
+  an ADR. Recurring causes hide here, because each occurrence arrives with a
+  different error text to a different agent (patterns.md P-002, errors.md
+  E-009; this is what ADR-019 cost four incidents to find).
 - PM updates backlog; unfinished tasks return to backlog, never silently
   roll over.

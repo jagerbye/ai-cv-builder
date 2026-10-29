@@ -25,6 +25,70 @@ entry.
 
 ---
 
+## E-010 green suite, broken thing — the four ways a test lies  (2026-10-29)
+
+- **Symptoms:** QA or a user finds a defect the suite covers "already"; a test
+  whose subject you cannot name in one line; a review note saying "this was
+  true when written"; deleting a line of production code and the suite stays
+  green; a test that passes under an error stub as happily as under a success.
+- **Context:** sprint 01 shipped all four shapes past eighteen reviews.
+  (1) **Asserts nothing** — "a successful run clears last week's error" stayed
+  green after the null-clear was removed from `persist.ts`. (2) **Pins a
+  defect** — two tests held `classify()` copying a thrown error's own message
+  into the job row C-005 serves to a browser. (3) **Satisfied by the error
+  path** — under a 404 stub the web route-registry check passed on the error
+  state and proved nothing about the editor it was written for. (4) **Pins a
+  sibling lane's temporary shape** — E-003, invisible to every lane gate.
+  Separately, 691 green tests could not see that the shipped container had no
+  route to the api (QA-01): nothing lies there, the seam simply has no test.
+- **Fix:** the reviewer performs the mutation instead of judging it — name the
+  line the test exists for, delete or invert it, require red, restore, and
+  record the mutation in the fix-list. That caught (1), (2) and (3) here. For a
+  test whose subject is an absence, add the forbidden thing and require red.
+  (4) is caught by ownership, not mutation: across a lane boundary a test may
+  assert only a contract. The seam is caught by instantiating it (gate `smoke`
+  step).
+- **Prevention:** `.claude/rules/testing.md` — the stub test is performed and
+  recorded; a test that pins a leak is wrong and the code changes, not the
+  test. Patterns P-004 (mutation), P-006 (cross-lane contract), P-003 (seam);
+  reviewer step in `framework/process/sprint-playbook.md` §3.
+
+## E-009 the same resource is fixed twice: a second lock / guard / cleanup rule / "remember to" over one shared thing  (2026-10-29)
+
+- **Symptoms (any of these, on a thing more than one process touches):**
+  "expected <uuid> to be <uuid>" claiming another suite's row; P2002 unique
+  violation on fixed fixture ids; `runOnce()` returned null; rows that were
+  there a moment ago; a test green alone and red in the union; a cleanup that
+  deleted more than it made; "passes 9 runs in 10".
+- **Contended resource (the index — grep this phrase before adding a lock or a
+  cleanup rule):**
+  - `generation_jobs` queue → E-002 (advisory suite lock), E-004 (leak guard +
+    `clearOpenJobs()` under the lock), E-006 (wait on the condition, scope the
+    cleanup), E-008 (one gate run at a time per database).
+  - `ai_cv_builder` database (suite ↔ running app ↔ second gate run) → E-002,
+    E-004, E-005, E-008. **Resolved by splitting it: ADR-019.**
+  - host port 5173 → `WEB_PORT`, sprint report wave A item 2.
+  - `api/src/server.ts` and the cross-lane interfaces → ADR-011's bootstrap
+    task T-07; owned by exactly one lane per wave.
+- **Root cause of the pattern:** each occurrence arrives with a different
+  symptom, in a different lane, to a different agent, and each gets a correct
+  local fix — a lock, a guard, a rule. The root-cause line everyone writes is
+  the local one and it is true, so nothing ever compares two of them. errors.md
+  is grepped by symptom by design (nobody reads it whole), and these symptoms
+  have no words in common. Four entries and a day lost to a "flake" before
+  anyone named the resource: the suite shared a database with the app.
+- **Fix:** split the resource instead of adding a fourth mechanism over it —
+  the suite got its own database (ADR-019); the lock, the leak guard and the
+  delete-by-id rule stay, because they are still right when two suites run in
+  parallel, but they stopped being the only thing between a test run and a
+  developer clicking through the app.
+- **Prevention:** every entry whose fix adds or tightens a coordination
+  mechanism names its **contended resource** on one line, and that line is
+  grepped before the fix is written. A second hit on the same resource is not a
+  third entry — it is an isolation decision, and it goes to an ADR.
+  Pattern: `framework/knowledge/patterns.md` P-002; retro step added to
+  `framework/process/sprint-playbook.md` §5.
+
 ## E-004 generation-persist case 1 fails ~1 run in 3: job failed INTERNAL "The generation failed." within ms, CV untouched  (2026-10-29)
 - **Context:** tests/contract/generation-persist.test.ts. worker.ts classify() dropped the original error, so it read as a flake. With createJobWorker({ onError }) the log said PrismaClientKnownRequestError P2002, meta target Fact.id (persist.ts createMany of facts).
 - **Root cause:** tests/contract/hardening-ratelimit.test.ts commits ~50 queued jobs through POST /api/cvs and never deletes them. The persist suite's runJob drained those (claimNext takes the oldest) with its fixed-fact-id pipeline; the case's own job then re-inserted the same fact ids. Whether the order of suite files left the rows before the persist suite decided red or green.

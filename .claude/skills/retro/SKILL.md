@@ -14,9 +14,16 @@ You are the Orchestrator. Input: the sprint folder (plan, lanes, report).
    instead of duplicating.
 2. **Patterns:** anything used successfully twice (per reports/reviews) →
    P-NNN in `framework/knowledge/patterns.md` with a codebase pointer.
-3. **Process signals:** escalations and reworked briefs from `report.md` —
+3. **Contended resources:** list every fix of the sprint that added or
+   tightened a coordination mechanism (a lock, a cleanup rule, a guard, an
+   ordering convention, a "remember to") and group them by the RESOURCE they
+   protect, not by their symptom. One resource with two mechanisms is not two
+   errors — it is an isolation decision, and it goes to an ADR. This is the
+   step that finds a recurring cause on its second occurrence instead of its
+   fourth (patterns.md P-002, errors.md E-009).
+4. **Process signals:** escalations and reworked briefs from `report.md` —
    if a cause repeats across sprints, fix the source: the brief template or
    playbook (`framework/process/sprint-playbook.md`), a rule file, or model routing.
    Process fixes are edits to those files, not notes.
-4. **Output:** 5-line summary to the owner — what the project learned, what
+5. **Output:** 5-line summary to the owner — what the project learned, what
    process changed. No ceremony.

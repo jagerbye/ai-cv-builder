@@ -12,3 +12,4 @@ framework/docs/*
 framework/knowledge/*
 .claude/*
 .gitignore
+framework/sprints/SPRINT-001-skeleton-auth/allow/*

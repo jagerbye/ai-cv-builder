@@ -15,7 +15,7 @@ export const meta = {
   ],
 }
 
-const BASE = 'bd5ef49'
+const BASE = 'f2fefce'
 const SPRINT = 'framework/sprints/SPRINT-001-skeleton-auth/'
 
 const PREAMBLE = [

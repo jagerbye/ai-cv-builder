@@ -120,3 +120,23 @@ entry.
   unresolvable path parks the card after the sheet with a generic eyebrow.
   That fallback is what turned a contract drift into a visible oddity instead
   of a blank screen.
+
+## E-008 "runOnce returned null" — two gate runs on one machine  (2026-10-29)
+
+- **Symptom:** after ADR-019 gave the suite its own database, a full-gate run
+  still failed five tests at once, all with `runOnce()` returning null, all in
+  suites that correctly take the job-suite lock. Nine other runs were green.
+- **Cause:** two gate runs were executing at the same time — one lane running
+  its own tests while another ran the gate in a loop, both against
+  `ai_cv_builder_test`. The advisory lock serialises job SUITES; it does not
+  serialise two whole test RUNS, and the second run's worker claims the first
+  run's queued row the moment the first releases the lock between suites.
+- **Fix / rule:** one gate run at a time per database. Ten consecutive serial
+  runs on a quiet machine passed 10/10 after the fix, against 9/10 and 5/7
+  while two runs overlapped. If parallel runs are ever needed, they need a
+  database each, not a lock each — the same conclusion ADR-019 reached one
+  level up.
+- **Worth keeping:** every earlier "flake" in this project turned out to have a
+  mechanical cause (E-002, E-004, E-006, E-007). None was randomness. The cost
+  of calling one of them a flake was a day; the cost of chasing each was an
+  hour.

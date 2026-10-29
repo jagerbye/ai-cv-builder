@@ -55,7 +55,17 @@ Format — newest on top, one block per decision:
   statement of what the policy now buys: it outlasts an interruption of about
   fourteen seconds where the old one outlasted one and a half, and the number
   that would replace the guess is the observed duration of a real outage,
-  which this build has not had the opportunity to measure. Also noted: the
+  which this build then measured. **The spike, run the same day:** six tool-use
+  requests twenty seconds apart against the proxy in use returned 429, 429,
+  200, 429, 200, 429 — the condition is INTERMITTENT at roughly one success in
+  three, not a sustained outage. That changes what helps: against an
+  intermittent failure the number of independent attempts matters more than
+  the length of each pause, and a generation needs at least two provider calls
+  to succeed, so a per-call success of four in five still fails one generation
+  in three. The default policy is sized for a provider that behaves; an
+  environment as flaky as this one raises `ANTHROPIC_RETRY_BUDGET_SECONDS`,
+  which is why it is configuration and not a constant. The defaults are
+  deliberately NOT tuned to one proxy's bad afternoon. Also noted: the
   waiting budget is per provider REQUEST, and `callTool` makes two schema
   attempts, so one generation can wait roughly twice the budget — still far
   inside C-005's 180 seconds, and now written down instead of discovered.

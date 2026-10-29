@@ -19,6 +19,34 @@ Format — newest on top, one block per decision:
 
 ---
 
+## ADR-014: The job-queue suite lock becomes a helper, not a convention (2026-10-28, accepted)
+
+- **Context:** `claimNext` is global by design (ADR-004: one queue table,
+  `SKIP LOCKED`), so any test file that commits a non-terminal
+  `generation_jobs` row can have it stolen by another file's worker running in
+  parallel. Four suites avoid this today by remembering to take the advisory
+  lock in `api/src/core/jobs/test-lock.ts`. A convention a cheap model must
+  remember is a convention that will be forgotten, and the failure does not
+  surface in the lane gate — only in the union, at integration, where it reads
+  as a flake (E-002).
+- **Decision:** enqueueing a non-terminal job from a test goes through a helper
+  in the same module, which takes the suite lock itself; a guard test fails any
+  test file that writes such a row without it. Measured first, assumed nothing:
+  turning off file parallelism for `api` costs **12.5s against 4.0s**, and the
+  gate is the hottest loop in the project — every agent runs it at every turn
+  end — so that tax would land hundreds of times per wave.
+- **Alternatives rejected:** disabling api file parallelism (3× on the hottest
+  loop, for a hazard that affects four files); a separate serial vitest project
+  (moves the convention from "remember to call the lock" to "remember to list
+  the file" — same class of defect, new place to forget it); leaving it as
+  documentation (it already was documentation, and E-002 still happened).
+- **Consequences:** the helper's module path and the `acquireJobSuiteLock`
+  export stay stable, because other lanes' tests import them; the guard is a
+  grep-shaped assertion over test sources, so it also catches the next suite
+  that hand-rolls an INSERT. Implemented as T-25 (CVB-28).
+
+---
+
 ## ADR-011: Six parallel lanes in one wave; no worktrees (2026-10-28, accepted)
 
 - **Context:** the owner asked to go faster by adding teams. Three sequential

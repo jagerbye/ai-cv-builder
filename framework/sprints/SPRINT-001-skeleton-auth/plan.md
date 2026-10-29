@@ -64,10 +64,17 @@ never imports lane 04's implementation, which is why the two can run at once.
 
 | Lane | Mode | Files area | Tasks |
 |---|---|---|---|
-| 07 | A | `api/src/core/cv/answer*`, `api/src/routes/cvs.ts` | T-20 |
-| 08 | A | `api/src/http/**`, `api/src/routes/**` (cross-cutting only) | T-21 |
-| 09 | A | `web/src/features/cv/**` | T-22 |
+| 07 | A | `api/src/core/cv/{answer,regenerate}*`, `api/src/routes/cvs.ts`, `tests/contract/cvs-{answer,regenerate}*` | T-20 |
+| 08 | A | `api/src/http/**`, `api/src/server.ts`, `api/src/routes/{auth,cvs-create,jobs,export}.ts`, `tests/contract/hardening*` | T-21 |
+| 09 | A | `web/src/features/cv/**`, `web/src/api/client.ts` | T-22 |
 | 10 | A | `README.md` | T-23 |
+| 11 | A | `api/src/core/jobs/test-lock*`, the four job suites, `tests/guard/**` | T-25 |
+
+Base ref for wave B: `59ab057`. The two seams that keep these five disjoint:
+`server.ts` belongs to lane 08 alone, so rate limiting is installed as one
+global hook rather than edited into five route files; and lane 11 keeps the
+`test-lock.ts` module path and its `acquireJobSuiteLock` export stable, because
+lane 07's new job tests import them while lane 11 is still working (ADR-014).
 
 ## Status board
 

@@ -76,10 +76,19 @@ Added during the wave, not in the original plan:
 
 | Issue | Task | Lane | Summary | Status | Est |
 |---|---|---|---|---|---|
-| CVB-17 | T-20 | 07 | Answer → user fact → section recompose | To Do | 3h |
-| CVB-19 | T-21 | 08 | Rate limits, error contract, LLM degradation | To Do | 2h |
-| CVB-15b | T-22 | 09 | Editor UI with inline questions | To Do | 3h |
+| CVB-17 | T-20 | 07 | Answer → user fact → section-scoped recompose (C-009) | To Do | 3h |
+| CVB-29 | T-26 | 07 | Regenerate, userEdited survives (C-010) | To Do | 2h |
+| CVB-19 | T-21 | 08 | Rate limits, error envelope installed, one session guard | To Do | 2h |
+| CVB-15b | T-22 | 09 | CV editor: every field, add/delete/reorder, version | To Do | 3h |
+| CVB-30 | T-27 | 09 | Questions beside the fields they ask about | To Do | 2h |
 | CVB-20 | T-23 | 10 | README and clean-clone verification | To Do | 2h |
+| CVB-28 | T-25 | 11 | Job-queue test helper and its guard test (ADR-014) | To Do | 1h |
+
+**C-010 regenerate was frozen in sprint 3's contracts and implemented by no
+wave-A lane** — `core/cv/merge.ts` exists for it, the route does not. It joins
+lane 07 as T-26 rather than becoming its own lane: it is a mutation on one CV
+that re-runs generation while `userEdited` fields survive, and it lives in
+`routes/cvs.ts`, which exactly one lane may own.
 
 **Labeled `critical`** (need the owner's explicit yes before their final
 transition): CVB-2 (migrations), CVB-3, CVB-4 (auth and authorization),

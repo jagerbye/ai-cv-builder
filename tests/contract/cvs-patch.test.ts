@@ -463,3 +463,88 @@ describe('F-006 user edits bypass the verifier and are recorded as user facts', 
     expect(rows.find((r) => r.id === cv.ids.bulletA)?.userEdited).toBe(false);
   });
 });
+
+// Partial contact patch (C-006: only links is required; C-008: absent fields are untouched).
+describe('C-008 PATCH contact accepts any subset of its fields', () => {
+  const CITED = { email: ['11111111-1111-4111-8111-111111111111'], location: ['22222222-2222-4222-8222-222222222222'] };
+  const FIELD_PATCHES: [string, unknown][] = [
+    ['fullName', 'Ada King'],
+    ['email', 'ada.king@example.com'],
+    ['phone', '+44 20 0000 0000'],
+    ['location', 'Bristol, UK'],
+    ['links', ['https://example.com/a', 'https://example.com/b']],
+  ];
+
+  async function seedCitedContact() {
+    const owner = await seedUser();
+    const cv = await seedCv(owner.userId);
+    const row = await prisma.cvItem.findUniqueOrThrow({ where: { id: cv.ids.contact } });
+    await prisma.cvItem.update({
+      where: { id: cv.ids.contact },
+      data: { data: { ...(row.data as object), citations: CITED } },
+    });
+    return { owner, cv };
+  }
+
+  it.each(FIELD_PATCHES)('patching %s alone replaces it, flags userEdited and leaves every other contact field byte-identical', async (field, value) => {
+    const { owner, cv } = await seedCitedContact();
+    const before = await prisma.cvItem.findUniqueOrThrow({ where: { id: cv.ids.contact } });
+    const beforeData = before.data as Record<string, unknown>;
+    const beforeRes = (await getCv(owner.cookie, cv.cvId)).json();
+
+    const res = await patchCv(owner.cookie, cv.cvId, { version: 3, patch: { contact: { [field]: value } } });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.version).toBe(4);
+    expect(body.contact[field]).toEqual(value);
+
+    const after = await prisma.cvItem.findUniqueOrThrow({ where: { id: cv.ids.contact } });
+    expect(after.userEdited).toBe(true);
+    const afterData = after.data as Record<string, unknown>;
+    for (const key of Object.keys(beforeData).filter((k) => k !== field && k !== 'citations')) {
+      expect(JSON.stringify(afterData[key])).toBe(JSON.stringify(beforeData[key]));
+      expect(JSON.stringify(body.contact[key])).toBe(JSON.stringify(beforeRes.contact[key]));
+    }
+    // Citations of the fields that were not touched are kept as they were.
+    const afterCit = (afterData.citations ?? {}) as Record<string, unknown>;
+    for (const [k, v] of Object.entries(CITED)) {
+      if (k !== field) expect(afterCit[k]).toEqual(v);
+    }
+  });
+
+  it('keeps summary, experience, education and skills byte-identical', async () => {
+    const { owner, cv } = await seedCitedContact();
+    const before = (await getCv(owner.cookie, cv.cvId)).json();
+    const res = await patchCv(owner.cookie, cv.cvId, { version: 3, patch: { contact: { location: 'Bristol, UK' } } });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.contact.location).toBe('Bristol, UK');
+    expect(body.summary).toEqual(before.summary);
+    expect(body.experience).toEqual(before.experience);
+    expect(body.education).toEqual(before.education);
+    expect(body.skills).toEqual(before.skills);
+    const rows = await prisma.cvItem.findMany({ where: { cvId: cv.cvId } });
+    expect(rows.filter((r) => r.userEdited).map((r) => r.id)).toEqual([cv.ids.contact]);
+  });
+
+  it.each([
+    ['fullName', 42],
+    ['email', ['a@b.c']],
+    ['phone', { n: 1 }],
+    ['location', true],
+    ['links', 'https://example.com'],
+  ])('a present %s of the wrong type is still 400 VALIDATION and writes nothing', async (field, value) => {
+    const { owner, cv } = await seedCitedContact();
+    const res = await patchCv(owner.cookie, cv.cvId, { version: 3, patch: { contact: { [field]: value } } });
+    expectEnvelope(res, 400, 'VALIDATION');
+    const after = (await getCv(owner.cookie, cv.cvId)).json();
+    expect(after.version).toBe(3);
+    expect(after.contact.fullName).toBe('Ada Lovelace');
+  });
+
+  it('keeps the same message shape for a wrong-typed fullName', async () => {
+    const { owner, cv } = await seedCitedContact();
+    const res = await patchCv(owner.cookie, cv.cvId, { version: 3, patch: { contact: { fullName: 7 } } });
+    expect(res.json().error.message).toContain('patch.contact.fullName must be a string');
+  });
+});

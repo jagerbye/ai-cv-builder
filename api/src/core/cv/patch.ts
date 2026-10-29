@@ -24,7 +24,8 @@ export type PatchResult =
   | { ok: false; reason: 'NOT_FOUND' | 'VERSION_CONFLICT' }
   | { ok: false; reason: 'VALIDATION'; message: string };
 
-interface ContactIn { fullName: string; email?: string; phone?: string; location?: string; links: string[] }
+// A partial contact: a key present in `set` is replaced, a name in `clear` is removed (sent empty or null), anything else is untouched.
+interface ContactIn { set: Record<string, string | string[]>; clear: string[] }
 interface SummaryIn { text: string; factIds?: string[] }
 interface BulletIn { id: string; text: string; factIds?: string[] }
 interface ExperienceIn { id: string; employer: string; role: string; period: string; location?: string; relevance?: number; bullets: BulletIn[] }
@@ -93,17 +94,23 @@ function optionalRelevance(value: unknown, where: string): number | undefined {
   return value;
 }
 
+const CONTACT_TEXT_FIELDS: [string, number][] = [['email', 200], ['phone', 50], ['location', 200]];
+
 function parseContact(value: unknown): ContactIn {
   const r = asRecord(value, 'patch.contact');
-  const links =
-    r.links === undefined ? [] : asArray(r.links, 'patch.contact.links').map((l, i) => text(l, `patch.contact.links[${i}]`, 1, 500));
-  return {
-    fullName: text(r.fullName, 'patch.contact.fullName', 1, 200),
-    email: optionalText(r.email, 'patch.contact.email', 200),
-    phone: optionalText(r.phone, 'patch.contact.phone', 50),
-    location: optionalText(r.location, 'patch.contact.location', 200),
-    links,
-  };
+  const set: Record<string, string | string[]> = {};
+  const clear: string[] = [];
+  if (r.fullName !== undefined) set.fullName = text(r.fullName, 'patch.contact.fullName', 1, 200);
+  for (const [key, max] of CONTACT_TEXT_FIELDS) {
+    if (r[key] === undefined) continue;
+    const v = optionalText(r[key], `patch.contact.${key}`, max);
+    if (v === undefined) clear.push(key);
+    else set[key] = v;
+  }
+  if (r.links !== undefined) {
+    set.links = asArray(r.links, 'patch.contact.links').map((l, i) => text(l, `patch.contact.links[${i}]`, 1, 500));
+  }
+  return { set, clear };
 }
 
 function parseSummary(value: unknown): SummaryIn {
@@ -319,24 +326,41 @@ async function writePatch(tx: Prisma.TransactionClient, cvId: string, p: ParsedP
     const c = p.contact;
     replaced.push(...sectionKinds('contact'));
     const existing = ofKind('contact')[0];
-    otherRows.push(
-      settle(
-        {
-          existing,
-          kind: 'contact',
-          id: existing?.id ?? randomUUID(),
-          parentId: null,
-          path: 'contact',
-          orderIndex: 0,
-          data: compact({ fullName: c.fullName, email: c.email, phone: c.phone, location: c.location, links: c.links }),
-          relevance: null,
-          factIds: undefined,
-          factText: [c.fullName, c.email, c.phone, c.location].filter(Boolean).join(', '),
-        },
-        cvId,
-        facts,
-      ),
+    const old = { ...((existing?.data ?? {}) as Record<string, unknown>) };
+    const citations = { ...((old.citations ?? {}) as Record<string, unknown>) };
+    const data: Record<string, unknown> = { ...old };
+    // A replaced or cleared field loses its citations when its value changed; the rest keep theirs.
+    for (const key of c.clear) {
+      delete data[key];
+      delete citations[key];
+    }
+    for (const [key, v] of Object.entries(c.set)) {
+      if (canon(old[key]) !== canon(v)) delete citations[key];
+      data[key] = v;
+    }
+    if (data.links === undefined) data.links = [];
+    if (Object.keys(citations).length > 0) data.citations = citations;
+    else delete data.citations;
+    const touched = existing && Object.keys(c.set).length + c.clear.length > 0;
+    const row = settle(
+      {
+        existing,
+        kind: 'contact',
+        id: existing?.id ?? randomUUID(),
+        parentId: null,
+        path: 'contact',
+        orderIndex: 0,
+        data: compact(data),
+        relevance: null,
+        factIds: undefined,
+        factText: [data.fullName, data.email, data.phone, data.location].filter(Boolean).join(', '),
+      },
+      cvId,
+      facts,
     );
+    // Every field the patch touched comes back userEdited, even when it re-sent the same value.
+    if (touched) row.userEdited = true;
+    otherRows.push(row);
   }
 
   if (p.summary) {

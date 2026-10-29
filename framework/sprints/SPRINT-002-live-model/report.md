@@ -76,6 +76,38 @@ the literal string `Not specified` where an empty value would read better, and
 nothing asks the user to name a company called `Bigger company`. Neither
 invents anything; both would make the first draft less awkward.
 
+## The fourth run: the current build, and what the provider taught us
+
+The three runs above were made before ADR-027, ADR-028 and ADR-029 landed —
+question binding, whole-word matching, and the retry policy. Those changes are
+significant enough that the flow was run again on the build that carries them.
+Seven steps green: two experience entries, education, full contact, summary,
+eleven facts each with a verbatim quote occurring in the source, every cited id
+resolving, one honest question about a job title the source does not state, a
+PDF with a real text layer.
+
+The answer step reports `version 2 → 4` — two bumps, because the answer now
+stores a user fact AND restores what the new evidence supports. That is
+ADR-027's third fix, visible from outside.
+
+**Getting there produced ADR-029.** The first attempt failed at generation
+while a hand-made call to the same provider seconds earlier returned 200. The
+retry policy satisfied F-010's wording — "exponential backoff up to 3
+attempts" — with a 500 ms base, so three attempts spanned a second and a half
+against a condition that outlasted them. Then the measurement the ADR itself
+demanded: six tool-use requests twenty seconds apart returned 429, 429, 200,
+429, 200, 429. **Intermittent at one success in three, not a sustained
+outage** — which makes the number of independent attempts matter more than the
+length of any pause, and explains why a generation needing two provider calls
+failed roughly every third time.
+
+Two things were deliberately NOT done about it. The defaults were not tuned to
+one proxy's bad afternoon — the environment raises
+`ANTHROPIC_RETRY_BUDGET_SECONDS` instead, which is what made it configuration.
+And the route was changed in configuration, not in code, when one model id
+turned out to pass tool-use requests the other was being refused. The product
+did not move; its settings did.
+
 ## What the key found
 
 Five defects, in the order they surfaced. Each was hidden behind the previous

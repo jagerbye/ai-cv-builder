@@ -1,4 +1,5 @@
 import type { FastifyRequest } from 'fastify';
+import type { PrismaClient } from '@prisma/client';
 import { ApiError } from './errors.js';
 import { SESSION_COOKIE, hashToken } from '../core/auth/session.js';
 
@@ -26,19 +27,29 @@ export function readSessionCookie(header: string | undefined): string | undefine
   return undefined;
 }
 
-// preHandler for every authenticated route (ADR-007). Throws 401 before the handler
-// runs. On success sets request.user from the Session row whose tokenHash matches.
-export async function requireUser(request: FastifyRequest): Promise<void> {
-  const token = readSessionCookie(request.headers.cookie);
-  if (!token || !TOKEN_SHAPE.test(token)) {
-    throw new ApiError(401, 'UNAUTHENTICATED', 'Sign in is required.');
-  }
-  const session = await request.server.prisma.session.findFirst({
+// The one place a cookie becomes a user (ADR-007). Returns undefined for a missing, malformed,
+// unknown or expired session. Shared by requireUser and the rate-limit hook, so both key on the same user.
+export async function resolveSessionUser(
+  prisma: PrismaClient,
+  cookieHeader: string | undefined,
+): Promise<AuthUser | undefined> {
+  const token = readSessionCookie(cookieHeader);
+  if (!token || !TOKEN_SHAPE.test(token)) return undefined;
+  const session = await prisma.session.findFirst({
     where: { tokenHash: hashToken(token), expiresAt: { gt: new Date() } },
     select: { user: { select: { id: true, email: true } } },
   });
-  if (!session) {
+  if (!session) return undefined;
+  return { id: session.user.id, email: session.user.email };
+}
+
+// preHandler for every authenticated route (ADR-007). Throws 401 before the handler runs.
+// If the global rate-limit hook already resolved the user for this request, that result is reused.
+export async function requireUser(request: FastifyRequest): Promise<void> {
+  if (request.user) return;
+  const user = await resolveSessionUser(request.server.prisma, request.headers.cookie);
+  if (!user) {
     throw new ApiError(401, 'UNAUTHENTICATED', 'Sign in is required.');
   }
-  request.user = { id: session.user.id, email: session.user.email };
+  request.user = user;
 }

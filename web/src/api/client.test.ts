@@ -104,3 +104,47 @@ describe('typed API client (C-000, CVB-5)', () => {
     expect(e.message).not.toContain('stack trace');
   });
 });
+
+// T-22 (CVB-15) — the editor depends on these client behaviours (C-008, C-000).
+describe('typed API client — PATCH and version conflicts (C-008, T-22)', () => {
+  it('sends PATCH with a JSON body of {version, patch} and returns the parsed 200 body', async () => {
+    const saved = { id: 'cv-1', version: 8, contact: { links: [], email: 'a@b.co' } };
+    const fetchMock = vi.fn(async () => jsonResponse(200, saved));
+    vi.stubGlobal('fetch', fetchMock);
+    const out = await apiFetch<typeof saved>('/cvs/cv-1', {
+      method: 'PATCH',
+      body: { version: 7, patch: { contact: { links: [], email: 'a@b.co' } } },
+    });
+    expect(out).toEqual(saved);
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('/api/cvs/cv-1');
+    expect(init.method).toBe('PATCH');
+    expect(JSON.parse(String(init.body))).toEqual({ version: 7, patch: { contact: { links: [], email: 'a@b.co' } } });
+  });
+
+  it('turns a 409 VERSION_CONFLICT envelope into an ApiError with that code and message, after exactly one request', async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse(409, { error: { code: 'VERSION_CONFLICT', message: 'Stale version: reload the CV.' } }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const e = (await apiFetch('/cvs/cv-1', { method: 'PATCH', body: { version: 7, patch: {} } }).catch(
+      (x: unknown) => x,
+    )) as ApiError;
+    expect(e).toBeInstanceOf(ApiError);
+    expect(e.status).toBe(409);
+    expect(e.code).toBe('VERSION_CONFLICT');
+    expect(e.message).toBe('Stale version: reload the CV.');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('maps a code outside the closed enum to INTERNAL with the generic message (negative case)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => jsonResponse(409, { error: { code: 'STALE_VERSION', message: 'raw internal text' } })),
+    );
+    const e = (await apiFetch('/cvs/cv-1', { method: 'PATCH', body: {} }).catch((x: unknown) => x)) as ApiError;
+    expect(e).toBeInstanceOf(ApiError);
+    expect(e.code).toBe('INTERNAL');
+    expect(e.message).not.toContain('raw internal text');
+  });
+});

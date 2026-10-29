@@ -1,0 +1,188 @@
+/* CV editor. Values come from tokens.css only (design.json). Mobile first: the
+   single column is the base; the sheet widens at the document measure. */
+
+.cv-page {
+  padding: var(--space-6) var(--space-gutter-mobile);
+  max-width: var(--space-document-max);
+  margin: 0 auto;
+}
+
+.cv-header {
+  margin-bottom: var(--space-4);
+}
+
+.cv-title {
+  margin: 0;
+  font-size: var(--text-document-name-size);
+  line-height: var(--text-document-name-line-height);
+  font-weight: var(--text-document-name-weight);
+  letter-spacing: var(--text-document-name-letter-spacing);
+}
+
+.cv-target {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line-height);
+  color: var(--color-text-secondary);
+}
+
+.cv-status {
+  min-height: var(--text-caption-line-height);
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line-height);
+  color: var(--color-success-text);
+  text-align: right;
+}
+
+.cv-sheet {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sheet);
+  padding: var(--space-6) var(--space-4);
+  border-radius: var(--radius-sm);
+}
+
+.cv-section {
+  margin-bottom: var(--space-8);
+}
+
+.cv-eyebrow {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-section-eyebrow-size);
+  line-height: var(--text-section-eyebrow-line-height);
+  font-weight: var(--text-section-eyebrow-weight);
+  letter-spacing: var(--text-section-eyebrow-letter-spacing);
+  text-transform: var(--text-section-eyebrow-transform);
+  color: var(--color-text-secondary);
+}
+
+.cv-field {
+  margin-bottom: var(--space-3);
+}
+
+.cv-field-label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-line-height);
+  font-weight: var(--text-label-weight);
+  color: var(--color-text-primary);
+}
+
+.cv-field input,
+.cv-field textarea {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-hairline) solid var(--color-border-input);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-family: var(--font-document);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+}
+
+.cv-field input:hover,
+.cv-field textarea:hover {
+  border-color: var(--color-border-strong);
+}
+
+.cv-field input:focus,
+.cv-field textarea:focus {
+  border-color: var(--color-accent-default);
+  box-shadow: var(--shadow-focus);
+  outline: none;
+}
+
+.cv-entry,
+.cv-skill,
+.cv-bullet {
+  margin-bottom: var(--space-4);
+}
+
+.cv-bullets,
+.cv-skills {
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.cv-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.cv-button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 var(--space-4);
+  border: var(--border-hairline) solid var(--color-border-input);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--text-body-strong-size);
+  font-weight: var(--text-body-strong-weight);
+  cursor: pointer;
+}
+
+.cv-button:hover {
+  border-color: var(--color-border-strong);
+}
+
+.cv-button:disabled {
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  border-color: var(--color-border-subtle);
+  cursor: default;
+}
+
+.cv-button:focus-visible {
+  box-shadow: var(--shadow-focus);
+  outline: none;
+}
+
+.cv-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cv-error {
+  margin-top: var(--space-2);
+  color: var(--color-danger-text);
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line-height);
+}
+
+.cv-error p {
+  margin: 0 0 var(--space-2);
+}
+
+.cv-callout {
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  border: var(--border-emphasis) solid var(--color-danger-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.cv-callout p {
+  margin: 0 0 var(--space-3);
+}
+
+.cv-message {
+  padding: var(--space-6) var(--space-gutter-mobile);
+  color: var(--color-text-secondary);
+}
+
+@media (min-width: 600px) {
+  .cv-page {
+    padding: var(--space-8) var(--space-gutter-desktop);
+  }
+}

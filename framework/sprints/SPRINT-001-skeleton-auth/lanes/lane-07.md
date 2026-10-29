@@ -173,3 +173,11 @@ Non-blocking:
 ### T-12 final pass — co-occurrence (developer)
 - code: verify.ts now requires one cited fact holding BOTH employer and period (experience) or institution and period (education); otherwise the entry is dropped with a priority-1 question. The role must occur in a cited fact that also names the employer, else the entry is kept with a vague question. Bullets unchanged (ADR-002). No clock, randomness, or LLM. types.ts and decisions.md untouched.
 - GREEN: `npm -w api run test -- --run src/core/generation/verify src/core/generation/questions` 68/68; gate.sh lane-scoped all green.
+
+## T-20 Answer a question → user fact → section-scoped recompose (CVB-17)
+- tests (test-engineer): tests/contract/cvs-answer.test.ts (15 cases: 200 C-006 shape + user fact, section-scoped byte-identity incl. userEdited, other questions unchanged, 409 double answer, 404 unknown cvId/questionId, 404 foreign CV and cross-CV questionId, 400/401, 503 LLM_UNAVAILABLE with answer stored and retry 409). RED confirmed: 15/15 fail at assertion level, all on `expected 404 to be 200` (or 400/401/503) because POST /api/cvs/:cvId/questions/:questionId/answer is not registered; the 404 cases carry a positive control (owner's own question answers 200 first) so they cannot pass on a missing route.
+- provisional seam (DECISION NEEDED): the route reads the C-012 pipeline from app decorator `generationPipeline`, set by the harness before ready(). buildServer() takes no pipeline and no answer route exists; api/src/server.ts is outside the allowlist. Architect/Teamlead to fix the seam name and how the pipeline reaches the route (buildServer option vs decorator).
+- fake pipeline: compose() derives the target period from the user fact it receives and returns SENTINEL values for every other section; verify() drops ungrounded periods, so only a route that exempts user facts keeps the answer (F-006 bypass).
+- no generation_jobs row is written by these tests (C-009 is synchronous), so the ADR-014 suite lock is not taken; test-lock.ts untouched.
+- lint: the lane's own file is clean; gate lint is red on web/src/features/cv/testkit.ts (outside lane 07, parsing error at 280:25).
+- production code: none. Nothing committed.

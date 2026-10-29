@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { acquireJobSuiteLock, JOB_SUITE_LOCK_WAIT_MS, type JobSuiteLock } from './test-lock.js';
-let suiteLock: JobSuiteLock;
+import { openJobTestSuite, JOB_SUITE_LOCK_WAIT_MS } from './test-lock.js';
 import { randomUUID } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -16,6 +15,7 @@ const apiRoot = join(here, '..', '..', '..');
 process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder';
 
 const prisma = new PrismaClient();
+const suite = openJobTestSuite(prisma);
 const userIds: string[] = [];
 
 async function seedUserAndCv() {
@@ -33,11 +33,11 @@ async function seedUserAndCv() {
 afterAll(async () => {
   if (userIds.length > 0) await prisma.user.deleteMany({ where: { id: { in: userIds } } });
   await prisma.$disconnect();
-  await suiteLock.release();
+  await suite.release();
 });
 
 beforeAll(async () => {
-  suiteLock = await acquireJobSuiteLock();
+  await suite.lock();
 }, JOB_SUITE_LOCK_WAIT_MS);
 
 // Job rows are created inside a transaction that always rolls back. jobs.test.ts runs in parallel on
@@ -59,9 +59,9 @@ describe('ADR-004 / database-schema generation_jobs: one in-flight job per CV', 
   it('rejects a second queued job for the same CV (partial unique index)', async () => {
     const { userId, cvId } = await seedUserAndCv();
     await rolledBack(async (tx) => {
-      await tx.generationJob.create({ data: { cvId, userId, status: 'queued' } });
+      await suite.enqueue({ cvId, userId, status: 'queued' }, tx);
       await expect(
-        tx.generationJob.create({ data: { cvId, userId, status: 'queued' } }),
+        suite.enqueue({ cvId, userId, status: 'queued' }, tx),
       ).rejects.toMatchObject({ code: 'P2002' });
     });
   });
@@ -69,9 +69,9 @@ describe('ADR-004 / database-schema generation_jobs: one in-flight job per CV', 
   it('rejects a second job while the first is running', async () => {
     const { userId, cvId } = await seedUserAndCv();
     await rolledBack(async (tx) => {
-      await tx.generationJob.create({ data: { cvId, userId, status: 'running', attempt: 1 } });
+      await suite.enqueue({ cvId, userId, status: 'running', attempt: 1 }, tx);
       await expect(
-        tx.generationJob.create({ data: { cvId, userId, status: 'queued' } }),
+        suite.enqueue({ cvId, userId, status: 'queued' }, tx),
       ).rejects.toMatchObject({ code: 'P2002' });
     });
   });
@@ -79,10 +79,11 @@ describe('ADR-004 / database-schema generation_jobs: one in-flight job per CV', 
   it('allows a new job once the previous one is succeeded or failed', async () => {
     const { userId, cvId } = await seedUserAndCv();
     await rolledBack(async (tx) => {
-      await tx.generationJob.create({ data: { cvId, userId, status: 'succeeded' } });
-      await tx.generationJob.create({ data: { cvId, userId, status: 'failed' } });
+      await suite.enqueue({ cvId, userId, status: 'succeeded' }, tx);
+      await suite.enqueue({ cvId, userId, status: 'failed' }, tx);
 
-      const next = await tx.generationJob.create({ data: { cvId, userId, status: 'queued' } });
+      const nextId = await suite.enqueue({ cvId, userId, status: 'queued' }, tx);
+      const next = await tx.generationJob.findUniqueOrThrow({ where: { id: nextId } });
 
       expect(next.status).toBe('queued');
     });

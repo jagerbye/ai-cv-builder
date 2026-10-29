@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { acquireJobSuiteLock, JOB_SUITE_LOCK_WAIT_MS, type JobSuiteLock } from '../../api/src/core/jobs/test-lock.js';
-let suiteLock: JobSuiteLock;
+import { openJobTestSuite, JOB_SUITE_LOCK_WAIT_MS, type JobTestSuite } from '../../api/src/core/jobs/test-lock.js';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
@@ -14,6 +13,7 @@ process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_c
 const { buildServer } = await import('../../api/src/server.js');
 
 const prisma = new PrismaClient();
+const suite = openJobTestSuite(prisma);
 let app: FastifyInstance;
 const userIds: string[] = [];
 
@@ -60,8 +60,7 @@ async function seedJob(
     errorMessage?: string | null;
   },
 ): Promise<string> {
-  const job = await prisma.generationJob.create({
-    data: {
+  return suite.enqueue({
       cvId,
       userId,
       status: data.status,
@@ -72,9 +71,7 @@ async function seedJob(
       finishedAt: data.finishedAt ?? null,
       errorCode: data.errorCode ?? null,
       errorMessage: data.errorMessage ?? null,
-    },
   });
-  return job.id;
 }
 
 function getJob(jobId: string, cookie?: string) {
@@ -86,7 +83,7 @@ function getJob(jobId: string, cookie?: string) {
 }
 
 beforeAll(async () => {
-  suiteLock = await acquireJobSuiteLock();
+  await suite.lock();
   app = buildServer();
   await app.ready();
 }, JOB_SUITE_LOCK_WAIT_MS);
@@ -96,7 +93,7 @@ afterAll(async () => {
   if (userIds.length > 0) await prisma.user.deleteMany({ where: { id: { in: userIds } } });
   await app.close();
   await prisma.$disconnect();
-  await suiteLock.release();
+  await suite.release();
 });
 
 describe('C-005 GET /api/jobs/:jobId: shape per status', () => {

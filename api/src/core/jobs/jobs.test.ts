@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { acquireJobSuiteLock, JOB_SUITE_LOCK_WAIT_MS, type JobSuiteLock } from './test-lock.js';
-let suiteLock: JobSuiteLock;
+import { openJobTestSuite, JOB_SUITE_LOCK_WAIT_MS } from './test-lock.js';
 import { randomUUID } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 import type { GenerationPipeline, Fact, CvDraft, VerificationResult } from '../generation/types.js';
@@ -21,6 +20,7 @@ import { createJobWorker, JOB_BUDGET_MS } from './worker.js';
 process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ai_cv_builder';
 
 const prisma = new PrismaClient();
+const suite = openJobTestSuite(prisma);
 const userIds: string[] = [];
 
 const FACT: Fact = {
@@ -77,8 +77,7 @@ async function seedJob(
     errorMessage: string | null;
   }> = {},
 ): Promise<string> {
-  const job = await prisma.generationJob.create({
-    data: {
+  return suite.enqueue({
       cvId: seed.cvId,
       userId: seed.userId,
       status: data.status ?? 'queued',
@@ -89,9 +88,7 @@ async function seedJob(
       finishedAt: data.finishedAt ?? null,
       errorCode: data.errorCode ?? null,
       errorMessage: data.errorMessage ?? null,
-    },
   });
-  return job.id;
 }
 
 async function row(jobId: string) {
@@ -132,7 +129,7 @@ function fakePipeline(hooks: FakeHooks = {}) {
 }
 
 beforeAll(async () => {
-  suiteLock = await acquireJobSuiteLock();
+  await suite.lock();
   // Non-terminal jobs from other runs would be claimed by these tests; clear them first.
   await prisma.generationJob.deleteMany({ where: { status: { in: ['queued', 'running'] } } });
 }, JOB_SUITE_LOCK_WAIT_MS);
@@ -147,7 +144,7 @@ afterAll(async () => {
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
   }
   await prisma.$disconnect();
-  await suiteLock.release();
+  await suite.release();
 });
 
 describe('C-005 / ADR-004: leasing', () => {

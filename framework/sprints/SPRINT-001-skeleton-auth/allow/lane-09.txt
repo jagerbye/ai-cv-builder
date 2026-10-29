@@ -1,0 +1,8 @@
+web/src/features/cv/*
+web/src/api/client*
+framework/sprints/SPRINT-001-skeleton-auth/lanes/lane-09.md
+framework/sprints/SPRINT-001-skeleton-auth/plan.md
+framework/docs/*
+framework/knowledge/*
+.claude/*
+.gitignore

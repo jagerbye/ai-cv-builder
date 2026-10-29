@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { installErrorEnvelope, ApiError } from '../http/errors.js';
+import { ApiError } from '../http/errors.js';
 import { readSessionCookie, requireUser } from '../http/requireUser.js';
 import { REGISTER_BODY_SCHEMA, registerHandler } from '../core/auth/register.js';
 import { hashPassword, verifyPassword } from '../core/auth/password.js';
@@ -12,8 +12,7 @@ import {
 } from '../core/auth/session.js';
 
 // T-03 register (CVB-3), T-04 login/logout/me (CVB-4). Auth plugin, registered under /api
-// in server.ts. Installs the C-000 envelope on its context, so every auth answer, and an
-// unmatched /api path under it, uses the envelope.
+// in server.ts. The C-000 envelope is installed on the /api context by server.ts, not here.
 
 const LOGIN_BODY_SCHEMA = {
   type: 'object',
@@ -41,9 +40,6 @@ function unknownEmailHash(): Promise<string> {
 }
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
-  // Installed on the parent /api context (see skip-override below), so sibling /api plugins registered after this one get the C-000 envelope too.
-  installErrorEnvelope(app);
-
   app.post(
     '/auth/register',
     { schema: { body: REGISTER_BODY_SCHEMA } },
@@ -85,6 +81,3 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     return reply.code(200).send({ user: { id: user.id, email: user.email } });
   });
 }
-
-// Same effect as fastify-plugin (not a dependency): run in the parent context instead of an encapsulated child.
-(authRoutes as unknown as Record<symbol, boolean>)[Symbol.for('skip-override')] = true;

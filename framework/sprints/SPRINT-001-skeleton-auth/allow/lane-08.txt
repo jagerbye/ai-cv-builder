@@ -1,0 +1,14 @@
+api/src/http/*
+api/src/server.ts
+api/src/routes/auth.ts
+api/src/routes/cvs-create.ts
+api/src/routes/jobs.ts
+api/src/routes/export.ts
+tests/contract/hardening*
+tests/contract/cvs-create.test.ts
+framework/sprints/SPRINT-001-skeleton-auth/lanes/lane-08.md
+framework/sprints/SPRINT-001-skeleton-auth/plan.md
+framework/docs/*
+framework/knowledge/*
+.claude/*
+.gitignore

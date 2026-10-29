@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { acquireJobSuiteLock, JOB_SUITE_LOCK_WAIT_MS, type JobSuiteLock } from '../../api/src/core/jobs/test-lock.js';
+import { openJobTestSuite, JOB_SUITE_LOCK_WAIT_MS, type JobTestSuite } from '../../api/src/core/jobs/test-lock.js';
 
 // T-15 (CVB-7). Contract tests for C-003 (JSON, sourceText) and C-004 (multipart, PDF)
 // on POST /api/cvs. Real Fastify app via buildServer() and real Postgres, never mocked:
@@ -21,7 +21,7 @@ let cookie: string;
 let userId: string;
 // POST /api/cvs commits queued jobs, and a parallel job suite's worker claims ANY
 // queued row (errors.md E-002). Hold the job-suite lock so the two never overlap.
-let suiteLock: JobSuiteLock;
+let suite: JobTestSuite | undefined;
 
 // Same generator as the unit suite: a known career sentence, cut to exactly n characters.
 function chars(n: number): string {
@@ -116,9 +116,11 @@ async function cvCount(): Promise<number> {
 }
 
 beforeAll(async () => {
-  suiteLock = await acquireJobSuiteLock();
   app = buildServer();
   await app.ready();
+  // POST /api/cvs creates the jobs over HTTP, so this suite holds the lock without enqueue().
+  suite = openJobTestSuite(app.prisma);
+  await suite.lock();
   // Session set up directly in the database (ADR-007, database-schema.md): the cookie
   // value is opaque and its sha256 is stored as tokenHash. This keeps intake tests
   // independent of the auth routes, which other lanes own.
@@ -142,7 +144,7 @@ afterAll(async () => {
     await app.prisma.user.deleteMany({ where: { id: userId } }).catch(() => undefined);
     await app.close();
   }
-  await suiteLock?.release();
+  await suite?.release();
 });
 
 describe('POST /api/cvs, JSON body (C-003, spec §3.2)', () => {

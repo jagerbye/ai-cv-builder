@@ -26,7 +26,7 @@ export interface ErrorDetail {
   message: string;
 }
 
-const GENERIC_MESSAGE = 'Something went wrong. Please try again.';
+export const GENERIC_MESSAGE = 'Something went wrong. Please try again.';
 
 export class ApiError extends Error {
   readonly status: number;

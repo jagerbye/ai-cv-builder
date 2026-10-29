@@ -59,6 +59,13 @@ allowance in the repo, do not work around it by vendoring or by skipping
 - **Owned data:** none directly — it goes through the services below.
 - **Public surface:** `framework/docs/api-contracts.md` (C-001…C-012).
 - **Must NOT:** call the Anthropic SDK, run a generation inline, or build SQL.
+- **Rate limits (F-010, T-21):** one hook set in `server.ts` on the `/api` context
+  (`http/rateLimit.ts`), keyed by the session user. 10 generations per hour (create and
+  regenerate, slot released when the answer is not 2xx) and 60 writes per minute (POST, PATCH,
+  DELETE). Fixed windows on the injected clock. Counters are in-process, which is correct for the
+  single-container deployment only. A second instance needs a shared store before limits hold.
+- **Session:** `http/requireUser.ts` is the one cookie-to-user resolver (ADR-007). The error
+  envelope is installed on `/api` by `server.ts`.
 
 ### 2.2 `core/auth` — identity
 

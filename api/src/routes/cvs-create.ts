@@ -1,16 +1,15 @@
-import { createHash } from 'node:crypto';
 import { toErrorResponse } from '../http/errors.js';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { extractSource, IntakeError, PDF_TOO_LARGE_MESSAGE } from '../core/intake/intake.js';
 import { createCvFromSource } from '../core/intake/persist.js';
 import { MAX_PDF_BYTES } from '../core/intake/intake.js';
 import { MultipartError, parseMultipart, type MultipartFile } from '../core/intake/multipart.js';
+import { requireUser } from '../http/requireUser.js';
 
 // T-07 (CVB-24, ADR-011) owner: CV creation lane (T-15, CVB-7). Only this file
 // registers POST /cvs. C-003 (JSON) and C-004 (multipart, parsed by
 // core/intake/multipart.ts: no library is in the dependency budget).
 
-const SESSION_COOKIE = 'sid';
 const TARGET_ROLE_MAX = 120;
 // File cap plus room for field and part headers; the exact 10 MB rule lives in intake.ts.
 const MULTIPART_BODY_LIMIT = MAX_PDF_BYTES + 1024 * 1024;
@@ -42,9 +41,9 @@ export async function cvsCreateRoutes(app: FastifyInstance): Promise<void> {
     return reply.code(status).send(body);
   });
 
-  app.post('/cvs', async (request, reply) => {
-    const userId = await sessionUserId(app, request.headers.cookie);
-    if (!userId) return sendError(reply, 401, 'UNAUTHENTICATED', 'sign in before creating a CV');
+  // The session user comes from requireUser (ADR-007), which answers 401 before this handler runs.
+  app.post('/cvs', { preHandler: requireUser }, async (request, reply) => {
+    const userId = (request.user as { id: string }).id;
 
     let file: MultipartFile | undefined;
     let fields: Record<string, unknown> = {};
@@ -87,26 +86,6 @@ export async function cvsCreateRoutes(app: FastifyInstance): Promise<void> {
       throw err;
     }
   });
-}
-
-// Temporary local session lookup (ADR-007: sha256 hex of the cookie value). The
-// auth lane owns session resolution and should replace this with its own helper.
-async function sessionUserId(app: FastifyInstance, cookieHeader: string | undefined): Promise<string | null> {
-  const token = readCookie(cookieHeader, SESSION_COOKIE);
-  if (!token) return null;
-  const tokenHash = createHash('sha256').update(token).digest('hex');
-  const session = await app.prisma.session.findUnique({ where: { tokenHash } });
-  if (!session || session.expiresAt.getTime() <= Date.now()) return null;
-  return session.userId;
-}
-
-function readCookie(header: string | undefined, name: string): string | undefined {
-  if (!header) return undefined;
-  for (const part of header.split(';')) {
-    const eq = part.indexOf('=');
-    if (eq > 0 && part.slice(0, eq).trim() === name) return part.slice(eq + 1).trim() || undefined;
-  }
-  return undefined;
 }
 
 function isMultipart(value: unknown): value is { fields: Record<string, string>; files: MultipartFile[] } {

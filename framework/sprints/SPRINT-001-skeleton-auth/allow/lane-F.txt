@@ -13,3 +13,4 @@ framework/knowledge/*
 .gitignore
 api/src/http/errors.ts
 api/src/core/generation/gateway*
+api/src/http/errors.test.ts

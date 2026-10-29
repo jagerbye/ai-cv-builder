@@ -39,8 +39,12 @@ Format:
   `{ "error": { "code": "<ENUM>", "message": "<human, safe>", "details"?: [{ "path": "...", "message": "..." }] } }`
 - Error code enum (closed): `VALIDATION`, `UNAUTHENTICATED`, `NOT_FOUND`,
   `CONFLICT`, `VERSION_CONFLICT`, `PAYLOAD_TOO_LARGE`, `UNSUPPORTED_SOURCE`,
-  `RATE_LIMITED`, `LLM_UNAVAILABLE`, `LLM_INVALID_OUTPUT`, `JOB_TIMEOUT`,
-  `CONFIG_MISSING`, `INTERNAL`.
+  `RATE_LIMITED`, `LLM_UNAVAILABLE`, `LLM_INVALID_OUTPUT`, `LLM_AUTH_FAILED`,
+  `LLM_INVALID_REQUEST`, `JOB_TIMEOUT`, `CONFIG_MISSING`, `INTERNAL`.
+  `LLM_AUTH_FAILED` (the provider rejected the configured API key) and
+  `LLM_INVALID_REQUEST` (the provider rejected the request) were added by
+  ADR-018; each has its own fixed safe message, never the provider's text.
+  `last_error_code` in the database is held to exactly this list by a CHECK.
 - Another user's entity is `404 NOT_FOUND`, never 403 (no existence leak).
 - Timestamps are ISO-8601 UTC strings.
 - Status: **frozen (sprint 1)**

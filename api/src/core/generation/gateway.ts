@@ -8,35 +8,29 @@
 
 import Anthropic, { APIConnectionError, APIError } from '@anthropic-ai/sdk';
 import type { LlmConfig } from '../../llm/config.js';
+import { safeMessage, type ErrorCode } from '../../http/errors.js';
 import type { AnthropicGateway, ToolCallRequest } from './types.js';
 
-// Closed C-000 codes plus the gateway-level codes the lane flagged for the
-// Teamlead (auth, invalid request, budget). Messages are fixed and safe: no
-// provider text, no prompt, no key (F-010).
-export type GatewayErrorCode =
-  | 'RATE_LIMITED'
-  | 'LLM_UNAVAILABLE'
-  | 'LLM_INVALID_OUTPUT'
-  | 'CONFIG_MISSING'
-  | 'LLM_AUTH_FAILED'
-  | 'LLM_INVALID_REQUEST'
-  | 'LLM_BUDGET_EXCEEDED';
+// Every code the gateway throws is a member of the closed C-000 enum (ADR-018). The list is checked
+// against ERROR_CODES at compile time: a code added here that the enum lacks is a type error, not a
+// silent INTERNAL downstream. Messages are errors.ts's fixed safe ones: no provider text, no prompt,
+// no key (F-010). A token-budget overrun is an unusable result, so it throws LLM_INVALID_OUTPUT.
+export const GATEWAY_ERROR_CODES = [
+  'RATE_LIMITED',
+  'LLM_UNAVAILABLE',
+  'LLM_INVALID_OUTPUT',
+  'CONFIG_MISSING',
+  'LLM_AUTH_FAILED',
+  'LLM_INVALID_REQUEST',
+] as const satisfies readonly ErrorCode[];
 
-const MESSAGES: Record<GatewayErrorCode, string> = {
-  RATE_LIMITED: 'The language model is rate limited; try again later.',
-  LLM_UNAVAILABLE: 'The language model is unavailable or timed out.',
-  LLM_INVALID_OUTPUT: 'The language model returned output that failed validation.',
-  CONFIG_MISSING: 'ANTHROPIC_API_KEY is not configured; generation is unavailable.',
-  LLM_AUTH_FAILED: 'The language model rejected the configured credentials.',
-  LLM_INVALID_REQUEST: 'The language model rejected the request.',
-  LLM_BUDGET_EXCEEDED: 'The generation exceeded its token budget.',
-};
+export type GatewayErrorCode = (typeof GATEWAY_ERROR_CODES)[number];
 
 export class GatewayError extends Error {
   readonly code: GatewayErrorCode;
 
   constructor(code: GatewayErrorCode) {
-    super(MESSAGES[code]);
+    super(safeMessage(code));
     this.name = 'GatewayError';
     this.code = code;
   }
@@ -157,14 +151,14 @@ export function createAnthropicGateway(config: LlmConfig, deps: GatewayDeps = {}
         // only spend what is left, and nothing is sent once it is gone.
         const remaining = config.tokenBudgetPerCall - usedTokens;
         if (remaining <= 0) {
-          logger.warn({ tool: req.name, code: 'LLM_BUDGET_EXCEEDED' });
-          throw new GatewayError('LLM_BUDGET_EXCEEDED');
+          logger.warn({ tool: req.name, code: 'LLM_INVALID_OUTPUT' });
+          throw new GatewayError('LLM_INVALID_OUTPUT');
         }
         const response = await send(req as ToolCallRequest<unknown>, messages, remaining);
         usedTokens += response.tokens;
         if (usedTokens > config.tokenBudgetPerCall) {
-          logger.warn({ tool: req.name, code: 'LLM_BUDGET_EXCEEDED' });
-          throw new GatewayError('LLM_BUDGET_EXCEEDED');
+          logger.warn({ tool: req.name, code: 'LLM_INVALID_OUTPUT' });
+          throw new GatewayError('LLM_INVALID_OUTPUT');
         }
 
         // Re-validate the provider result against the same schema (ADR-006).

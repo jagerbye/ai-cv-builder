@@ -68,8 +68,11 @@ business meaning.
   `source_kind text not null check in ('pdf','text')`,
   `source_text text not null`, `state text not null check in
   ('generating','ready','failed')`, `version int not null default 1`,
-  `last_error_code text null`, `last_error_message text null` (ADR-017: the
-  closed C-000 code and its fixed safe message; set with state `failed` in the
+  `last_error_code text null check in (<the C-000 enum, 15 codes>)`,
+  `last_error_message text null` (ADR-017/ADR-018: the closed C-000 code and
+  its fixed safe message; the CHECK `cvs_last_error_code_check` is in
+  migration `20261029010000_cv_last_error_code_check` and is kept equal to
+  `ERROR_CODES` by a test; set with state `failed` in the
   same transaction, nulled on regenerate and on success; never a join to
   generation_jobs, a CV outlives its jobs), `created_at`, `updated_at`.
 - Indexes: `(user_id, updated_at desc)` — the CV list (C-007), which is the

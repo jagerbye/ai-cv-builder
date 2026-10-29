@@ -261,7 +261,7 @@ describe('per-call token budget (ADR-006, F-010)', () => {
     const outcome = await createAnthropicGateway({ ...CONFIG, tokenBudgetPerCall: 1000 }, { fetch: t.fetch, sleep })
       .callTool(makeRequest())
       .then((v) => ({ resolved: v }), (e: { code?: string }) => ({ rejected: e.code }));
-    expect(outcome).toEqual({ rejected: 'LLM_BUDGET_EXCEEDED' });
+    expect(outcome).toEqual({ rejected: 'LLM_INVALID_OUTPUT' });
     expect(t.calls).toHaveLength(1);
   });
 });
@@ -276,7 +276,7 @@ describe('token budget across the schema retry', () => {
 
     const t2 = scriptedFetch([fixture('schema-violation.json'), fixture('tool-ok.json')]);
     await expect(createAnthropicGateway({ ...CONFIG, tokenBudgetPerCall: 150 }, { fetch: t2.fetch, sleep })
-      .callTool(makeRequest())).rejects.toMatchObject({ code: 'LLM_BUDGET_EXCEEDED' });
+      .callTool(makeRequest())).rejects.toMatchObject({ code: 'LLM_INVALID_OUTPUT' });
     expect(t2.calls).toHaveLength(1);
   });
 });

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { openJobTestSuite, JOB_SUITE_LOCK_WAIT_MS, type JobTestSuite } from '../../api/src/core/jobs/test-lock.js';
+import { GatewayError } from '../../api/src/core/generation/gateway.js';
 import { createJobWorker } from '../../api/src/core/jobs/worker.js';
 import type { Fact, GenerationPipeline } from '../../api/src/core/generation/types.js';
 import {
@@ -10,6 +11,7 @@ import {
   seedCv,
   fakePipeline,
   getCv,
+  getJob,
   regenerate,
   type Owner,
 } from './generation-persist.fixtures.js';
@@ -32,6 +34,8 @@ const LEASE_MS = 300_000;
 const LLM_UNAVAILABLE_MESSAGE = 'The generation service is unavailable. Try again later.';
 const JOB_TIMEOUT_MESSAGE = 'The job took too long and was stopped.';
 const INTERNAL_MESSAGE = 'Something went wrong on our side.';
+const LLM_AUTH_FAILED_MESSAGE = 'The generation service rejected the configured API key.';
+const LLM_INVALID_REQUEST_MESSAGE = 'The generation service rejected the request.';
 
 const LEAK = 'sk-ant-LEAK-do-not-return';
 
@@ -277,4 +281,63 @@ describe('ADR-017: the CV outlives its jobs', () => {
     const cv = (await getCv(app, owner.cookie, cvId)).json();
     expect(cv.lastError).toEqual({ code: 'LLM_UNAVAILABLE', message: LLM_UNAVAILABLE_MESSAGE });
   });
+});
+
+describe('ADR-017: success clears a stale last error on its own', () => {
+  it('a plain job (not a regenerate) that succeeds nulls both columns of a CV that was failed with lastError', async () => {
+    const owner = await seedUser();
+    const cvId = await seedCv(owner.userId);
+    // The CV is failed WITH a last error and nothing else has cleared it: no regenerate route runs here,
+    // so only persist.ts can null the columns.
+    await prisma.cv.update({
+      where: { id: cvId },
+      data: { state: 'failed', lastErrorCode: 'LLM_UNAVAILABLE', lastErrorMessage: LLM_UNAVAILABLE_MESSAGE },
+    });
+    await enqueueFresh(owner, cvId);
+    expect(await runOne(fakePipeline(TOKEN_A))).not.toBeNull();
+
+    expect(await cvRow(cvId)).toMatchObject({ state: 'ready', lastErrorCode: null, lastErrorMessage: null });
+    const cv = (await getCv(app, owner.cookie, cvId)).json();
+    expect(cv.state).toBe('ready');
+    expect(cv).not.toHaveProperty('lastError');
+  });
+});
+
+describe('ADR-018: provider auth and invalid-request failures keep their own code (F-010)', () => {
+  const cases = [
+    { code: 'LLM_AUTH_FAILED', message: LLM_AUTH_FAILED_MESSAGE },
+    { code: 'LLM_INVALID_REQUEST', message: LLM_INVALID_REQUEST_MESSAGE },
+  ] as const;
+
+  for (const { code, message } of cases) {
+    it(`${code} reaches the job row, the CV's lastError and both HTTP bodies, never as INTERNAL`, async () => {
+      const owner = await seedUser();
+      const cvId = await seedCv(owner.userId);
+      const jobId = await enqueueFresh(owner, cvId);
+      expect(await runOne(throwingAt(TOKEN_A, new GatewayError(code)))).toBe(jobId);
+
+      const job = await prisma.generationJob.findUniqueOrThrow({ where: { id: jobId } });
+      expect(job).toMatchObject({ status: 'failed', errorCode: code, errorMessage: message });
+      expect(await cvRow(cvId)).toMatchObject({ state: 'failed', lastErrorCode: code, lastErrorMessage: message });
+
+      const jobRes = await getJob(app, owner.cookie, jobId);
+      expect(jobRes.statusCode, jobRes.body).toBe(200);
+      expect(jobRes.json().error).toEqual({ code, message });
+      const cv = (await getCv(app, owner.cookie, cvId)).json();
+      expect(cv.lastError).toEqual({ code, message });
+    });
+
+    it(`${code} with provider text on the thrown error keeps that text out of the CV and C-006`, async () => {
+      const owner = await seedUser();
+      const cvId = await seedCv(owner.userId);
+      await enqueueFresh(owner, cvId);
+      const leaky = Object.assign(new Error(`provider said ${LEAK} at https://llm.internal.example`), { code });
+      expect(await runOne(throwingAt(TOKEN_A, leaky))).not.toBeNull();
+
+      const cvRes = await getCv(app, owner.cookie, cvId);
+      expect(cvRes.body).not.toContain(LEAK);
+      expect(cvRes.body).not.toContain('llm.internal.example');
+      expect(cvRes.json().lastError).toEqual({ code, message });
+    });
+  }
 });

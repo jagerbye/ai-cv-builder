@@ -19,6 +19,45 @@ Format — newest on top, one block per decision:
 
 ---
 
+## ADR-021: The output cap and the spend budget are two numbers, and running out of budget says so (2026-10-29, accepted)
+
+- **Context:** the first real model call this project ever made failed, and the
+  failure was ours. `tokenBudgetPerCall` is one number, 4096, used for two
+  unrelated jobs: it caps `max_tokens` on the request AND bounds
+  `input + output` afterwards. An ordinary CV — fifteen facts, a schema, the
+  instructions, and a full draft coming back — crosses 4096 on the compose
+  stage every time, so the gateway cut itself off and reported
+  `LLM_INVALID_OUTPUT`: "the generation service returned an unusable result".
+  The service had returned a perfectly good result. Proven by raising the
+  number alone: compose then succeeded, with the summary naming the target
+  role, experience ordered by relevance, and every bullet citing its facts.
+- **Decision:** three changes, one theme — say what you mean.
+  1. **Output cap** (`max_tokens`) is its own configurable number, sized so a
+     full CV fits. It bounds one response.
+  2. **The spend budget is per JOB**, which is what F-010 actually asks for.
+     It accumulates across the job's calls — extract, compose, and any schema
+     retry — and the job fails when it is gone. C-012 gains an optional ledger
+     parameter for this; the amendment is additive and a stage called without
+     one behaves exactly as before.
+  3. **`LLM_BUDGET_EXCEEDED` joins the C-000 enum** with its own safe message.
+     Stopping on budget is not invalid output, and telling a user their CV
+     failed because the model misbehaved — when the truth is that we declined
+     to spend more — is the same lie ADR-018 and ADR-020 were written to stop.
+- **Also:** the gateway logs its own validation message on the schema-retry
+  path. It already builds `problem` — our text, never the provider's — and
+  then throws it away, so nothing on the server can say WHAT was invalid. That
+  is the silent catch the coding rule forbids, in the one place where it costs
+  a live debugging session.
+- **Alternatives rejected:** raising the single number (keeps two meanings in
+  one knob, and the next person meets the same confusion); a per-call budget
+  large enough for any stage (bounds nothing — the spec asks for a bound per
+  job, and a runaway retry loop is exactly what per-call misses).
+- **Consequences:** the enum's CHECK constraint covers the new code; the web's
+  copy of the enum follows, enforced by the sync test; the budget's default is
+  a configuration decision an operator can make without touching code.
+
+---
+
 ## ADR-020: C-009's 503 carries the real code (2026-10-29, accepted)
 
 - **Context:** writing the README against a running key-less stack showed that
